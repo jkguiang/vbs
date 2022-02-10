@@ -16,6 +16,7 @@
 
 typedef std::vector<LorentzVector> LorentzVectors;
 typedef std::vector<int> Integers;
+typedef std::vector<unsigned int> Indices;
 
 enum DeepJetTag
 {
@@ -41,6 +42,7 @@ public:
     Cut* has_3leps_0SFOS;
     Cut* has_3leps_1SFOS;
     Cut* has_3leps_2SFOS;
+    Cut* dummy;
     
     VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow);
     void initBranches(Arbol& arbol);
