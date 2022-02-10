@@ -6,7 +6,7 @@ int main(int argc, char** argv)
     HEPCLI cli = HEPCLI(argc, argv);
 
     // Initialize Looper
-    Looper looper = Looper<Nano>(&nt, cli.input_tchain, cli.input_ttree);
+    Looper looper = Looper(cli.input_tchain, cli.input_ttree);
 
     // Initialize Arbol
     TFile* output_tfile = new TFile(
@@ -26,19 +26,24 @@ int main(int argc, char** argv)
     cutflow.insert(cuts.select_jets->name, cuts.geq_2_jets, Right);
     cutflow.insert(cuts.geq_2_jets->name, cuts.no_tight_b_jets, Right);
     cutflow.insert(cuts.no_tight_b_jets->name, cuts.select_vbs_jets_maxE, Right);
+    cutflow.insert(cuts.select_vbs_jets_maxE->name, cuts.has_3leps, Right);
 
     // Run looper
     looper.run(
-        [&]() 
+        [&](TTree* ttree)
+        {
+            nt.Init(ttree);
+            gconf.GetConfigs(nt.year());
+        },
+        [&](int entry) 
         {
             // Reset branches and globals
             arbol.resetBranches();
             cutflow.globals.resetVars();
             // Run cutflow
-            nt.GetEntry(looper.current_index);
-            bool passed = cutflow.runUntil(cuts.select_vbs_jets_maxE->name);
+            nt.GetEntry(entry);
+            bool passed = cutflow.runUntil(cuts.has_3leps->name);
             if (passed) { arbol.fillTTree(); }
-            return;
         }
     );
 

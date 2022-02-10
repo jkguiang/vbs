@@ -18,7 +18,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
     );
 
     has_3leps_presel = new Cut(
-        "Has3LepPresel",
+        "Geq3LepPresel",
         [&]()
         {
             int n_lep_pt_gt_20 = 0;
@@ -149,7 +149,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
                 // Apply jet ID
                 int jet_id = nt.Jet_jetId().at(jet_i);
                 if (nt.year() == 2016 && jet_id < 1) { continue; }
-                else if (jet_id < 2) { continue; }
+                if (nt.year() > 2016 && jet_id < 2) { continue; }
                 // Perform overlap check against leptons
                 bool is_overlap = false;
                 LorentzVectors good_lep_p4s = cutflow.globals.getVal<LorentzVectors>("good_lep_p4s");
@@ -302,33 +302,98 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
                     // Take the leading candidate (in P) from each hemisphere
                     vbs_jet_idxs = std::make_pair(vbs_pos_eta_jet_idxs.at(0), vbs_neg_eta_jet_idxs.at(0));
                 }
-                // Separate the two VBS jets into leading/trailing
-                int ld_vbs_jet_idx;
-                int tr_vbs_jet_idx;
-                if (good_jet_p4s.at(vbs_jet_idxs.first).pt() > good_jet_p4s.at(vbs_jet_idxs.first).pt())
-                {
-                    ld_vbs_jet_idx = vbs_jet_idxs.first;
-                    tr_vbs_jet_idx = vbs_jet_idxs.second;
-                }
-                else
-                {
-                    ld_vbs_jet_idx = vbs_jet_idxs.second;
-                    tr_vbs_jet_idx = vbs_jet_idxs.first;
-                }
-                LorentzVector ld_vbs_jet_p4 = good_jet_p4s.at(ld_vbs_jet_idx);
-                LorentzVector tr_vbs_jet_p4 = good_jet_p4s.at(tr_vbs_jet_idx);
-                // Save VBS jet info
-                cutflow.globals.setVal<LorentzVector>("ld_vbs_jet_p4", ld_vbs_jet_p4);
-                cutflow.globals.setVal<int>("ld_vbs_jet_idx", ld_vbs_jet_idx);
-                cutflow.globals.setVal<LorentzVector>("tr_vbs_jet_p4", tr_vbs_jet_p4);
-                cutflow.globals.setVal<int>("tr_vbs_jet_idx", tr_vbs_jet_idx);
-                arbol.setLeaf("M_jj", (ld_vbs_jet_p4 + tr_vbs_jet_p4).M());
-                arbol.setLeaf("deta_jj", ld_vbs_jet_p4.eta() - tr_vbs_jet_p4.eta());
-                arbol.setLeaf("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbs_jet_p4, tr_vbs_jet_p4));
             }
+            // Separate the two VBS jets into leading/trailing
+            int ld_vbs_jet_idx;
+            int tr_vbs_jet_idx;
+            if (good_jet_p4s.at(vbs_jet_idxs.first).pt() > good_jet_p4s.at(vbs_jet_idxs.first).pt())
+            {
+                ld_vbs_jet_idx = vbs_jet_idxs.first;
+                tr_vbs_jet_idx = vbs_jet_idxs.second;
+            }
+            else
+            {
+                ld_vbs_jet_idx = vbs_jet_idxs.second;
+                tr_vbs_jet_idx = vbs_jet_idxs.first;
+            }
+            LorentzVector ld_vbs_jet_p4 = good_jet_p4s.at(ld_vbs_jet_idx);
+            LorentzVector tr_vbs_jet_p4 = good_jet_p4s.at(tr_vbs_jet_idx);
+            // Save VBS jet info
+            cutflow.globals.setVal<LorentzVector>("ld_vbs_jet_p4", ld_vbs_jet_p4);
+            cutflow.globals.setVal<int>("ld_vbs_jet_idx", ld_vbs_jet_idx);
+            cutflow.globals.setVal<LorentzVector>("tr_vbs_jet_p4", tr_vbs_jet_p4);
+            cutflow.globals.setVal<int>("tr_vbs_jet_idx", tr_vbs_jet_idx);
+            arbol.setLeaf("M_jj", (ld_vbs_jet_p4 + tr_vbs_jet_p4).M());
+            arbol.setLeaf("deta_jj", ld_vbs_jet_p4.eta() - tr_vbs_jet_p4.eta());
+            arbol.setLeaf("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbs_jet_p4, tr_vbs_jet_p4));
             return true;
         }
     );
+
+    has_3leps = new Cut(
+        "Has3TightLeps",
+        [&]()
+        {
+            LorentzVectors good_lep_p4s = cutflow.globals.getVal<LorentzVectors>("good_lep_p4s");
+            Integers good_lep_pdgIDs = cutflow.globals.getVal<Integers>("good_lep_pdgIDs");
+            Integers good_lep_idxs = cutflow.globals.getVal<Integers>("good_lep_idxs");
+            int n_loose_leps = 0;
+            Integers trilep_idxs;
+            for (unsigned int good_lep_i = 0; good_lep_i < good_lep_p4s.size(); ++good_lep_i)
+            {
+                // if (good_lep_p4s.at(good_lep_i).pt() < 40) { continue; }
+                // Count loose and tight leptons
+                unsigned int lep_i = good_lep_idxs.at(good_lep_i);
+                int lep_pdgID = good_lep_pdgIDs.at(good_lep_i);
+                switch (abs(lep_pdgID))
+                {
+                case 11:
+                    if (ttH::electronID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
+                    if (ttH::electronID(lep_i, ttH::IDtight, nt.year())) 
+                    {
+                        trilep_idxs.push_back(good_lep_i);
+                    }
+                    break;
+                case 13:
+                    if (ttH::muonID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
+                    if (ttH::muonID(lep_i, ttH::IDtight, nt.year())) 
+                    {
+                        trilep_idxs.push_back(good_lep_i);
+                    }
+                    break;
+                }
+            }
+            // Require 3 and only 3 leptons (all passing tight ID)
+            if (trilep_idxs.size() != 3 || n_loose_leps != 3) { return false; }
+            // Sort into leading, middling, and trailing
+            std::sort(
+                trilep_idxs.begin(), trilep_idxs.end(),
+                [&](int i, int j) -> bool { return good_lep_p4s.at(i).pt() > good_lep_p4s.at(j).pt(); }
+            );
+            // FIXME: these branches aren't getting filled!!
+            int ld_i = trilep_idxs.at(0); // leading
+            int md_i = trilep_idxs.at(1); // middling
+            int tr_i = trilep_idxs.at(2); // trailing
+            arbol.setLeaf<float>("ld_lep_pdgID", good_lep_pdgIDs.at(ld_i));
+            arbol.setLeaf<float>("md_lep_pdgID", good_lep_pdgIDs.at(md_i));
+            arbol.setLeaf<float>("tr_lep_pdgID", good_lep_pdgIDs.at(tr_i));
+            LorentzVector ld_p4 = good_lep_p4s.at(ld_i);
+            LorentzVector md_p4 = good_lep_p4s.at(md_i);
+            LorentzVector tr_p4 = good_lep_p4s.at(tr_i);
+            arbol.setLeaf<float>("ld_lep_pt", ld_p4.pt());
+            arbol.setLeaf<float>("md_lep_pt", md_p4.pt());
+            arbol.setLeaf<float>("tr_lep_pt", tr_p4.pt());
+            arbol.setLeaf<float>("ld_lep_eta", ld_p4.eta());
+            arbol.setLeaf<float>("md_lep_eta", md_p4.eta());
+            arbol.setLeaf<float>("tr_lep_eta", tr_p4.eta());
+            arbol.setLeaf<float>("ld_lep_phi", ld_p4.phi());
+            arbol.setLeaf<float>("md_lep_phi", md_p4.phi());
+            arbol.setLeaf<float>("tr_lep_phi", tr_p4.phi());
+            return true;
+        }
+    );
+
+    dummy = new Cut("DummyCut", [&]() { return true; });
 }
 
 void VBS3LepCuts::initBranches(Arbol& arbol)
@@ -346,6 +411,18 @@ void VBS3LepCuts::initBranches(Arbol& arbol)
     arbol.newBranch<float>("M_jj", -999);
     arbol.newBranch<float>("deta_jj", -999);
     arbol.newBranch<float>("dR_jj", -999);
+    arbol.newBranch<float>("ld_lep_pdgID", -999);
+    arbol.newBranch<float>("md_lep_pdgID", -999);
+    arbol.newBranch<float>("tr_lep_pdgID", -999);
+    arbol.newBranch<float>("ld_lep_pt", -999);
+    arbol.newBranch<float>("md_lep_pt", -999);
+    arbol.newBranch<float>("tr_lep_pt", -999);
+    arbol.newBranch<float>("ld_lep_eta", -999);
+    arbol.newBranch<float>("md_lep_eta", -999);
+    arbol.newBranch<float>("tr_lep_eta", -999);
+    arbol.newBranch<float>("ld_lep_phi", -999);
+    arbol.newBranch<float>("md_lep_phi", -999);
+    arbol.newBranch<float>("tr_lep_phi", -999);
 }
 
 void VBS3LepCuts::initGlobals(Cutflow& cutflow)
