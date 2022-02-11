@@ -41,12 +41,14 @@ public:
     Cut* has_3leps;
     Cut* has_3leps_0SFOS;
     Cut* has_3leps_1SFOS;
+    Cut* Z_veto;
     Cut* has_3leps_2SFOS;
     Cut* dummy;
     
     VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow);
     void initBranches(Arbol& arbol);
     void initGlobals(Cutflow& cutflow);
+    bool isSFOS(int pdgID_1, int pdgID_2);
 };
 
 #include "cuts.icc"

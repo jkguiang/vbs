@@ -13,7 +13,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
         },
         [&]()
         {
-            return 1.0; // dummy weight
+            return cli.scale_factor*nt.genWeight();
         }
     );
 
@@ -331,7 +331,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
     );
 
     has_3leps = new Cut(
-        "Has3TightLeps",
+        "Has3TightLepsPtGeq40",
         [&]()
         {
             LorentzVectors good_lep_p4s = cutflow.globals.getVal<LorentzVectors>("good_lep_p4s");
@@ -341,7 +341,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
             Integers trilep_idxs;
             for (unsigned int good_lep_i = 0; good_lep_i < good_lep_p4s.size(); ++good_lep_i)
             {
-                // if (good_lep_p4s.at(good_lep_i).pt() < 40) { continue; }
+                if (good_lep_p4s.at(good_lep_i).pt() < 40) { continue; }
                 // Count loose and tight leptons
                 unsigned int lep_i = good_lep_idxs.at(good_lep_i);
                 int lep_pdgID = good_lep_pdgIDs.at(good_lep_i);
@@ -370,16 +370,21 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
                 trilep_idxs.begin(), trilep_idxs.end(),
                 [&](int i, int j) -> bool { return good_lep_p4s.at(i).pt() > good_lep_p4s.at(j).pt(); }
             );
-            // FIXME: these branches aren't getting filled!!
             int ld_i = trilep_idxs.at(0); // leading
             int md_i = trilep_idxs.at(1); // middling
             int tr_i = trilep_idxs.at(2); // trailing
-            arbol.setLeaf<float>("ld_lep_pdgID", good_lep_pdgIDs.at(ld_i));
-            arbol.setLeaf<float>("md_lep_pdgID", good_lep_pdgIDs.at(md_i));
-            arbol.setLeaf<float>("tr_lep_pdgID", good_lep_pdgIDs.at(tr_i));
+            int ld_pdgID = good_lep_pdgIDs.at(ld_i);
+            int md_pdgID = good_lep_pdgIDs.at(md_i);
+            int tr_pdgID = good_lep_pdgIDs.at(tr_i);
+            arbol.setLeaf<int>("ld_lep_pdgID", ld_pdgID);
+            arbol.setLeaf<int>("md_lep_pdgID", md_pdgID);
+            arbol.setLeaf<int>("tr_lep_pdgID", tr_pdgID);
             LorentzVector ld_p4 = good_lep_p4s.at(ld_i);
             LorentzVector md_p4 = good_lep_p4s.at(md_i);
             LorentzVector tr_p4 = good_lep_p4s.at(tr_i);
+            cutflow.globals.setVal<LorentzVector>("ld_lep_p4", ld_p4);
+            cutflow.globals.setVal<LorentzVector>("md_lep_p4", md_p4);
+            cutflow.globals.setVal<LorentzVector>("tr_lep_p4", tr_p4);
             arbol.setLeaf<float>("ld_lep_pt", ld_p4.pt());
             arbol.setLeaf<float>("md_lep_pt", md_p4.pt());
             arbol.setLeaf<float>("tr_lep_pt", tr_p4.pt());
@@ -389,7 +394,68 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
             arbol.setLeaf<float>("ld_lep_phi", ld_p4.phi());
             arbol.setLeaf<float>("md_lep_phi", md_p4.phi());
             arbol.setLeaf<float>("tr_lep_phi", tr_p4.phi());
+            // Count SFOS pairs
+            int n_SFOS = 0;
+            if (isSFOS(ld_pdgID, md_pdgID)) { n_SFOS++; }
+            else if (isSFOS(md_pdgID, tr_pdgID)) { n_SFOS++; }
+            else if (isSFOS(tr_pdgID, ld_pdgID)) { n_SFOS++; }
+            arbol.setLeaf<int>("n_SFOS_lep_pairs", n_SFOS);
             return true;
+        }
+    );
+
+    has_3leps_0SFOS = new Cut(
+        "Has3Leps0SFOS",
+        [&]()
+        {
+            return arbol.getLeaf<int>("n_SFOS_lep_pairs") == 0;
+        }
+    );
+
+    has_3leps_1SFOS = new Cut(
+        "Has3Leps1SFOS",
+        [&]()
+        {
+            return arbol.getLeaf<int>("n_SFOS_lep_pairs") == 1;
+        }
+    );
+
+    Z_veto = new Cut(
+        "ZVeto70to110GeV",
+        [&]()
+        {
+            int ld_lep_pdgID = arbol.getLeaf<int>("ld_lep_pdgID");
+            int md_lep_pdgID = arbol.getLeaf<int>("md_lep_pdgID");
+            int tr_lep_pdgID = arbol.getLeaf<int>("tr_lep_pdgID");
+            LorentzVector ld_lep_p4 = cutflow.globals.getVal<LorentzVector>("ld_lep_p4");
+            LorentzVector md_lep_p4 = cutflow.globals.getVal<LorentzVector>("md_lep_p4");
+            LorentzVector tr_lep_p4 = cutflow.globals.getVal<LorentzVector>("tr_lep_p4");
+            float Z_hyp_mass;
+            if (isSFOS(ld_lep_pdgID, md_lep_pdgID)) 
+            { 
+                Z_hyp_mass = (ld_lep_p4 + md_lep_p4).M();
+            }
+            else if (isSFOS(md_lep_pdgID, tr_lep_pdgID)) 
+            {
+                Z_hyp_mass = (md_lep_p4 + tr_lep_p4).M();
+            }
+            else if (isSFOS(tr_lep_pdgID, ld_lep_pdgID)) 
+            {
+                Z_hyp_mass = (tr_lep_p4 + ld_lep_p4).M();
+            }
+            else
+            {
+                return true;
+            }
+            return Z_hyp_mass > 110 || Z_hyp_mass < 70;
+        }
+    );
+
+    has_3leps_2SFOS = new Cut(
+        "Has3Leps2SFOS",
+        [&]()
+        {
+            return arbol.getLeaf<int>("n_SFOS_lep_pairs") == 2;
         }
     );
 
@@ -411,9 +477,9 @@ void VBS3LepCuts::initBranches(Arbol& arbol)
     arbol.newBranch<float>("M_jj", -999);
     arbol.newBranch<float>("deta_jj", -999);
     arbol.newBranch<float>("dR_jj", -999);
-    arbol.newBranch<float>("ld_lep_pdgID", -999);
-    arbol.newBranch<float>("md_lep_pdgID", -999);
-    arbol.newBranch<float>("tr_lep_pdgID", -999);
+    arbol.newBranch<int>("ld_lep_pdgID", -999);
+    arbol.newBranch<int>("md_lep_pdgID", -999);
+    arbol.newBranch<int>("tr_lep_pdgID", -999);
     arbol.newBranch<float>("ld_lep_pt", -999);
     arbol.newBranch<float>("md_lep_pt", -999);
     arbol.newBranch<float>("tr_lep_pt", -999);
@@ -423,6 +489,7 @@ void VBS3LepCuts::initBranches(Arbol& arbol)
     arbol.newBranch<float>("ld_lep_phi", -999);
     arbol.newBranch<float>("md_lep_phi", -999);
     arbol.newBranch<float>("tr_lep_phi", -999);
+    arbol.newBranch<int>("n_SFOS_lep_pairs", -999);
 }
 
 void VBS3LepCuts::initGlobals(Cutflow& cutflow)
@@ -440,4 +507,13 @@ void VBS3LepCuts::initGlobals(Cutflow& cutflow)
     cutflow.globals.newVar<LorentzVector>("tr_vbs_jet_p4");
     cutflow.globals.newVar<int>("ld_vbs_jet_idx");
     cutflow.globals.newVar<int>("tr_vbs_jet_idx");
+
+    cutflow.globals.newVar<LorentzVector>("ld_lep_p4");
+    cutflow.globals.newVar<LorentzVector>("md_lep_p4");
+    cutflow.globals.newVar<LorentzVector>("tr_lep_p4");
+}
+
+bool VBS3LepCuts::isSFOS(int pdgID_1, int pdgID_2)
+{
+    return (pdgID_1 == (-1)*pdgID_2);
 }
