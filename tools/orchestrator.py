@@ -5,8 +5,12 @@ from tqdm import tqdm
 
 def run_job(args):
     cmd, stdout_file, stderr_file = args
-    with open(stdout_file,"wb") as stdout, open(stderr_file,"wb") as stderr:
-        return Popen(cmd, stdout=stdout, stderr=stderr).communicate()
+    with open(stdout_file,"wb") as stdout:
+        stdout.write(f"{' '.join(cmd)}\n".encode("utf-8"))
+    with open(stdout_file,"ab") as stdout, open(stderr_file,"wb") as stderr:
+        process = Popen(cmd, stdout=stdout, stderr=stderr)
+        process.wait()
+    return
 
 class BabyMakerOrchestrator:
     def __init__(self, executable, input_files, xsecs_json="", n_workers=8):
