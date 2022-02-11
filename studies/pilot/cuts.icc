@@ -7,13 +7,14 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
         "Bookkeeping",
         [&]()
         {
+            arbol.setLeaf<float>("xsec_sf", cli.is_data ? 1. : cli.scale_factor*nt.genWeight());
             arbol.setLeaf<int>("event", nt.event());
             arbol.setLeaf<float>("met", nt.MET_pt());
             return true;
         },
         [&]()
         {
-            return cli.scale_factor*nt.genWeight();
+            return arbol.getLeaf<float>("xsec_sf");
         }
     );
 
@@ -464,6 +465,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
 
 void VBS3LepCuts::initBranches(Arbol& arbol)
 {
+    arbol.newBranch<float>("xsec_sf", -999);
     arbol.newBranch<int>("event", -999);
     arbol.newBranch<float>("met", -999);
     arbol.newBranch<float>("ht", -999);
