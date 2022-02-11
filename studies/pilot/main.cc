@@ -6,7 +6,7 @@ int main(int argc, char** argv)
     HEPCLI cli = HEPCLI(argc, argv);
 
     // Initialize Looper
-    Looper looper = Looper(cli.input_tchain, cli.input_ttree);
+    Looper looper = Looper(cli.input_tchain);
 
     // Initialize Arbol
     TFile* output_tfile = new TFile(
