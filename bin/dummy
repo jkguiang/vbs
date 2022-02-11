@@ -1,0 +1,16 @@
+#!/bin/bash
+wait_time=3
+output_dir=""
+output_name=""
+for arg in "$@"; do
+    key=$(echo $arg | cut -f1 -d=)
+    val=$(echo $arg | cut -f2 -d=)   
+    case "$key" in
+        --output_dir) output_dir=${val};;
+        --output_name) output_name=${val};;
+    esac
+done
+output_file="${output_dir}/${output_name}"
+sleep $wait_time
+echo "./bin/dummy $@" > ${output_file}
+echo "Hello, waited ${wait_time} seconds, then wrote to ${output_file}"
