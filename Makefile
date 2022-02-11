@@ -1,6 +1,6 @@
 # Simple makefile
 
-EXE=$(study)
+EXE=bin/$(study)
 MAINDIR=.
 
 SRCDIR=studies/$(study)
