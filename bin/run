@@ -1,3 +1,6 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*
+import argparse
 import glob
 import os
 import ROOT
@@ -82,6 +85,13 @@ def run_test_jobs():
         orchestrator.run()
 
 if __name__ == "__main__":
+    vbs_pwd = os.getenv("VBSPWD")
+    if vbs_pwd == "":
+        print(f"ERROR: `source setup.sh` must be run first")
+        exit()
+    elif os.getcwd() != vbs_pwd:
+        print(f"ERROR: must be run within {vbs_pwd}")
+        exit()
     skims = [
         # (2016, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL16*/merged/*.root")),
         # (2017, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL17*/merged/*.root")),
