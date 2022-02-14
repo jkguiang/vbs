@@ -29,8 +29,11 @@ int main(int argc, char** argv)
     cutflow.insert(cuts.select_vbs_jets_maxE->name, cuts.has_3leps, Right);
     cutflow.insert(cuts.has_3leps->name, cuts.has_3leps_0SFOS, Right);
     cutflow.insert(cuts.has_3leps_0SFOS->name, cuts.has_3leps_1SFOS, Left);
-    cutflow.insert(cuts.has_3leps_1SFOS->name, cuts.Z_veto, Right);
+    Cut* Z_veto_1SFOS = cuts.Z_veto->clone(cuts.Z_veto->name+"_1SFOS");
+    cutflow.insert(cuts.has_3leps_1SFOS->name, Z_veto_1SFOS, Right);
     cutflow.insert(cuts.has_3leps_1SFOS->name, cuts.has_3leps_2SFOS, Left);
+    Cut* Z_veto_2SFOS = cuts.Z_veto->clone(cuts.Z_veto->name+"_2SFOS");
+    cutflow.insert(cuts.has_3leps_2SFOS->name, Z_veto_2SFOS, Right);
 
     // Run looper
     looper.run(
