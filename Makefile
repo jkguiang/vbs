@@ -17,11 +17,11 @@ LD          = g++
 LDFLAGS     = -g -O2
 SOFLAGS     = -g -shared
 CXXFLAGS    = -g -O2 -Wall -fPIC -Wshadow -Woverloaded-virtual
-LDFLAGS     = -g -O2 -L$(MAINDIR)/rapido/src -L$(MAINDIR)/NanoCORE
+LDFLAGS     = -g -O2 -L$(MAINDIR)/rapido/src -L$(MAINDIR)/NanoTools/NanoCORE
 ROOTLIBS    = $(shell root-config --libs)
 ROOTCFLAGS  = $(shell root-config --cflags)
 CXXFLAGS   += $(ROOTCFLAGS)
-CFLAGS      = $(ROOTCFLAGS) -Wall -Wno-unused-function -g -O2 -fPIC -fno-var-tracking -I$(MAINDIR)/rapido/src -I$(MAINDIR)/NanoCORE
+CFLAGS      = $(ROOTCFLAGS) -Wall -Wno-unused-function -g -O2 -fPIC -fno-var-tracking -I$(MAINDIR)/rapido/src -I$(MAINDIR)/NanoTools/NanoCORE
 EXTRAFLAGS  = -fPIC -ITMultiDrawTreePlayer -Wunused-variable -lTMVA -lEG -lGenVector -lXMLIO -lMLP -lTreePlayer -lRAPIDO -lNANO_CORE
 
 all: $(EXE)

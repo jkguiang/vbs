@@ -4,13 +4,14 @@ import argparse
 import glob
 import os
 import ROOT
+from subprocess import Popen, PIPE
 from decimal import Decimal
 from tools.orchestrator import BabyMakerOrchestrator
 
 class VBSOrchestrator(BabyMakerOrchestrator):
-    def __init__(self, year, study, executable, input_files, xsecs_json, n_workers=8, 
+    def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8, 
                  is_data=False):
-        self.output_dir = f"studies/{study}/output/{year}"
+        self.output_dir = f"studies/{study_name}/output/{year}"
         self.is_data = is_data
         if year == 2016:
             self.lumi = 19.52 + 16.81 # preAPV + postAPV
@@ -21,7 +22,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         else:
             raise ValueError("year must be 2016, 2017, or 2018")
         os.makedirs(self.output_dir, exist_ok=True)
-        super().__init__(executable, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
+        super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
     def _get_file_info(self, file_name):
         file_info = {
@@ -85,6 +86,35 @@ def run_test_jobs():
         orchestrator.run()
 
 if __name__ == "__main__":
+    cli = argparse.ArgumentParser(description="Run a given study in parallel")
+    cli.add_argument(
+        "--study", type=str, required=True,
+        help="Name of the study to run"
+    )
+    cli.add_argument(
+        "--n_workers", type=int, default=4,
+        help="Maximum number of worker processes"
+    )
+    cli.add_argument(
+        "--debug", action="store_true",
+        help="Run in debug mode"
+    )
+    cli.add_argument(
+        "--nomake", action="store_true",
+        help="Do not run make before running the study"
+    )
+    args = cli.parse_args()
+
+    if not args.nomake:
+        Popen(f"make study={args.study} clean".split(), stdout=PIPE).wait()
+        stdout, stderr = Popen(f"make study={args.study}".split(), stdout=PIPE, stderr=PIPE).communicate()
+        if stderr:
+            raise RuntimeError(
+                f"make --study={args.study} failed with the following error\n\n"
+                + stderr.decode("utf-8")
+            )
+
+    # Check that the PWD is correct
     vbs_pwd = os.getenv("VBSPWD")
     if vbs_pwd == "":
         print(f"ERROR: `source setup.sh` must be run first")
@@ -92,6 +122,8 @@ if __name__ == "__main__":
     elif os.getcwd() != vbs_pwd:
         print(f"ERROR: must be run within {vbs_pwd}")
         exit()
+
+    # Run study
     skims = [
         # (2016, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL16*/merged/*.root")),
         # (2017, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL17*/merged/*.root")),
@@ -101,11 +133,11 @@ if __name__ == "__main__":
         print(f"Orchestrating {year} jobs...")
         orchestrator = VBSOrchestrator(
             year, 
-            "pilot", 
-            "./bin/pilot", 
+            args.study, 
+            f"./bin/{args.study}", 
             files, 
             xsecs_json="data/xsecs.json",
-            n_workers=8,
+            n_workers=args.n_workers,
             is_data=False
         )
         orchestrator.run()

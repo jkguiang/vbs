@@ -1,3 +1,16 @@
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/projects/rapido/src
-export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$HOME/projects/NanoTools/NanoCORE
-export ROOT_INCLUDE_PATH=$ROOT_INCLUDE_PATH:$HOME/projects/rapido/src
+export VBSPWD=$PWD
+LIBPATHS="
+$VBSPWD/rapido/src
+$VBSPWD/NanoTools/NanoCORE
+"
+for LIBPATH in $LIBPATHS; do
+    # Add library to LD_LIBRARY_PATH
+    if [[ "$LD_LIBRARY_PATH" != *"$LIBPATH"* ]]; then
+        export LD_LIBRARY_PATH=$LD_LIBRARY_PATH:$LIBPATH
+    fi
+    # Add library to ROOT_INCLUDE_PATH
+    if [[ "$ROOT_INCLUDE_PATH" != *"$LIBPATH"* ]]; then
+        export ROOT_INCLUDE_PATH=$ROOT_INCLUDE_PATH:$LIBPATH
+    fi
+done
+chmod u+x $VBSPWD/bin/*
