@@ -141,26 +141,6 @@ void check_xrd(TString filename) {
     t->Scan("*", "", "", 10); 
 }
 EOL
-
-cat > count_all_events.C << EOL
-void count_all_events(TString filename) { 
-    TFile* f = TFile::Open(filename.Data()); 
-    TTree* Events = (TTree*) f->Get("Events"); 
-    std::cout << Events->GetEntries() << std::endl; 
-    std::cout << Events->GetEntries() << std::endl;  
-    std::cout << Events->GetEntries() << std::endl; 
-}
-EOL
-
-cat > count_eff_events.C << EOL
-void count_eff_events(TString filename) { 
-    TFile* f = TFile::Open(filename.Data()); 
-    TTree* Events = (TTree*) f->Get("Events"); 
-    std::cout << Events->Draw("(Generator_weight>0)-(Generator_weight<0)", "", "goff") << std::endl; 
-    std::cout << Events->Draw("(Generator_weight>0)-(Generator_weight<0)", "((Generator_weight>0)-(Generator_weight<0))>0", "goff") << std::endl;  
-    std::cout << Events->Draw("(Generator_weight>0)-(Generator_weight<0)", "((Generator_weight>0)-(Generator_weight<0))<0", "goff") << std::endl; 
-}
-EOL
 #------------------------------------------------------------------------------------------------------------------------------>
 
 #------------------------------------------------------------------------------------------------------------------------------>
@@ -183,24 +163,6 @@ if grep -q "badread" check_xrd_stderr.txt; then
     exit 1
 else
     echo "XRootD host seems to be in working order :)"
-fi
-
-# Figuring out nevents and neff_weights
-# Note: Relies on "/NANOAOD/" being present for data files. Perhaps not the brightest idea, however it seems to work for now.
-if [[ "${INPUTFILE}" == *"/NANOAOD/"* ]]; then
-    echo "Running count_all_events on all events" | tee >(cat >&2)
-    root -l -b -q count_all_events.C\(\"${INPUTFILE}\"\) > >(tee nevents.txt) 2> >(tee nevents_stderr.txt >&2)
-else
-    echo "Running count_eff_events on all events" | tee >(cat >&2)
-    root -l -b -q count_eff_events.C\(\"${INPUTFILE}\"\) > >(tee nevents.txt) 2> >(tee nevents_stderr.txt >&2)
-fi
-
-RUN_STATUS=$?
-
-if [[ $RUN_STATUS != 0 ]]; then
-    echo "Error: event-counting macro on all events crashed with exit code $?" | tee >(cat >&2)
-    echo "Exiting..."
-    exit 1
 fi
 
 # Run the postprocessor
@@ -230,30 +192,13 @@ echo "Renaming the output file"
 echo "mv ${NANOPOSTPROCOUTPUTFILENAME}_Skim.root output.root"
 mv ${NANOPOSTPROCOUTPUTFILENAME}_Skim.root output.root
 
-# Figuring out nevents and neff_weights
-# Note: Relies on "/NANOAOD/" being present for data files. Perhaps not the brightest idea, however it seems to work for now.
-if [[ "${INPUTFILE}" == *"/NANOAOD/"* ]]; then
-    echo "Running count_all_events on skimmed events" | tee >(cat >&2)
-    root -l -b -q count_all_events.C\(\"output.root\"\) > >(tee nevents_skimmed.txt) 2> >(tee nevents_skimmed_stderr.txt >&2)
-else
-    echo "Running count_eff_events on skimmed events" | tee >(cat >&2)
-    root -l -b -q count_eff_events.C\(\"output.root\"\) > >(tee nevents_skimmed.txt) 2> >(tee nevents_skimmed_stderr.txt >&2)
-fi
-
-RUN_STATUS=$?
-
-if [[ $RUN_STATUS != 0 ]]; then
-    echo "Error: event-counting macro on skimmed events crashed with exit code $?" | tee >(cat >&2)
-    echo "Exiting..."
-    exit 1
-fi
-
 echo -e "\n--- end running ---\n" #                             <----- section division
 
 echo "after running: ls -lrth"
 ls -lrth
 
 echo -e "\n--- begin copying output ---\n" #                    <----- section division
+
 echo "Sending output file $OUTPUTNAME.root"
 # Get local filepath name
 OUTPUTDIRPATHNEW=$(echo ${OUTPUTDIR} | sed 's/^.*\(\/store.*\).*$/\1/')
@@ -261,11 +206,6 @@ OUTPUTDIRPATHNEW=$(echo ${OUTPUTDIR} | sed 's/^.*\(\/store.*\).*$/\1/')
 # Copying the output file
 COPY_SRC="file://`pwd`/${OUTPUTNAME}.root"
 COPY_DEST="davs://redirector.t2.ucsd.edu:1094//${OUTPUTDIRPATHNEW}/${OUTPUTNAME}_${IFILE}.root"
-stageout $COPY_SRC $COPY_DEST
-
-# Copying n events
-COPY_SRC="file://`pwd`/nevents.txt"
-COPY_DEST="davs://redirector.t2.ucsd.edu:1094//${OUTPUTDIRPATHNEW}/${OUTPUTNAME}_${IFILE}_nevents.txt"
 stageout $COPY_SRC $COPY_DEST
 
 echo -e "\n--- end copying output ---\n" #                    <----- section division
