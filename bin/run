@@ -3,6 +3,7 @@
 import argparse
 import glob
 import os
+print("Importing ROOT...")
 import ROOT
 from subprocess import Popen, PIPE
 from decimal import Decimal
@@ -13,11 +14,13 @@ class VBSOrchestrator(BabyMakerOrchestrator):
                  is_data=False):
         self.output_dir = f"studies/{study_name}/output/{year}"
         self.is_data = is_data
-        if year == 2016:
-            self.lumi = 19.52 + 16.81 # preAPV + postAPV
-        elif year == 2017:
+        if year == "2016preVFP":
+            self.lumi = 19.52
+        elif year == "2016postVFP":
+            self.lumi = 16.81
+        elif year == "2017":
             self.lumi = 41.48
-        elif year == 2018:
+        elif year == "2018":
             self.lumi = 59.83
         else:
             raise ValueError("year must be 2016, 2017, or 2018")
@@ -43,6 +46,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
             h = ROOT.TH1F("h", "h", 1, 0, 1)
             t.Draw("0>>h", "genEventSumw", "goff")
             file_info["n_events"] = h.GetBinContent(1)
+            f.Close()
         return file_info
 
     def _get_log_files(self, input_file):
@@ -106,7 +110,9 @@ if __name__ == "__main__":
     args = cli.parse_args()
 
     if not args.nomake:
+        print(f"make study={args.study} clean")
         Popen(f"make study={args.study} clean".split(), stdout=PIPE).wait()
+        print(f"make study={args.study}")
         stdout, stderr = Popen(f"make study={args.study}".split(), stdout=PIPE, stderr=PIPE).communicate()
         if stderr:
             raise RuntimeError(
@@ -124,12 +130,13 @@ if __name__ == "__main__":
         exit()
 
     # Run study
-    skims = [
-        # (2016, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL16*/merged/*.root")),
-        # (2017, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL17*/merged/*.root")),
-        (2018, glob.glob("/nfs-7/userdata/phchang/NanoSkim/TTHID_3l_v1/*UL18*/merged/*.root"))
-    ]
-    for year, files in skims:
+    skims = {
+        "2016preVFP": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODAPVv9*/merged.root"),
+        "2016postVFP": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODv9*/merged.root"),
+        "2017": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL17NanoAODv9*/merged.root"),
+        "2018": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL18NanoAODv9*/merged.root"),
+    }
+    for year, files in skims.items():
         print(f"Orchestrating {year} jobs...")
         orchestrator = VBSOrchestrator(
             year, 
