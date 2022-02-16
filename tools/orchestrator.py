@@ -27,11 +27,18 @@ class BabyMakerOrchestrator:
     def get_xsec(self, file_name):
         if not self.xsecs_db:
             return 1
+        matched_keys = []
+        matched_chars = []
         for key, xsec in self.xsecs_db.items():
             if key in file_name:
-                return float(xsec)
-        print(f"WARNING: no xsec for {file_name} in {self.xsecs_json}")
-        return 1
+                matched_keys.append(key)
+                matched_chars.append(len(key))
+        if len(matched_keys) > 0:
+            best_match = matched_keys[matched_chars.index(max(matched_chars))]
+            return self.xsecs_db[best_match]
+        else:
+            print(f"WARNING: no xsec for {file_name} in {self.xsecs_json}")
+            return 1
 
     def run(self):
         jobs = []
