@@ -8,7 +8,6 @@ import ROOT
 from subprocess import Popen, PIPE
 from decimal import Decimal
 from tools.orchestrator import BabyMakerOrchestrator
-from tools.csvmagic import csvconcat, csvsum
 
 class VBSOrchestrator(BabyMakerOrchestrator):
     def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8):
