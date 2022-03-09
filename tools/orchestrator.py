@@ -1,4 +1,5 @@
 import json
+import logging
 from subprocess import Popen, PIPE
 from multiprocessing import Pool
 from tqdm import tqdm
@@ -37,7 +38,7 @@ class BabyMakerOrchestrator:
             best_match = matched_keys[matched_chars.index(max(matched_chars))]
             return self.xsecs_db[best_match]
         else:
-            print(f"WARNING: no xsec for {file_name} in {self.xsecs_json}")
+            logging.warning(f"no xsec for {file_name} in {self.xsecs_json}")
             return 1
 
     def run(self):
