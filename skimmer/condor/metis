@@ -47,7 +47,6 @@ cli.add_argument(
 args = cli.parse_args()
 
 NAME = "VBSVHSkim_3l"
-MERGED_SKIM_DIR = "/nfs-7/userdata/{0}/{1}/{2}".format(os.getenv("USER"), NAME, args.tag)
 
 if args.python2:
     CMSSW_VERSION="CMSSW_10_6_25",
@@ -124,15 +123,6 @@ for _ in range(n_updates): # update every 30 mins
     for task in tasks:
         if not task.complete():
             task.process()
-        else:
-            sample_name = os.path.basename(os.path.normpath(task.get_outputdir()))
-            mergetask = LocalNanoAODMergeTask(
-                input_filenames=task.get_outputs(),
-                output_filename="{0}/{1}/merged.root".format(MERGED_SKIM_DIR, sample_name),
-                ignore_bad = False,
-            )
-            if not mergetask.complete():
-                mergetask.process()
         total_summary[task.get_sample().get_datasetname()] = task.get_task_summary()
     if args.debug:
         break
