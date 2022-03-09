@@ -53,5 +53,5 @@ class BabyMakerOrchestrator:
     def _get_job(self, input_file):
         raise NotImplementedError
 
-    def _get_log(self, input_file):
+    def _get_log_files(self, input_file):
         raise NotImplementedError
