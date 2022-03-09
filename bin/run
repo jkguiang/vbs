@@ -1,6 +1,7 @@
 #!/usr/bin/env python3
 # -*- coding: utf-8 -*
 import argparse
+import logging
 import glob
 import os
 print("Importing ROOT...")
@@ -32,7 +33,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         file_info["is_signal"] = ("VBS" in file_name)
         # Get output info
         file_info["output_dir"] = self.output_dir
-        file_info["output_name"] = file_name.split('/')[6].split("_Tune")[0]
+        file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
         if not file_info["is_data"]:
             # Get # events
             f = ROOT.TFile(file_name)
@@ -67,7 +68,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         return cmd
 
 def run_test_jobs():
-    dummy_dir = "/nfs-7/userdata/dummy/PhChangSkim/Tag"
+    dummy_dir = "/ceph/cms/store/user/dummy/PhChangSkim/Tag"
     dummy_files = [f"{dummy_dir}/NanoSample{i:02d}_TuneCP5/merged/merged.root" for i in range(1, 11)]
     skims = [(2016, dummy_files), (2017, dummy_files), (2018, dummy_files)]
     for year, files in skims:
@@ -85,7 +86,7 @@ def run_test_jobs():
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run a given study in parallel")
     cli.add_argument(
-        "--study", type=str, required=True,
+        "study", type=str,
         help="Name of the study to run"
     )
     cli.add_argument(
@@ -93,14 +94,19 @@ if __name__ == "__main__":
         help="Maximum number of worker processes"
     )
     cli.add_argument(
-        "--debug", action="store_true",
-        help="Run in debug mode"
-    )
-    cli.add_argument(
         "--nomake", action="store_true",
         help="Do not run make before running the study"
     )
     args = cli.parse_args()
+
+    os.makedirs(f"studies/{args.study}/output", exist_ok=True)
+    logging.basicConfig(
+        filename=f"studies/{args.study}/output/run.log",
+        filemode="w",
+        format="%(levelname)s [%(asctime)s]: %(message)s",
+        datefmt="%m-%d-%Y %H:%M:%S %p",
+        level="DEBUG"
+    )
 
     if not args.nomake:
         print(f"make study={args.study} clean")
@@ -124,10 +130,10 @@ if __name__ == "__main__":
 
     # Run study
     skims = {
-        "2016preVFP": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODAPVv9*/merged.root"),
-        "2016postVFP": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODv9*/merged.root"),
-        "2017": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL17NanoAODv9*/merged.root"),
-        "2018": glob.glob("/nfs-7/userdata/jguiang/VBSVHSkim_3l/v1/*UL18NanoAODv9*/merged.root"),
+        "2016preVFP": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODAPVv9*/merged.root"),
+        "2016postVFP": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODv9*/merged.root"),
+        "2017": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL17NanoAODv9*/merged.root"),
+        "2018": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL18NanoAODv9*/merged.root"),
     }
     for year, files in skims.items():
         print(f"Orchestrating {year} jobs...")
