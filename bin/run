@@ -26,7 +26,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         os.makedirs(self.output_dir, exist_ok=True)
         super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
-    def _get_file_info(self, file_name):
+    def __get_file_info(self, file_name):
         file_info = {}
         file_info["n_events"] = 0
         file_info["is_data"] = ("Run201" in file_name)
@@ -45,13 +45,13 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         return file_info
 
     def _get_log_files(self, input_file):
-        file_info = self._get_file_info(input_file)
+        file_info = self.__get_file_info(input_file)
         stdout_file = f"{self.output_dir}/{file_info['output_name']}.out"
         stderr_file = f"{self.output_dir}/{file_info['output_name']}.err"
         return stdout_file, stderr_file
 
     def _get_job(self, input_file):
-        file_info = self._get_file_info(input_file)
+        file_info = self.__get_file_info(input_file)
         cmd = [self.executable]
         cmd.append(f"--input_ttree=Events")
         cmd.append(f"--output_dir={file_info['output_dir']}")
