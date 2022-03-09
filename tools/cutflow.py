@@ -11,20 +11,28 @@ class Cut:
         self.right = right
 
     def __eq__(self, other_cut):
-        # FIXME: doesn't work when parent, left, or right is NoneType
-        same_parent_name = (self.parent.name == other_cut.parent.name)
-        same_left_name = (self.left.name == other_cut.left.name)
-        same_right_name = (self.right.name == other_cut.right.name)
-        same_lineage = (same_parent_name and same_left_name and same_right_name)
+        if self.parent:
+            same_parent = (self.parent.name == other_cut.parent.name)
+        else:
+            same_parent = (not self.parent and not other_cut.parent)
+        if self.left:
+            same_left = (self.left.name == other_cut.left.name)
+        else:
+            same_left = (not self.left and not other_cut.left)
+        if self.right:
+            same_right = (self.right.name == other_cut.right.name)
+        else:
+            same_right = (not self.right and not other_cut.right)
+        same_lineage = (same_parent and same_left and same_right)
         same_name = (self.name == other_cut.name)
         return same_name and same_lineage
 
     def __add__(self, other_cut):
         if self == other_cut:
             cut_sum = Cut(
-                name,
-                n_pass=(cut.n_pass + other_cut.n_pass),
-                n_pass_weighted=(cut.n_pass_weighted + other_cut.n_pass_weighted)
+                self.name,
+                n_pass=(self.n_pass + other_cut.n_pass),
+                n_pass_weighted=(self.n_pass_weighted + other_cut.n_pass_weighted)
             )
             return cut_sum
         else:
@@ -47,11 +55,11 @@ class Cutflow:
         if self != other_cutflow:
             raise ValueError("can only add equivalent cutflows")
         else:
-            added_cuts = {}
+            summed_cuts = {}
             for name, cut in self.items():
                 other_cut = other_cutflow[name]
                 summed_cuts[name] = cut + other_cut
-            return Cutflow(cuts=summed_cuts, cut_network=self.__cut_network)
+            return Cutflow.from_network(cuts=summed_cuts, cut_network=self.__cut_network)
 
     def __recursive_print(self, cut, tabs=""):
         if cut is self.root_cut():
@@ -108,6 +116,7 @@ class Cutflow:
             raise ValueError("list of cuts does not match cut network")
         # Build cutflow
         cutflow.__cuts = cuts
+        cutflow.__cut_network = cut_network
         for name, (parent_name, left_name, right_name) in cut_network.items():
             if parent_name:
                 cutflow.__cuts[name].parent = cutflow.__cuts[parent_name]
