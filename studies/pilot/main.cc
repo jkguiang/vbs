@@ -57,8 +57,6 @@ int main(int argc, char** argv)
     // Wrap up
     cutflow.print();
     cutflow.write(cli.output_dir);
-    cutflow.writeCSV(cli.output_dir);
-    cutflow.writeMermaid(cli.output_dir);
     arbol.writeTFile();
     return 0;
 }
