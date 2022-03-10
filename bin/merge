@@ -54,6 +54,7 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
 
     cutflow_collection = merge_cutflows(args.study, sample_map)
+    cutflow_collection["total"] = cutflow_collection.sum()
     for group_name, cutflow in cutflow_collection.items():
         cutflow.write_mermaid(f"{output_dir}/{group_name}_cutflow.mmd")
 
