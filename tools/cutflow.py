@@ -38,11 +38,19 @@ class Cut:
         else:
             raise ValueError("can only add equivalent cuts")
 
+    def ancestry(self):
+        next_parent = self.parent
+        while next_parent:
+            yield next_parent
+            next_parent = next_parent.parent
+
+    def efficiency(self):
+        return self.n_pass_weighted/(self.n_pass_weighted + self.n_fail_weighted)
+
 class Cutflow:
     def __init__(self):
         self.__cuts = {}
         self.__root_cut_name = None
-        self.__terminal_cut_names = []
         self.__cut_network = {}
 
     def __getitem__(self, name):
@@ -84,6 +92,24 @@ class Cutflow:
         if cut.right:
             self.__recursive_print(cut.right, tabs=tabs)
 
+    def __recursive_make_mermaid(self, cut, content=""):
+        if cut is self.root_cut():
+            content += f"    {cut.name}([\"{cut.name} <br/> (root node)\"])\n"
+        else:
+            if cut is cut.parent.left:
+                content += f"    {cut.parent.name}Fail --> {cut.name}{{{cut.name}}}\n"
+            elif cut is cut.parent.right:
+                content += f"    {cut.parent.name}Pass --> {cut.name}{{{cut.name}}}\n"
+        fail_node = f"[/{cut.n_fail} raw <br/> {cut.n_fail_weighted:0.2f} wgt/]"
+        content += f"    {cut.name} -- Fail --> {cut.name}Fail{fail_node}\n"
+        pass_node = f"[/{cut.n_pass} raw <br/> {cut.n_pass_weighted:0.2f} wgt/]"
+        content += f"    {cut.name} -- Pass --> {cut.name}Pass{pass_node}\n"
+        if cut.left:
+            content = self.__recursive_make_mermaid(cut.left, content=content)
+        if cut.right:
+            content = self.__recursive_make_mermaid(cut.right, content=content)
+        return content
+
     def print(self):
         self.__recursive_print(self.root_cut())
 
@@ -96,11 +122,30 @@ class Cutflow:
     def cuts(self):
         return self.__cuts.values()
 
-    def terminal_cuts(self):
-        return [self.__cuts[name] for name in self.__terminal_cut_names]
-
     def root_cut(self):
         return self.__cuts[self.__root_cut_name]
+
+    def write_mermaid(self, output_mmd, orientation="TD"):
+        with open(output_mmd, "w") as f_out:
+            f_out.write(f"```mermaid\ngraph {orientation}\n")
+            f_out.write(self.__recursive_make_mermaid(self.root_cut()))
+            f_out.write("```")
+
+    def write_csv(self, output_csv, terminal_cut_name):
+        terminal_cut = self.__cuts[terminal_cut_name]
+        ancestors = list(terminal_cut.ancestry())
+        ancestors.reverse()
+        with open(output_csv, "w") as f_out:
+            f_out.write("cut,raw_events,weighted_events\n")
+            for i, cut in enumerate(ancestors):
+                if cut is terminal_cut.parent:
+                    write_passes = (cut.right is terminal_cut)
+                else:
+                    write_passes = (cut.right is ancestors[i+1])
+                if write_passes:
+                    f_out.write(f"{cut.name},{cut.n_pass},{cut.n_pass_weighted}\n")
+                else:
+                    f_out.write(f"{cut.name},{cut.n_fail},{cut.n_fail_weighted}\n")
 
     @staticmethod
     def from_network(cuts, cut_network):
@@ -129,12 +174,8 @@ class Cutflow:
                 cutflow.__cuts[name].left = cutflow.__cuts[left_name]
             if right_name:
                 cutflow.__cuts[name].right = cutflow.__cuts[right_name]
-            if not left_name and not right_name:
-                cutflow.__terminal_cut_names.append(name)
         # Check cutflow and return it if it is healthy
-        if len(cutflow.__terminal_cut_names) == 0:
-            raise Exception("invalid cutflow - no terminal cuts")
-        elif not cutflow.__root_cut_name:
+        if not cutflow.__root_cut_name:
             raise Exception("invalid cutflow - no root cut")
         else:
             return cutflow
@@ -174,8 +215,3 @@ class Cutflow:
                 cut_network[name] = (parent_name, left_name, right_name)
 
         return Cutflow.from_network(cuts=cuts, cut_network=cut_network)
-
-if __name__ == "__main__":
-    zzz_cutflow = Cutflow.from_file("studies/pilot/output/2018/ZZZ_Cutflow.cflow")
-    wwz_cutflow = Cutflow.from_file("studies/pilot/output/2018/WWZ_4F_Cutflow.cflow")
-    (zzz_cutflow + wwz_cutflow).print()
