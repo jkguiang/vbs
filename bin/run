@@ -4,11 +4,11 @@ import argparse
 import logging
 import glob
 import os
-print("Importing ROOT...")
-import ROOT
 from subprocess import Popen, PIPE
 from decimal import Decimal
 from tools.orchestrator import BabyMakerOrchestrator
+print("Importing ROOT...")
+import ROOT
 
 class VBSOrchestrator(BabyMakerOrchestrator):
     def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8):
