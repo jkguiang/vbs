@@ -32,7 +32,9 @@ class Cut:
             cut_sum = Cut(
                 self.name,
                 n_pass=(self.n_pass + other_cut.n_pass),
-                n_pass_weighted=(self.n_pass_weighted + other_cut.n_pass_weighted)
+                n_pass_weighted=(self.n_pass_weighted + other_cut.n_pass_weighted),
+                n_fail=(self.n_fail + other_cut.n_fail),
+                n_fail_weighted=(self.n_fail_weighted + other_cut.n_fail_weighted),
             )
             return cut_sum
         else:
@@ -84,15 +86,15 @@ class Cutflow:
             tabs += "    "
 
         print(f"{prefix}{cut.name}")
-        print(f"{tabs}pass: {cut.n_pass} (raw) {cut.n_pass_weighted} (wgt)")
-        print(f"{tabs}fail: {cut.n_fail} (raw) {cut.n_fail_weighted} (wgt)")
+        print(f"{tabs}pass: {cut.n_pass} (raw) {cut.n_pass_weighted:0.2f} (wgt)")
+        print(f"{tabs}fail: {cut.n_fail} (raw) {cut.n_fail_weighted:0.2f} (wgt)")
 
         if cut.left:
             self.__recursive_print(cut.left, tabs=tabs)
         if cut.right:
             self.__recursive_print(cut.right, tabs=tabs)
 
-    def __recursive_make_mermaid(self, cut, content=""):
+    def get_mermaid(self, cut, content=""):
         if cut is self.root_cut():
             content += f"    {cut.name}([\"{cut.name} <br/> (root node)\"])\n"
         else:
@@ -105,9 +107,27 @@ class Cutflow:
         pass_node = f"[/{cut.n_pass} raw <br/> {cut.n_pass_weighted:0.2f} wgt/]"
         content += f"    {cut.name} -- Pass --> {cut.name}Pass{pass_node}\n"
         if cut.left:
-            content = self.__recursive_make_mermaid(cut.left, content=content)
+            content = self.get_mermaid(cut.left, content=content)
         if cut.right:
-            content = self.__recursive_make_mermaid(cut.right, content=content)
+            content = self.get_mermaid(cut.right, content=content)
+        return content
+
+    def get_csv(self, terminal_cut):
+        content = "cut,raw_events,weighted_events\n"
+        ancestors = list(terminal_cut.ancestry()) # ordered parent -> root
+        ancestors.reverse() # ordered root -> parent
+        for cut_i, cut in enumerate(ancestors):
+            if cut is terminal_cut.parent:
+                write_passes = (cut.right is terminal_cut)
+            else:
+                write_passes = (cut.right is ancestors[cut_i+1])
+            if write_passes:
+                content += f"{cut.name},{cut.n_pass},{cut.n_pass_weighted:0.2f}"
+            else:
+                content += f"{cut.name},{cut.n_fail},{cut.n_fail_weighted:0.2f}"
+            if cut_i < len(ancestors) - 1:
+                content += "\n"
+
         return content
 
     def print(self):
@@ -128,24 +148,14 @@ class Cutflow:
     def write_mermaid(self, output_mmd, orientation="TD"):
         with open(output_mmd, "w") as f_out:
             f_out.write(f"```mermaid\ngraph {orientation}\n")
-            f_out.write(self.__recursive_make_mermaid(self.root_cut()))
+            f_out.write(self.get_mermaid(self.root_cut()))
             f_out.write("```")
 
     def write_csv(self, output_csv, terminal_cut_name):
         terminal_cut = self.__cuts[terminal_cut_name]
-        ancestors = list(terminal_cut.ancestry())
-        ancestors.reverse()
         with open(output_csv, "w") as f_out:
-            f_out.write("cut,raw_events,weighted_events\n")
-            for i, cut in enumerate(ancestors):
-                if cut is terminal_cut.parent:
-                    write_passes = (cut.right is terminal_cut)
-                else:
-                    write_passes = (cut.right is ancestors[i+1])
-                if write_passes:
-                    f_out.write(f"{cut.name},{cut.n_pass},{cut.n_pass_weighted}\n")
-                else:
-                    f_out.write(f"{cut.name},{cut.n_fail},{cut.n_fail_weighted}\n")
+            f_out.write(self.get_csv(terminal_cut))
+            f_out.write("\n")
 
     @staticmethod
     def from_network(cuts, cut_network):
@@ -181,10 +191,10 @@ class Cutflow:
             return cutflow
 
     @staticmethod
-    def from_file(cutflow_file, delimiter=","):
+    def from_file(cflow_file, delimiter=","):
         cuts = {}
         cut_network = {}
-        with open(cutflow_file, "r") as f_in:
+        with open(cflow_file, "r") as f_in:
             for line in f_in:
                 # Read cut attributes
                 line = line.replace("\n", "")
@@ -215,3 +225,108 @@ class Cutflow:
                 cut_network[name] = (parent_name, left_name, right_name)
 
         return Cutflow.from_network(cuts=cuts, cut_network=cut_network)
+
+class CutflowCollection:
+    def __init__(self, cutflows):
+        self.__cutflows = {}
+        if type(cutflows) == dict:
+            self.__cutflows = cutflows
+        elif type(cutflow_objs) == list:
+            for cutflow_i, cutflow in enumerate(cutflows):
+                self.__cutflows[f"Cutflow_{cutflow_i}"] = cutflow
+        else:
+            raise ValueError("cutflows must be arranged in a dict or list")
+
+        self.__consistency_check()
+
+    def __getitem__(self, name):
+        return self.__cutflows[name]
+
+    def __setitem__(self, name, cutflow):
+        self.__consistency_check(new_cutflow=cutflow)
+        self.__cutflows[name] = cutflow
+    
+    def __contains__(self, name):
+        return name in self.__cutflows.keys()
+
+    def __add__(self, other_collection):
+        summed_collection = {}
+        names = set(self.cutflow_names())
+        other_names = set(other_collection.cutflow_names())
+        # Add cutflows with the same name
+        for name in (names & other_names):
+            summed_collection[name] = self.__cutflows[name] + other_collection[name]
+        # Collect the rest
+        for name in (names - other_names):
+            summed_collection[name] = self.__cutflows[name]
+        for name in (other_names - names):
+            summed_collection[name] = other_collection[name]
+        return CutflowCollection(summed_collection)
+
+    def __consistency_check(self, new_cutflow=None):
+        # Check cutflow equivalence
+        cutflows_list = self.cutflows()
+        if len(cutflows_list) == 0:
+            return
+        elif new_cutflow:
+            if new_cutflow != cutflows_list[-1]:
+                raise Exception("new cutflow is inconsistent with cutflows in collection")
+        else:
+            for cutflow_i, cutflow in enumerate(cutflows_list[:-1]):
+                if cutflow != cutflows_list[cutflow_i+1]:
+                    raise Exception("cutflows are inconsistent")
+
+    def items(self):
+        return self.__cutflows.items()
+
+    def cutflow_names(self):
+        return list(self.__cutflows.keys())
+
+    def cutflows(self):
+        return list(self.__cutflows.values())
+
+    def pop(self, name):
+        return self.__cutflows.pop(name)
+
+    def sum(self):
+        return sum(self.__cutflows.values())
+
+    def write_csv(self, output_csv, terminal_cut_name):
+        rows = []
+        for cutflow_i, (cutflow_name, cutflow) in enumerate(self.items()):
+            terminal_cut = cutflow[terminal_cut_name]
+            cutflow_rows = cutflow.get_csv(terminal_cut).split("\n")
+            if cutflow_i == 0:
+                header = ["," for col in cutflow_rows[0].split(",")[:-1]]
+                header.insert(1, cutflow_name)
+                header = "".join(header)
+                cutflow_rows.insert(0, header)
+                rows = cutflow_rows
+            else:
+                # Trim cut name column
+                cutflow_rows = [",".join(r.split(",")[1:]) for r in cutflow_rows]
+                # Concatenate with existing rows
+                header = ["," for col in cutflow_rows[0].split(",")[:-1]]
+                header.insert(0, cutflow_name)
+                header = "".join(header)
+                cutflow_rows.insert(0, header)
+                for row_i, cutflow_row in enumerate(cutflow_rows):
+                    rows[row_i] = f"{rows[row_i]},{cutflow_row}"
+        with open(output_csv, "w") as f_out:
+            f_out.write("\n".join(rows))
+            f_out.write("\n")
+
+    @staticmethod
+    def from_files(cflow_files, delimiter=","):
+        if type(cflow_files) == list:
+            cutflows = []
+            for cflow_file in cflow_files:
+                cutflows.append(Cutflow.from_file(cflow_file, delimiter=delimiter))
+            return CutflowCollection(cutflows)
+        elif type(cflow_files) == dict:
+            cutflows = {}
+            for cutflow_name, cflow_file in cflow_files:
+                cutflows[cutflow_name] = Cutflow.from_file(cflow_file, delimiter=delimiter)
+            return CutflowCollection(cutflows)
+        else:
+            raise ValueError("cutflow files must be arranged in a dict or list")
