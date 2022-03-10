@@ -1,0 +1,61 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*
+import os
+import glob
+import argparse
+from tools.cutflow import Cutflow, CutflowCollection
+
+sample_map = {
+    "TTX": {
+        "2016preVFP": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu"],
+        "2016postVFP": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu"],
+        "2017": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu", "TTWW", "TTWZ"],
+        "2018": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu", "TTWW", "TTWZ"]
+    },
+    "bosons": {
+        "2016preVFP": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
+        "2016postVFP": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
+        "2017": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
+        "2018": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"]
+    },
+    "VHToNonbb": {
+        "2016preVFP": ["VHToNonbb_M125"],
+        "2016postVFP": ["VHToNonbb_M125"],
+        "2017": ["VHToNonbb_M125"],
+        "2018": ["VHToNonbb_M125"]
+    }
+}
+
+def merge_cutflows(study, sample_map):
+    merged_cutflows = {}
+    for group_name, group_map in sample_map.items():
+        for year, sample_list in group_map.items():
+            for sample_name in sample_list:
+                cutflow_file = f"studies/{study}/output/{year}/{sample_name}_Cutflow.cflow"
+                if group_name in merged_cutflows.keys():
+                    merged_cutflows[group_name] += Cutflow.from_file(cutflow_file)
+                else:
+                    merged_cutflows[group_name] = Cutflow.from_file(cutflow_file)
+    return CutflowCollection(merged_cutflows)
+
+if __name__ == "__main__":
+    cli = argparse.ArgumentParser(description="Run merge results from /bin/run")
+    cli.add_argument(
+        "study", type=str,
+        help="Name of the study to run"
+    )
+    cli.add_argument(
+        "--debug", action="store_true",
+        help="Run in debug mode"
+    )
+    args = cli.parse_args()
+
+    output_dir = f"studies/{args.study}/output/Run2"
+    os.makedirs(output_dir, exist_ok=True)
+
+    cutflow_collection = merge_cutflows(args.study, sample_map)
+    for group_name, cutflow in cutflow_collection.items():
+        cutflow.write_mermaid(f"{output_dir}/{group_name}_cutflow.mmd")
+
+    for terminal_cut in ["Has3Leps0SFOS", "ZVeto70to110GeV_1SFOS", "ZVeto70to110GeV_2SFOS"]:
+        cutflow_collection.write_csv(f"{output_dir}/cutflow_{terminal_cut}.csv", terminal_cut)
