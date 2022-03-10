@@ -55,6 +55,9 @@ class Cutflow:
         self.__root_cut_name = None
         self.__cut_network = {}
 
+    def __len__(self):
+        return len(self.__cuts)
+
     def __getitem__(self, name):
         return self.__cuts[name]
 
@@ -62,7 +65,11 @@ class Cutflow:
         return self.__cut_network == other_cutflow.__cut_network
 
     def __add__(self, other_cutflow):
-        if self != other_cutflow:
+        if len(self) == 0:
+            return other_cutflow
+        elif len(other_cutflow) == 0:
+            return self
+        elif self != other_cutflow:
             raise ValueError("can only add equivalent cutflows")
         else:
             summed_cuts = {}
@@ -289,7 +296,10 @@ class CutflowCollection:
         return self.__cutflows.pop(name)
 
     def sum(self):
-        return sum(self.__cutflows.values())
+        cutflow_sum = Cutflow()
+        for cutflow in self.cutflows():
+            cutflow_sum += cutflow
+        return cutflow_sum
 
     def write_csv(self, output_csv, terminal_cut_name):
         rows = []
