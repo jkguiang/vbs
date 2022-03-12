@@ -333,6 +333,14 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
         }
     );
 
+    vbs_presel = new Cut(
+        "MjjGt500detajjGt3",
+        [&]()
+        {
+            return arbol.getLeaf<float>("M_jj") > 500 && arbol.getLeaf<float>("deta_jj") > 3;
+        }
+    );
+
     has_3leps = new Cut(
         "Has3TightLepsPtGeq40",
         [&]()

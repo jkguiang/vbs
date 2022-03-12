@@ -27,7 +27,8 @@ int main(int argc, char** argv)
     cutflow.insert(cuts.geq_2_jets->name, cuts.no_tight_b_jets, Right);
     cutflow.insert(cuts.no_tight_b_jets->name, cuts.select_vbs_jets_maxE, Right);
     cutflow.insert(cuts.select_vbs_jets_maxE->name, cuts.has_3leps, Right);
-    cutflow.insert(cuts.has_3leps->name, cuts.has_3leps_0SFOS, Right);
+    cutflow.insert(cuts.has_3leps->name, cuts.vbs_presel, Right);
+    cutflow.insert(cuts.vbs_presel->name, cuts.has_3leps_0SFOS, Right);
     cutflow.insert(cuts.has_3leps_0SFOS->name, cuts.has_3leps_1SFOS, Left);
     Cut* Z_veto_1SFOS = cuts.Z_veto->clone(cuts.Z_veto->name+"_1SFOS");
     cutflow.insert(cuts.has_3leps_1SFOS->name, Z_veto_1SFOS, Right);

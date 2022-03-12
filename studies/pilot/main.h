@@ -38,6 +38,7 @@ public:
     Cut* no_tight_b_jets;
     Cut* trigger;
     Cut* select_vbs_jets_maxE;
+    Cut* vbs_presel;
     Cut* has_3leps;
     Cut* has_3leps_0SFOS;
     Cut* has_3leps_1SFOS;
