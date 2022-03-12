@@ -12,7 +12,7 @@ sample_map = {
         "2017": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu", "TTWW", "TTWZ"],
         "2018": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu", "TTWW", "TTWZ"]
     },
-    "bosons": {
+    "Bosons": {
         "2016preVFP": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
         "2016postVFP": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
         "2017": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
@@ -54,7 +54,7 @@ if __name__ == "__main__":
     os.makedirs(output_dir, exist_ok=True)
 
     cutflow_collection = merge_cutflows(args.study, sample_map)
-    cutflow_collection["total"] = cutflow_collection.sum()
+    cutflow_collection["TotalBkg"] = cutflow_collection.sum()
     for group_name, cutflow in cutflow_collection.items():
         cutflow.write_mermaid(f"{output_dir}/{group_name}_cutflow.mmd")
 
