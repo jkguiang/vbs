@@ -3,9 +3,12 @@
 import os
 import glob
 import argparse
+from tqdm import tqdm
+from multiprocessing import Pool
+from subprocess import Popen, PIPE
 from tools.cutflow import Cutflow, CutflowCollection
 
-sample_map = {
+SAMPLE_MAP = {
     "TTX": {
         "2016preVFP": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu"],
         "2016postVFP": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu"],
@@ -26,17 +29,40 @@ sample_map = {
     }
 }
 
-def merge_cutflows(study, sample_map):
+def hadd_job(split_cmd):
+    hadd = Popen(split_cmd, stdout=PIPE, stderr=PIPE)
+    hadd.wait()
+
+def merge(study, sample_map, n_workers=8):
+    output_dir = f"studies/{study}/output"
+    os.makedirs(f"{output_dir}/Run2", exist_ok=True)
+
+    hadd_cmds = []
     merged_cutflows = {}
     for group_name, group_map in sample_map.items():
+        root_files_to_merge = []
         for year, sample_list in group_map.items():
             for sample_name in sample_list:
-                cutflow_file = f"studies/{study}/output/{year}/{sample_name}_Cutflow.cflow"
+                cflow_file = f"{output_dir}/{year}/{sample_name}_Cutflow.cflow"
                 if group_name in merged_cutflows.keys():
-                    merged_cutflows[group_name] += Cutflow.from_file(cutflow_file)
+                    merged_cutflows[group_name] += Cutflow.from_file(cflow_file)
                 else:
-                    merged_cutflows[group_name] = Cutflow.from_file(cutflow_file)
-    return CutflowCollection(merged_cutflows)
+                    merged_cutflows[group_name] = Cutflow.from_file(cflow_file)
+                root_files_to_merge.append(f"{output_dir}/{year}/{sample_name}.root")
+        # Merge (hadd) jobs
+        hadd_cmds.append(["hadd", f"{output_dir}/Run2/{group_name}.root"] + root_files_to_merge)
+    
+    cutflow_collection = CutflowCollection(merged_cutflows)
+    cutflow_collection["TotalBkg"] = cutflow_collection.sum()
+    for group_name, cutflow in cutflow_collection.items():
+        cutflow.write_mermaid(f"{output_dir}/Run2/{group_name}_cutflow.mmd")
+    for terminal_cut in ["Has3Leps0SFOS", "ZVeto70to110GeV_1SFOS", "ZVeto70to110GeV_2SFOS"]:
+        cutflow_collection.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut}.csv", terminal_cut)
+
+    with Pool(processes=n_workers) as pool:
+        list(tqdm(pool.imap(hadd_job, hadd_cmds), total=len(hadd_cmds), desc="Executing hadds"))
+
+    return
 
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run merge results from /bin/run")
@@ -48,15 +74,10 @@ if __name__ == "__main__":
         "--debug", action="store_true",
         help="Run in debug mode"
     )
+    cli.add_argument(
+        "--n_workers", type=int, default=8,
+        help="Number of workers to run hadds"
+    )
     args = cli.parse_args()
 
-    output_dir = f"studies/{args.study}/output/Run2"
-    os.makedirs(output_dir, exist_ok=True)
-
-    cutflow_collection = merge_cutflows(args.study, sample_map)
-    cutflow_collection["TotalBkg"] = cutflow_collection.sum()
-    for group_name, cutflow in cutflow_collection.items():
-        cutflow.write_mermaid(f"{output_dir}/{group_name}_cutflow.mmd")
-
-    for terminal_cut in ["Has3Leps0SFOS", "ZVeto70to110GeV_1SFOS", "ZVeto70to110GeV_2SFOS"]:
-        cutflow_collection.write_csv(f"{output_dir}/cutflow_{terminal_cut}.csv", terminal_cut)
+    merge(args.study, SAMPLE_MAP, n_workers=args.n_workers)
