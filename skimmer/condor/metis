@@ -7,7 +7,6 @@ from metis.CondorTask import CondorTask
 from metis.StatsParser import StatsParser
 from metis.Utils import good_sites
 from samples import MC_NanoAODv9 as samples
-from LocalNanoAODMergeTask import LocalNanoAODMergeTask
 
 cli = argparse.ArgumentParser(description="Submit NanoAOD-skimming condor jobs")
 cli.add_argument(
@@ -115,7 +114,7 @@ for _ in range(n_updates): # update every 30 mins
             input_executable="condor_executable_metis.sh", # your condor executable here
             additional_input_files=additional_input_files,
             tarfile=args.package, # your tarfile with assorted goodies here
-            special_dir="{0}/{1}".format(NAME, args.tag), # output files into /hadoop/cms/store/<user>/<special_dir>
+            special_dir="{0}/{1}".format(NAME, args.tag), # output files into /ceph/cms/store/<user>/<special_dir>
             max_jobs=max_jobs
         )
         tasks.append(task)
