@@ -9,7 +9,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
         {
             arbol.setLeaf<float>("xsec_sf", cli.is_data ? 1. : cli.scale_factor*nt.genWeight());
             arbol.setLeaf<int>("event", nt.event());
-            arbol.setLeaf<float>("met", nt.MET_pt());
+            arbol.setLeaf<float>("MET", nt.MET_pt());
             return true;
         },
         [&]()
@@ -129,6 +129,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
             int n_medium_b_jets = 0;
             int n_tight_b_jets = 0;
             int n_jets_pt30 = 0;
+            float ht = 0.;
             DeepJetTags good_jet_btags = cutflow.globals.getVal<DeepJetTags>("good_jet_btags");
             LorentzVectors good_jet_p4s = cutflow.globals.getVal<LorentzVectors>("good_jet_p4s");
             Integers good_jet_idxs = cutflow.globals.getVal<Integers>("good_jet_idxs");
@@ -208,6 +209,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
                 }
                 // Save additional jet info
                 n_jets_pt30++;
+                ht += jet_p4.pt();
                 good_jet_p4s.push_back(jet_p4);
                 good_jet_idxs.push_back(jet_i);
             }
@@ -218,6 +220,7 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
             arbol.setLeaf<int>("n_medium_b_jets", n_medium_b_jets);
             arbol.setLeaf<int>("n_tight_b_jets", n_tight_b_jets);
             arbol.setLeaf<int>("n_jets_pt30", n_jets_pt30);
+            arbol.setLeaf<float>("HT", ht);
             return true;
         }
     );
@@ -405,6 +408,14 @@ VBS3LepCuts::VBS3LepCuts(Arbol& arbol, Nano& nt, HEPCLI& cli, Cutflow& cutflow)
             arbol.setLeaf<float>("ld_lep_phi", ld_lep_p4.phi());
             arbol.setLeaf<float>("md_lep_phi", md_lep_p4.phi());
             arbol.setLeaf<float>("tr_lep_phi", tr_lep_p4.phi());
+            arbol.setLeaf<float>(
+                "ST", 
+                (ld_lep_p4.pt() 
+                 + md_lep_p4.pt() 
+                 + tr_lep_p4.pt()
+                 + arbol.getLeaf<float>("MET"))
+            );
+            arbol.setLeaf<float>("ST", arbol.getLeaf<float>("LT") + arbol.getLeaf<float>("MET"));
             // Gather Z-hypotheses for Z-veto (and count SFOS pairs implicitly)
             LorentzVectors Z_hyp_p4s;
             if (isSFOS(ld_lep_pdgID, md_lep_pdgID)) 
@@ -479,8 +490,9 @@ void VBS3LepCuts::initBranches(Arbol& arbol)
 {
     arbol.newBranch<float>("xsec_sf", -999);
     arbol.newBranch<int>("event", -999);
-    arbol.newBranch<float>("met", -999);
-    arbol.newBranch<float>("ht", -999);
+    arbol.newBranch<float>("MET", -999);
+    arbol.newBranch<float>("HT", -999);
+    arbol.newBranch<float>("ST", -999);
     arbol.newBranch<float>("lep_sf", -999);
     arbol.newBranch<float>("lep_sf_up", -999);
     arbol.newBranch<float>("lep_sf_dn", -999);
@@ -505,6 +517,7 @@ void VBS3LepCuts::initBranches(Arbol& arbol)
     arbol.newBranch<float>("ld_lep_phi", -999);
     arbol.newBranch<float>("md_lep_phi", -999);
     arbol.newBranch<float>("tr_lep_phi", -999);
+    arbol.newBranch<float>("LT", -999);
     arbol.newBranch<int>("n_SFOS_lep_pairs", -999);
     arbol.newBranch<bool>("passed_Z_veto", false);
     arbol.newBranch<float>("non_Z_dilep_M_T", -999);
