@@ -1,6 +1,7 @@
 {
     "WW": 118.71,
     "ZZ": 10.32,
+    "WZ": 51,
     "tZq_ll_4f_ckm_NLO": 0.0758,
     "ST_s-channel_4f": 3.74,
     "ST_t-channel_antitop_4f": 80.95,
@@ -39,6 +40,8 @@
     "VBSWWHToLNuLNubb_C3": 0.001364877636,
     "ttHTobb_M125": 0.1279,
     "ttHToNonbb_M125": 0.215,
+    "ttHJetTobb_M125": 0.1279,
+    "ttHJetToNonbb_M125": 0.215,
     "TTTT": 0.009103,
     "TTWW": 0.0115,
     "TTWZ": 0.003884,
