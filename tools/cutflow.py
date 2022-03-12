@@ -121,18 +121,21 @@ class Cutflow:
 
     def get_csv(self, terminal_cut):
         content = "cut,raw_events,weighted_events\n"
-        ancestors = list(terminal_cut.ancestry()) # ordered parent -> root
-        ancestors.reverse() # ordered root -> parent
-        for cut_i, cut in enumerate(ancestors):
-            if cut is terminal_cut.parent:
+        cuts = list(terminal_cut.ancestry()) # ordered parent -> root
+        cuts.reverse() # ordered root -> parent
+        cuts.append(terminal_cut)
+        for cut_i, cut in enumerate(cuts):
+            if cut is terminal_cut:
+                write_passes = True
+            elif cut is terminal_cut.parent:
                 write_passes = (cut.right is terminal_cut)
             else:
-                write_passes = (cut.right is ancestors[cut_i+1])
+                write_passes = (cut.right is cuts[cut_i+1])
             if write_passes:
                 content += f"{cut.name},{cut.n_pass},{cut.n_pass_weighted:0.2f}"
             else:
-                content += f"{cut.name},{cut.n_fail},{cut.n_fail_weighted:0.2f}"
-            if cut_i < len(ancestors) - 1:
+                content += f"not({cut.name}),{cut.n_fail},{cut.n_fail_weighted:0.2f}"
+            if cut_i < len(cuts) - 1:
                 content += "\n"
 
         return content
