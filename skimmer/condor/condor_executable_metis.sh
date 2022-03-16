@@ -144,20 +144,23 @@ EOL
 #------------------------------------------------------------------------------------------------------------------------------>
 
 #------------------------------------------------------------------------------------------------------------------------------>
-localpath=$(echo ${INPUTFILENAMES} | sed 's/^.*\(\/store.*\).*$/\1/')
-if [[ "${XROOTDPROTOCOL}" == *"http"* ]]; then
-    INPUTFILE=${XROOTDPROTOCOL}://${XROOTDHOST}${localpath}
-else
-    INPUTFILE=${XROOTDPROTOCOL}://${XROOTDHOST}/${localpath}
-fi
+INPUTFILES_XROOTD=""
+for filename in $(echo $INPUTFILENAMES | sed s/,/\ /g); do
+    if [[ "${XROOTDPROTOCOL}" == *"http"* ]]; then
+        INPUTFILES_XROOTD="$INPUTFILES_XROOTD ${XROOTDPROTOCOL}://${XROOTDHOST}${filename}"
+    else
+        INPUTFILES_XROOTD="$INPUTFILES_XROOTD ${XROOTDPROTOCOL}://${XROOTDHOST}/${filename}"
+    fi
+done
+INPUTFILES_XROOTD=($INPUTFILES_XROOTD)
 #------------------------------------------------------------------------------------------------------------------------------>
 
 echo "Checking XRootD host's health..." | tee >(cat >&2)
-root -l -b -q check_xrd.C\(\"${INPUTFILE}\"\) > >(tee check_xrd.txt) 2> >(tee check_xrd_stderr.txt >&2)
+root -l -b -q check_xrd.C\(\"${INPUTFILES_XROOTD[0]}\"\) > >(tee check_xrd.txt) 2> >(tee check_xrd_stderr.txt >&2)
 rm -f output.dat # Delete the file as it is not needed
 
 # If the file had error
-if grep -q "badread" check_xrd_stderr.txt; then
+if grep -q "ERROR" check_xrd_stderr.txt; then
     echo "ERROR: bad read, dumping stderr logs below."
     cat check_xrd_stderr.txt
     exit 1
@@ -169,7 +172,7 @@ fi
 if [[ "$USEPYTHON2" != "" ]]; then PYTHONX="python2"; else PYTHONX="python3"; fi
 CMD="$PYTHONX scripts/nano_postproc.py \
     ./ \
-    ${INPUTFILE} \
+    ${INPUTFILES_XROOTD[@]} \
     -b python/postprocessing/examples/keep_and_drop.txt \
     -I PhysicsTools.NanoAODTools.postprocessing.examples.skimModule skimModuleConstr"
 echo $CMD
@@ -180,17 +183,22 @@ RUN_STATUS=$?
 
 if [[ $RUN_STATUS != 0 ]]; then
     echo "Removing output file because scripts/nano_postproc.py crashed with exit code $?"
-    rm ${NANOPOSTPROCOUTPUTFILENAME}_Skim.root
+    rm *.root
     echo "Exiting..."
     exit 1
 fi
 
-# Rename the output file
-NANOPOSTPROCOUTPUTFILE=$(basename ${localpath})
-NANOPOSTPROCOUTPUTFILENAME=${NANOPOSTPROCOUTPUTFILE%.root}
-echo "Renaming the output file"
-echo "mv ${NANOPOSTPROCOUTPUTFILENAME}_Skim.root output.root"
-mv ${NANOPOSTPROCOUTPUTFILENAME}_Skim.root output.root
+NANO_POSTPROC_OUTPUTFILES=($(ls *_Skim.root))
+if [[ "${#NANO_POSTPROC_OUTPUTFILES[@]}" == "0" ]]; then
+    echo "No output files to merge; exiting..."
+    exit 0
+elif [[ "${#NANO_POSTPROC_OUTPUTFILES[@]}" == "1" ]]; then
+    mv ${NANO_POSTPROC_OUTPUTFILES[0]} ${OUTPUTNAME}.root
+else
+    MERGECMD="$PYTHONX scripts/haddnano.py ${OUTPUTNAME}.root ${NANO_POSTPROC_OUTPUTFILES[@]}"
+    echo $MERGECMD
+    $MERGECMD
+fi
 
 echo -e "\n--- end running ---\n" #                             <----- section division
 
@@ -201,11 +209,11 @@ echo -e "\n--- begin copying output ---\n" #                    <----- section d
 
 echo "Sending output file $OUTPUTNAME.root"
 # Get local filepath name
-OUTPUTDIRPATHNEW=$(echo ${OUTPUTDIR} | sed 's/^.*\(\/store.*\).*$/\1/')
+OUTPUTDIRPATH_NEW=$(echo ${OUTPUTDIR} | sed 's/^.*\(\/store.*\).*$/\1/')
 
 # Copying the output file
 COPY_SRC="file://`pwd`/${OUTPUTNAME}.root"
-COPY_DEST="davs://redirector.t2.ucsd.edu:1094//${OUTPUTDIRPATHNEW}/${OUTPUTNAME}_${IFILE}.root"
+COPY_DEST="davs://redirector.t2.ucsd.edu:1095//${OUTPUTDIRPATH_NEW}/${OUTPUTNAME}_${IFILE}.root"
 stageout $COPY_SRC $COPY_DEST
 
 echo -e "\n--- end copying output ---\n" #                    <----- section division
