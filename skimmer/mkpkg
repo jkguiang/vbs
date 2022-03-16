@@ -4,27 +4,26 @@ print_help()
 {
     echo "Usage:"
     echo ""
-    echo "  ./bin/mkpkg [--skim=/path/to/nanoaod.root] [--package=/path/to/package.tar.gz] [--module=MODULENAME] [--debug]"
+    echo "  ./bin/mkpkg [--package=/path/to/package.tar.gz] [--module=MODULENAME] [--debug] [--skim] [FILE1.root [FILE2.root FILE3.root ...]]"
     echo ""
     exit 0
 }
 
 # Read the CLI options
-TEMP=`getopt -o hs:p:m:d --long help,skim:,package:,module:,debug,python2 -- "$@"`
+TEMP=`getopt -o hsp:m:d --long help,skim,package:,module:,debug,python2 -- "$@"`
 eval set -- "$TEMP"
 # Extract options and their arguments
-NANOAODPATH=""
 PACKAGE=""
 MODULE="VBSVH_3l"
 SKIM=false
 DEBUG=false
-PYTHON2=false
+PYTHON2=""
 while true; do
     case "$1" in
         -h|--help)
             print_help; shift 1;;
         -s|--skim)
-            NANOAODPATH=$2; SKIM=true; shift 2;;
+            SKIM=true; shift 1;;
         -p|--package)
             PACKAGE=$(realpath $2); shift 2;;
         -m|--module)
@@ -37,17 +36,18 @@ while true; do
         *) echo "Internal error!"; exit 1;;
     esac
 done
+NANOAODPATHS=($@)
 
 echo "----------------------------------------------------"
 if [[ "$SKIM" == "true" ]]; then
-    if [[ "$NANOAODPATH" == "" ]]; then
-        echo "ERROR: no input file provided!"
+    if [[ "${NANOAODPATHS[@]}" == "" ]]; then
+        echo "ERROR: no input file(s) provided!"
         exit 1
     elif [[ "${PACKAGE}" != "" ]]; then
-        echo "NanoAOD file to skim: ${NANOAODPATH}"
+        echo "NanoAOD to skim: ${NANOAODPATHS[@]}"
         echo "NanoAOD skimmer: ${PACKAGE}"
     else
-        echo "NanoAOD file to skim: ${NANOAODPATH}"
+        echo "NanoAOD to skim: ${NANOAODPATHS[@]}"
         echo "Generating NanoAOD skimmer..."
     fi
 else
@@ -59,27 +59,6 @@ echo ""
 # Check that package exists if supplied
 if [[ "$PACKAGE" != "" && ! -f $PACKAGE ]]; then
     echo "ERROR: ${PACKAGE} does not exist!"
-fi
-
-# Check that module exists
-MODULES="$(ls ${PWD}/modules)"
-if [[ "${MODULE}" == "" ]]; then
-    echo "ERROR: no NanoAODTools module provided!"
-    exit 1
-else
-    FOUNDMODULE=false
-    for m in $MODULES; do
-        if [[ "$m" == "$MODULE" ]]; then 
-            FOUNDMODULE=true
-            break
-        fi
-    done
-fi
-if [[ "${FOUNDMODULE}" == "false" ]]; then
-    echo "ERROR: NanoAODTools module ${MODULE} not found in ${PWD}/modules!"
-    exit 1
-elif [[ "$(ls ${MODULES}/VBSVH_3l)" != "$(ls ${MODULES}/${MODULE})" ]]; then
-    echo "ERROR: NanoAODTools module ${MODULE} not properly written! cf. README.md"
     exit 1
 fi
 
@@ -94,6 +73,29 @@ if [[ "$PACKAGE" != "" ]]; then
     bash standalone/env_standalone.sh build
     source standalone/env_standalone.sh
 else
+    # Check that module exists
+    MODULES="$(ls ${PWD}/modules)"
+    if [[ "${MODULE}" == "" ]]; then
+        echo "ERROR: no NanoAODTools module provided!"
+        exit 1
+    else
+        FOUNDMODULE=false
+        for m in $MODULES; do
+            if [[ "$m" == "$MODULE" ]]; then 
+                FOUNDMODULE=true
+                break
+            fi
+        done
+    fi
+    if [[ "${FOUNDMODULE}" == "false" ]]; then
+        echo "ERROR: NanoAODTools module ${MODULE} not found in ${PWD}/modules!"
+        exit 1
+    elif [[ "$(ls ${MODULES}/VBSVH_3l)" != "$(ls ${MODULES}/${MODULE})" ]]; then
+        echo "ERROR: NanoAODTools module ${MODULE} not properly written! cf. README.md"
+        exit 1
+    fi
+    
+    # Get nanoAOD-tools
     git clone https://github.com/jkguiang/nanoAOD-tools.git NanoAODTools
     cd NanoAODTools
     bash standalone/env_standalone.sh build
@@ -134,26 +136,26 @@ else
 fi
 
 if [[ "$SKIM" == "true" ]]; then
-    if [[ "$PYTHON2" == "true" ]]; then
-        python2 scripts/nano_postproc.py \
-            ./ \
-            ${NANOAODPATH} \
-            -b python/postprocessing/examples/keep_and_drop.txt \
-            -I PhysicsTools.NanoAODTools.postprocessing.examples.skimModule\
-            skimModuleConstr
-    else
-        python3 scripts/nano_postproc.py \
-            ./ \
-            ${NANOAODPATH} \
-            -b python/postprocessing/examples/keep_and_drop.txt \
-            -I PhysicsTools.NanoAODTools.postprocessing.examples.skimModule \
-            skimModuleConstr
-    fi
+    if [[ "$PYTHON2" != "" ]]; then PYTHONX="python2"; else PYTHONX="python3"; fi
+    CMD="$PYTHONX scripts/nano_postproc.py \
+        ./ \
+        ${NANOAODPATHS[@]} \
+        -b python/postprocessing/examples/keep_and_drop.txt \
+        -I PhysicsTools.NanoAODTools.postprocessing.examples.skimModule\
+        skimModuleConstr"
+    echo $CMD
+    $CMD
     # Copy back the output to parent directory
-    BASENAMEWITHEXT=$(basename ${NANOAODPATH})
-    BASENAME=${BASENAMEWITHEXT%.*}
-    mv ${BASENAME}_Skim.root $ORIG_DIR/${BASENAME}_skimmed.root
-    echo "Wrote skimmed file to to $ORIG_DIR/${BASENAME}_skimmed.root"
+    SKIMFILES=($(ls *_Skim.root))
+    if [[ "${#SKIMFILES[@]}" == "1" ]]; then
+        mv ${SKIMFILES[0]} output.root
+    else
+        MERGECMD="$PYTHONX scripts/haddnano.py output.root ${SKIMFILES[@]}"
+        echo $MERGECMD
+        $MERGECMD
+    fi
+    mv output.root $ORIG_DIR/output.root
+    echo "Wrote hadded, skimmed file to to $ORIG_DIR/output.root"
 fi
 
 cd $ORIG_DIR
