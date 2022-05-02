@@ -132,18 +132,6 @@ Davix.GSI.CACheck: n
 EOL
 
 #------------------------------------------------------------------------------------------------------------------------------>
-cat > check_xrd.C << EOL
-void check_xrd(TString filename) { 
-    TFile* f = TFile::Open(filename.Data()); 
-    TTree* t = (TTree*) f->Get("Events"); 
-    ((TTreePlayer*)(t->GetPlayer()))->SetScanRedirect(true); 
-    ((TTreePlayer*)(t->GetPlayer()))->SetScanFileName("output.dat"); 
-    t->Scan("*", "", "", 10); 
-}
-EOL
-#------------------------------------------------------------------------------------------------------------------------------>
-
-#------------------------------------------------------------------------------------------------------------------------------>
 INPUTFILES_XROOTD=""
 for filename in $(echo $INPUTFILENAMES | sed s/,/\ /g); do
     if [[ "${XROOTDPROTOCOL}" == *"http"* ]]; then
@@ -154,19 +142,6 @@ for filename in $(echo $INPUTFILENAMES | sed s/,/\ /g); do
 done
 INPUTFILES_XROOTD=($INPUTFILES_XROOTD)
 #------------------------------------------------------------------------------------------------------------------------------>
-
-echo "Checking XRootD host's health..." | tee >(cat >&2)
-root -l -b -q check_xrd.C\(\"${INPUTFILES_XROOTD[0]}\"\) > >(tee check_xrd.txt) 2> >(tee check_xrd_stderr.txt >&2)
-rm -f output.dat # Delete the file as it is not needed
-
-# If the file had error
-if grep -q "ERROR" check_xrd_stderr.txt; then
-    echo "ERROR: bad read, dumping stderr logs below."
-    cat check_xrd_stderr.txt
-    exit 1
-else
-    echo "XRootD host seems to be in working order :)"
-fi
 
 # Run the postprocessor
 if [[ "$USEPYTHON2" != "" ]]; then PYTHONX="python2"; else PYTHONX="python3"; fi
