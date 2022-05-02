@@ -30,10 +30,10 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         file_info = {}
         file_info["n_events"] = 0
         file_info["is_data"] = ("Run201" in file_name)
-        file_info["is_signal"] = ("VBS" in file_name)
         # Get output info
         file_info["output_dir"] = self.output_dir
         file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
+        file_info["is_signal"] = ("VBS_VH" in file_info["output_name"])
         if not file_info["is_data"]:
             # Get # events
             f = ROOT.TFile(file_name)
@@ -129,12 +129,18 @@ if __name__ == "__main__":
         exit()
 
     # Run study
+    ceph_dir = "/ceph/cms/store/user/jguiang"
     skims = {
-        "2016preVFP": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODAPVv9*/merged.root"),
-        "2016postVFP": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL16NanoAODv9*/merged.root"),
-        "2017": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL17NanoAODv9*/merged.root"),
-        "2018": glob.glob("/ceph/cms/store/user/jguiang/VBSVHSkim_3l/v1/*UL18NanoAODv9*/merged.root"),
+        "2016preVFP": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL16NanoAODAPVv9*/merged.root"),
+        "2016postVFP": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL16NanoAODv9*/merged.root"),
+        "2017": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL17NanoAODv9*/merged.root"),
+        "2018": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL18NanoAODv9*/merged.root"),
     }
+    # Add signal samples
+    # skims["2016APV"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
+    # skims["2016"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    # skims["2017"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    skims["2018"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
     for year, files in skims.items():
         print(f"Orchestrating {year} jobs...")
         orchestrator = VBSOrchestrator(
