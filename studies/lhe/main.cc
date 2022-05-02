@@ -44,7 +44,7 @@ int main(int argc, char** argv)
     // Initialize Cutflow
     Cutflow cutflow = Cutflow();
 
-    Cut* root = new Cut(
+    Cut* root = new LambdaCut(
         "Bookkeeping",
         [&]()
         {
@@ -53,7 +53,7 @@ int main(int argc, char** argv)
     );
     cutflow.setRoot(root);
 
-    Cut* cut = new Cut(
+    Cut* cut = new LambdaCut(
         "SetFlatVariables",
         [&]()
         {
