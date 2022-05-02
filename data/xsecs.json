@@ -1,7 +1,9 @@
 {
+    "VBSVH_Inclusive": 1,
     "WW": 118.71,
     "ZZ": 10.32,
     "WZ": 51,
+    "WZJJ_EWK_InclusivePolarization": 0.01701,
     "tZq_ll_4f_ckm_NLO": 0.0758,
     "ST_s-channel_4f": 3.74,
     "ST_t-channel_antitop_4f": 80.95,
