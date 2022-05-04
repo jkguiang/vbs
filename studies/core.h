@@ -41,6 +41,8 @@ struct VBSWHAnalysis
         // Jet (AK4) branches
         arbol.newBranch<float>("HT", -999);
         arbol.newBranch<int>("n_jets_pt30", -999);
+        // Jet (AK8) branches
+        arbol.newBranch<int>("n_fatjets", -999);
         // b-jet branches
         arbol.newBranch<int>("n_loose_b_jets", -999);
         arbol.newBranch<int>("n_medium_b_jets", -999);
@@ -64,6 +66,8 @@ struct VBSWHAnalysis
         cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
         cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
         cutflow.globals.newVar<Floats>("good_fatjet_hbbtags", {}); // ParticleNet
+        cutflow.globals.newVar<Floats>("good_fatjet_masses", {});
+        cutflow.globals.newVar<Floats>("good_fatjet_msoftdrops", {});
         // VBS jet globals
         cutflow.globals.newVar<LorentzVector>("ld_vbs_jet_p4");
         cutflow.globals.newVar<LorentzVector>("tr_vbs_jet_p4");
@@ -207,6 +211,34 @@ public:
         // Do nothing
     };
 
+    bool overlapsLepton(int jet_i, LorentzVector jet_p4)
+    {
+        LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
+        Integers good_lep_jet_idxs = globals.getVal<Integers>("good_lep_jet_idxs");
+        for (unsigned int lep_i = 0; lep_i < good_lep_p4s.size(); ++lep_i)
+        {
+            int lep_jet_idx = good_lep_jet_idxs.at(lep_i);
+            if (lep_jet_idx == -999)
+            {
+                LorentzVector lep_p4 = good_lep_p4s.at(lep_i);
+                if (ROOT::Math::VectorUtil::DeltaR(lep_p4, jet_p4) < 0.4) 
+                {
+                    return true;
+                }
+            }
+            else if (lep_jet_idx == int(jet_i))
+            {
+                return true;
+            }
+        }
+        return false;
+    };
+
+    virtual bool isOverlap(int jet_i, LorentzVector jet_p4)
+    {
+        return overlapsLepton(jet_i, jet_p4);
+    };
+
     bool evaluate()
     {
         int n_loose_b_jets = 0;
@@ -237,28 +269,7 @@ public:
             if (nt.year() == 2016 && jet_id < 1) { continue; }
             if (nt.year() > 2016 && jet_id < 2) { continue; }
             // Perform overlap check against leptons
-            bool is_overlap = false;
-            LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
-            Integers good_lep_jet_idxs = globals.getVal<Integers>("good_lep_jet_idxs");
-            for (unsigned int lep_i = 0; lep_i < good_lep_p4s.size(); ++lep_i)
-            {
-                int lep_jet_idx = good_lep_jet_idxs.at(lep_i);
-                if (lep_jet_idx == -999)
-                {
-                    LorentzVector lep_p4 = good_lep_p4s.at(lep_i);
-                    if (ROOT::Math::VectorUtil::DeltaR(lep_p4, jet_p4) < 0.4) 
-                    {
-                        is_overlap = true;
-                        break;
-                    }
-                }
-                else if (lep_jet_idx == int(jet_i))
-                {
-                    is_overlap = true;
-                    break;
-                }
-            }
-            if (is_overlap) { continue; }
+            if (isOverlap(jet_i, jet_p4)) { continue; }
             // Perform b-tagging (for b-veto); only possible for pt > 20 GeV and |eta| < 2.4
             bool is_btagged_loose = false;
             bool is_btagged_medium = false;
@@ -322,13 +333,16 @@ public:
         LorentzVectors good_fatjet_p4s;
         Integers good_fatjet_idxs;
         Floats good_fatjet_hbbtags;
-        for (unsigned int jet_i = 0; jet_i < nt.nFatJet(); ++jet_i)
+        Floats good_fatjet_masses;
+        Floats good_fatjet_msoftdrops;
+        for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
-            LorentzVector fatjet_p4 = nt.FatJet_p4().at(jet_i);
+            LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
+
             // Basic requirements
             if (fatjet_p4.pt() <= 250) { continue; }
-            if (nt.FatJet_mass().at(jet_i) <= 50) { continue; }
-            if (nt.FatJet_msoftdrop().at(jet_i) <= 40) { continue; }
+            if (nt.FatJet_mass().at(fatjet_i) <= 50) { continue; }
+            if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
             // Remove lepton overlap
             bool is_overlap = false;
             LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
@@ -344,12 +358,17 @@ public:
 
             // Store good fat jets
             good_fatjet_p4s.push_back(fatjet_p4);
-            good_fatjet_idxs.push_back(jet_i);
-            good_fatjet_hbbtags.push_back(nt.FatJet_particleNet_HbbvsQCD().at(jet_i));
+            good_fatjet_idxs.push_back(fatjet_i);
+            good_fatjet_hbbtags.push_back(nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i));
+            good_fatjet_masses.push_back(nt.FatJet_mass().at(fatjet_i));
+            good_fatjet_msoftdrops.push_back(nt.FatJet_msoftdrop().at(fatjet_i));
         }
         globals.setVal<LorentzVectors>("good_fatjet_p4s", good_fatjet_p4s);
         globals.setVal<Integers>("good_fatjet_idxs", good_fatjet_idxs);
         globals.setVal<Floats>("good_fatjet_hbbtags", good_fatjet_hbbtags);
+        globals.setVal<Floats>("good_fatjet_masses", good_fatjet_masses);
+        globals.setVal<Floats>("good_fatjet_msoftdrops", good_fatjet_msoftdrops);
+        arbol.setLeaf<int>("n_fatjets", good_fatjet_p4s.size());
         return true;
     };
 };
