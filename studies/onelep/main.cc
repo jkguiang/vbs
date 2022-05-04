@@ -10,6 +10,7 @@
 // NanoCORE
 #include "Nano.h"
 #include "Config.h"
+#include "tqdm.h"
 
 int main(int argc, char** argv) 
 {
@@ -34,10 +35,13 @@ int main(int argc, char** argv)
     arbol.newBranch<float>("hbbjet_pt");
     arbol.newBranch<float>("hbbjet_eta");
     arbol.newBranch<float>("hbbjet_phi");
+    arbol.newBranch<float>("hbbjet_mass");
+    arbol.newBranch<float>("hbbjet_msoftdrop");
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
     cutflow.globals.newVar<LorentzVector>("lep_p4");
+    cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
 
     // Pack above into struct for convenience
     VBSWHAnalysis analysis = VBSWHAnalysis(arbol, nt, cli, cutflow);
@@ -51,24 +55,29 @@ int main(int argc, char** argv)
     // Lepton selection
     Cut* select_leps = new SelectLeptons("SelectLeptons", analysis);
     cutflow.insert(has_1lep_presel->name, select_leps, Right);
-    // Jet selection
-    Cut* select_jets = new SelectJets("SelectJets", analysis);
-    cutflow.insert(select_leps->name, select_jets, Right);
     // Fat jet selection
     Cut* select_fatjets = new SelectFatJets("SelectFatJets", analysis);
-    cutflow.insert(select_jets->name, select_fatjets, Right);
-    // VBS+Hbb preselection
-    Cut* vbshbb_presel = new VBSHbbPresel("Geq2Ak4Geq1Ak8Jets", analysis);
-    cutflow.insert(select_fatjets->name, vbshbb_presel, Right);
-    // VBS jet selection
-    Cut* select_vbsjets_maxE = new SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
-    cutflow.insert(vbshbb_presel->name, select_vbsjets_maxE, Right);
+    cutflow.insert(select_leps->name, select_fatjets, Right);
+    // Geq1FatJet
+    Cut* geq1fatjet = new LambdaCut(
+        "Geq1FatJet", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 1; }
+    );
+    cutflow.insert(select_fatjets->name, geq1fatjet, Right);
     // Hbb selection
     Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", analysis);
-    cutflow.insert(select_vbsjets_maxE->name, select_hbbjet, Right);
+    cutflow.insert(geq1fatjet->name, select_hbbjet, Right);
+    // Jet selection
+    Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
+    cutflow.insert(select_hbbjet->name, select_jets, Right);
+    // VBS jet selection
+    Cut* select_vbsjets_maxE = new SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
+    cutflow.insert(select_jets->name, select_vbsjets_maxE, Right);
+    // Basic VBS jet requirements
+    Cut* vbsjets_presel = new VBSPresel("MjjGt500detajjGt3", analysis);
+    cutflow.insert(select_vbsjets_maxE->name, vbsjets_presel, Right);
     // == 1 lepton selection
     Cut* has_1lep = new Has1Lep("Has1TightLep", analysis);
-    cutflow.insert(select_hbbjet->name, has_1lep, Right);
+    cutflow.insert(vbsjets_presel->name, has_1lep, Right);
 
     // Run looper
     looper.run(
@@ -84,7 +93,7 @@ int main(int argc, char** argv)
             cutflow.globals.resetVars();
             // Run cutflow
             nt.GetEntry(entry);
-            bool passed = cutflow.runUntil("Has1LepPresel");
+            bool passed = cutflow.runUntil("Has1TightLep");
             if (passed) { arbol.fillTTree(); }
         }
     );

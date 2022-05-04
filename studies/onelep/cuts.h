@@ -61,22 +61,42 @@ public:
 
     bool evaluate()
     {
+        // Select fatjet with best (highest) ParticleNet Hbb score
         Floats good_fatjet_hbbtags = globals.getVal<Floats>("good_fatjet_hbbtags");
-        Integers indices(good_fatjet_hbbtags.size());
-        iota(indices.begin(), indices.end(), 0); // fill indices vector
-        std::sort(
-            indices.begin(), indices.end(),
-            [&](int i, int j) -> bool { 
-                return good_fatjet_hbbtags.at(i) > good_fatjet_hbbtags.at(j); 
-            }
+        int best_hbbjet_i = std::distance(
+            good_fatjet_hbbtags.begin(), 
+            std::max_element(good_fatjet_hbbtags.begin(), good_fatjet_hbbtags.end())
         );
-        int best_fatjet_i = indices.at(0);
-        LorentzVector best_fatjet_p4 = globals.getVal<LorentzVectors>("good_fatjet_p4s").at(best_fatjet_i);
-        arbol.setLeaf<float>("hbbjet_score", good_fatjet_hbbtags.at(best_fatjet_i));
-        arbol.setLeaf<float>("hbbjet_pt", best_fatjet_p4.pt());
-        arbol.setLeaf<float>("hbbjet_eta", best_fatjet_p4.eta());
-        arbol.setLeaf<float>("hbbjet_phi", best_fatjet_p4.phi());
+        // Store the fatjet
+        LorentzVector best_hbbjet_p4 = globals.getVal<LorentzVectors>("good_fatjet_p4s").at(best_hbbjet_i);
+        globals.setVal<LorentzVector>("hbbjet_p4", best_hbbjet_p4);
+        arbol.setLeaf<float>("hbbjet_score", globals.getVal<Floats>("good_fatjet_hbbtags").at(best_hbbjet_i));
+        arbol.setLeaf<float>("hbbjet_pt", best_hbbjet_p4.pt());
+        arbol.setLeaf<float>("hbbjet_eta", best_hbbjet_p4.eta());
+        arbol.setLeaf<float>("hbbjet_phi", best_hbbjet_p4.phi());
+        arbol.setLeaf<float>("hbbjet_mass", globals.getVal<Floats>("good_fatjet_masses").at(best_hbbjet_i));
+        arbol.setLeaf<float>("hbbjet_msoftdrop", globals.getVal<Floats>("good_fatjet_msoftdrops").at(best_hbbjet_i));
         return true;
+    };
+};
+
+class SelectJetsNoHbbOverlap : public SelectJets
+{
+public:
+    SelectJetsNoHbbOverlap(std::string name, VBSWHAnalysis& analysis) : SelectJets(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    bool overlapsHbbJet(LorentzVector jet_p4)
+    {
+        LorentzVector hbbjet_p4 = globals.getVal<LorentzVector>("hbbjet_p4");
+        return ROOT::Math::VectorUtil::DeltaR(hbbjet_p4, jet_p4) < 0.8;
+    };
+
+    bool isOverlap(int jet_i, LorentzVector jet_p4)
+    {
+        return overlapsLepton(jet_i, jet_p4) or overlapsHbbJet(jet_p4);
     };
 };
 
@@ -100,22 +120,23 @@ public:
             // Count loose and tight leptons
             unsigned int lep_i = good_lep_idxs.at(good_lep_i);
             int lep_pdgID = good_lep_pdgIDs.at(good_lep_i);
-            switch (abs(lep_pdgID))
+            if (abs(lep_pdgID) == 11)
             {
-            case 11:
                 if (ttH::electronID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
                 if (ttH::electronID(lep_i, ttH::IDtight, nt.year())) 
                 {
+                    if (tight_lep_idx != -999) { return false; }
                     tight_lep_idx = good_lep_i;
                 }
-                break;
-            case 13:
+            }
+            else if (abs(lep_pdgID) == 13)
+            {
                 if (ttH::muonID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
                 if (ttH::muonID(lep_i, ttH::IDtight, nt.year())) 
                 {
+                    if (tight_lep_idx != -999) { return false; }
                     tight_lep_idx = good_lep_i;
                 }
-                break;
             }
         }
         // Require 1 and only 1 lepton (all passing tight ID)
