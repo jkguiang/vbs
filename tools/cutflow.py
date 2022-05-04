@@ -54,6 +54,7 @@ class Cutflow:
         self.__cuts = {}
         self.__root_cut_name = None
         self.__cut_network = {}
+        self.__terminal_cut_names = []
 
     def __len__(self):
         return len(self.__cuts)
@@ -77,6 +78,22 @@ class Cutflow:
                 other_cut = other_cutflow[name]
                 summed_cuts[name] = cut + other_cut
             return Cutflow.from_network(cuts=summed_cuts, cut_network=self.__cut_network)
+    
+    @property
+    def terminal_cut_names(self):
+        if not self.__terminal_cut_names:
+            self.__recursive_find_terminals(self.__root_cut_name)
+        return self.__terminal_cut_names
+
+    def __recursive_find_terminals(self, cut_name):
+        cut = self.__cuts[cut_name]
+        if not cut.right and not cut.left:
+            self.__terminal_cut_names.append(cut_name)
+        else:
+            if cut.right:
+                self.__recursive_find_terminals(cut.right.name)
+            if cut.left:
+                self.__recursive_find_terminals(cut.left.name)
 
     def __recursive_print(self, cut, tabs=""):
         if cut is self.root_cut():
@@ -93,8 +110,9 @@ class Cutflow:
             tabs += "    "
 
         print(f"{prefix}{cut.name}")
-        print(f"{tabs}pass: {cut.n_pass} (raw) {cut.n_pass_weighted:0.2f} (wgt)")
-        print(f"{tabs}fail: {cut.n_fail} (raw) {cut.n_fail_weighted:0.2f} (wgt)")
+        if not cut.right or cut.n_pass != cut.right.n_pass:
+            print(f"{tabs}pass: {cut.n_pass} (raw) {cut.n_pass_weighted:0.2f} (wgt)")
+            print(f"{tabs}fail: {cut.n_fail} (raw) {cut.n_fail_weighted:0.2f} (wgt)")
 
         if cut.left:
             self.__recursive_print(cut.left, tabs=tabs)
@@ -171,13 +189,7 @@ class Cutflow:
     def from_network(cuts, cut_network):
         cutflow = Cutflow()
         # Check inputs
-        if not cuts and not cut_network:
-            raise ValueError("list of cuts and cut network both empty")
-        elif not cuts:
-            raise ValueError("list of cuts empty")
-        elif not cut_network:
-            raise ValueError("cut network empty")
-        elif not set(cuts) == set(cut_network.keys()):
+        if not set(cuts) == set(cut_network.keys()):
             raise ValueError("list of cuts does not match cut network")
         # Build cutflow
         cutflow.__cuts = cuts
@@ -234,19 +246,20 @@ class Cutflow:
                 )
                 cut_network[name] = (parent_name, left_name, right_name)
 
-        return Cutflow.from_network(cuts=cuts, cut_network=cut_network)
+        return Cutflow.from_network(cuts, cut_network)
 
 class CutflowCollection:
-    def __init__(self, cutflows):
+    def __init__(self, cutflows={}):
+        self.terminal_cut_names = []
         self.__cutflows = {}
-        if type(cutflows) == dict:
-            self.__cutflows = cutflows
-        elif type(cutflow_objs) == list:
-            for cutflow_i, cutflow in enumerate(cutflows):
-                self.__cutflows[f"Cutflow_{cutflow_i}"] = cutflow
-        else:
-            raise ValueError("cutflows must be arranged in a dict or list")
-
+        if cutflows:
+            if type(cutflows) == dict:
+                self.__cutflows = cutflows
+            elif type(cutflow_objs) == list:
+                for cutflow_i, cutflow in enumerate(cutflows):
+                    self.__cutflows[f"Cutflow_{cutflow_i}"] = cutflow
+            else:
+                raise ValueError("cutflows must be arranged in a dict or list")
         self.__consistency_check()
 
     def __getitem__(self, name):
@@ -275,23 +288,27 @@ class CutflowCollection:
 
     def __consistency_check(self, new_cutflow=None):
         # Check cutflow equivalence
-        cutflows_list = self.cutflows()
-        if len(cutflows_list) == 0:
+        current_cutflows = self.cutflows
+        if len(current_cutflows) == 0:
             return
         elif new_cutflow:
-            if new_cutflow != cutflows_list[-1]:
+            if new_cutflow != current_cutflows[-1]:
                 raise Exception("new cutflow is inconsistent with cutflows in collection")
         else:
-            for cutflow_i, cutflow in enumerate(cutflows_list[:-1]):
-                if cutflow != cutflows_list[cutflow_i+1]:
+            for cutflow_i, cutflow in enumerate(current_cutflows[:-1]):
+                if cutflow != current_cutflows[cutflow_i+1]:
                     raise Exception("cutflows are inconsistent")
+            if not self.terminal_cut_names:
+                self.terminal_cut_names = current_cutflows[0].terminal_cut_names
 
     def items(self):
         return self.__cutflows.items()
 
+    @property
     def cutflow_names(self):
         return list(self.__cutflows.keys())
 
+    @property
     def cutflows(self):
         return list(self.__cutflows.values())
 
@@ -300,7 +317,7 @@ class CutflowCollection:
 
     def sum(self):
         cutflow_sum = Cutflow()
-        for cutflow in self.cutflows():
+        for cutflow in self.cutflows:
             cutflow_sum += cutflow
         return cutflow_sum
 
