@@ -74,14 +74,14 @@ if [[ "$PACKAGE" != "" ]]; then
     source standalone/env_standalone.sh
 else
     # Check that module exists
-    MODULES="$(ls ${PWD}/modules)"
     if [[ "${MODULE}" == "" ]]; then
         echo "ERROR: no NanoAODTools module provided!"
         exit 1
     else
         FOUNDMODULE=false
-        for m in $MODULES; do
-            if [[ "$m" == "$MODULE" ]]; then 
+        for m in $(ls ${ORIG_DIR}/modules); do
+            if [[ "$(basename $m)" == "$MODULE" ]]; then 
+                echo "Found ${MODULE} in ${ORIG_DIR}/modules"
                 FOUNDMODULE=true
                 break
             fi
@@ -90,7 +90,7 @@ else
     if [[ "${FOUNDMODULE}" == "false" ]]; then
         echo "ERROR: NanoAODTools module ${MODULE} not found in ${PWD}/modules!"
         exit 1
-    elif [[ "$(ls ${MODULES}/VBSVH_3l)" != "$(ls ${MODULES}/${MODULE})" ]]; then
+    elif [[ "$(ls ${ORIG_DIR}/modules/VBSVH_3l)" != "$(ls ${ORIG_DIR}/modules/${MODULE})" ]]; then
         echo "ERROR: NanoAODTools module ${MODULE} not properly written! cf. README.md"
         exit 1
     fi
