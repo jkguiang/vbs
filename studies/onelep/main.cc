@@ -66,6 +66,11 @@ int main(int argc, char** argv)
     // Hbb selection
     Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", analysis);
     cutflow.insert(geq1fatjet->name, select_hbbjet, Right);
+
+    // Dummy
+    Cut* dummy = new LambdaCut("dummy", [&]() { return true; });
+    cutflow.insert(select_hbbjet->name, dummy, Left);
+
     // Jet selection
     Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
     cutflow.insert(select_hbbjet->name, select_jets, Right);
@@ -88,13 +93,17 @@ int main(int argc, char** argv)
         },
         [&](int entry) 
         {
-            // Reset branches and globals
-            arbol.resetBranches();
-            cutflow.globals.resetVars();
-            // Run cutflow
-            nt.GetEntry(entry);
-            bool passed = cutflow.runUntil("Has1TightLep");
-            if (passed) { arbol.fillTTree(); }
+            if (cli.debug && looper.n_events_processed == 10000) { looper.stop(); }
+            else
+            {
+                // Reset branches and globals
+                arbol.resetBranches();
+                cutflow.globals.resetVars();
+                // Run cutflow
+                nt.GetEntry(entry);
+                bool passed = cutflow.runUntil("Has1TightLep");
+                if (passed) { arbol.fillTTree(); }
+            }
         }
     );
 
