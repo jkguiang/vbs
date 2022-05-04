@@ -128,13 +128,12 @@ public:
         arbol.setLeaf<float>("md_lep_phi", md_lep_p4.phi());
         arbol.setLeaf<float>("tr_lep_phi", tr_lep_p4.phi());
         arbol.setLeaf<float>(
-            "ST", 
+            "LT", 
             (ld_lep_p4.pt() 
              + md_lep_p4.pt() 
              + tr_lep_p4.pt()
              + arbol.getLeaf<float>("MET"))
         );
-        arbol.setLeaf<float>("ST", arbol.getLeaf<float>("LT") + arbol.getLeaf<float>("MET"));
         // Gather Z-hypotheses for Z-veto (and count SFOS pairs implicitly)
         LorentzVectors Z_hyp_p4s;
         if (isSFOS(ld_lep_pdgID, md_lep_pdgID)) 
