@@ -45,7 +45,7 @@ cli.add_argument(
 )
 args = cli.parse_args()
 
-NAME = "VBSVHSkim_3l"
+NAME = "VBSVHSkim"
 
 if args.python2:
     CMSSW_VERSION="CMSSW_10_6_25",
