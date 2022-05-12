@@ -90,9 +90,6 @@ else
     if [[ "${FOUNDMODULE}" == "false" ]]; then
         echo "ERROR: NanoAODTools module ${MODULE} not found in ${PWD}/modules!"
         exit 1
-    elif [[ "$(ls ${ORIG_DIR}/modules/VBSVH_3l)" != "$(ls ${ORIG_DIR}/modules/${MODULE})" ]]; then
-        echo "ERROR: NanoAODTools module ${MODULE} not properly written! cf. README.md"
-        exit 1
     fi
     
     # Get nanoAOD-tools
@@ -101,8 +98,20 @@ else
     bash standalone/env_standalone.sh build
     source standalone/env_standalone.sh
 
+    mkdir -p python/postprocessing/modules/skimmer/
+
     # Copy the extra files to where they need to go
-    cp ${ORIG_DIR}/modules/${MODULE}/* python/postprocessing/examples
+    cp ${ORIG_DIR}/modules/${MODULE}/* python/postprocessing/modules/skimmer/
+
+    # Copy any common modules
+    if [[ -d ${ORIG_DIR}/modules/common ]]; then
+        cp -R ${ORIG_DIR}/modules/common/* python/postprocessing/modules/skimmer/
+    fi
+
+    # Copy any extra data files to where they need to go
+    if [[ -d ${ORIG_DIR}/data ]]; then
+        cp -R ${ORIG_DIR}/data/* data/
+    fi
 
     # Get the git information
     git diff > gitdiff.txt
@@ -125,7 +134,9 @@ else
     # Tar the PhysicsTools directory
     tar -chJf package.tar.gz NanoAODTools \
         --exclude="NanoAODTools/.git" \
-        --exclude="NanoAODTools/data" \
+        --exclude="NanoAODTools/data/btagSF" \
+        --exclude="NanoAODTools/data/jme" \
+        --exclude="NanoAODTools/data/prefire_maps" \
         --exclude="NanoAODTools/python/postprocessing/data" \
         --exclude="NanoAODTools/NanoTools/.git" \
         --exclude="NanoAODTools/package.tar.gz"
@@ -140,9 +151,9 @@ if [[ "$SKIM" == "true" ]]; then
     CMD="$PYTHONX scripts/nano_postproc.py \
         ./ \
         ${NANOAODPATHS[@]} \
-        -b python/postprocessing/examples/keep_and_drop.txt \
-        -I PhysicsTools.NanoAODTools.postprocessing.examples.skimModule\
-        skimModuleConstr"
+        -b python/postprocessing/modules/skimmer/keep_and_drop.txt \
+        -I PhysicsTools.NanoAODTools.postprocessing.modules.skimmer.lepJetBTagAdder lepJetBTagDeepFlav \
+        -I PhysicsTools.NanoAODTools.postprocessing.modules.skimmer.skimModule skimModuleConstr "
     echo $CMD
     $CMD
     # Copy back the output to parent directory
