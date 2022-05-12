@@ -1,6 +1,7 @@
 import os
 import math
 import ROOT
+import itertools
 from PhysicsTools.NanoAODTools.postprocessing.framework.datamodel import Collection
 from PhysicsTools.NanoAODTools.postprocessing.framework.eventloop import Module
 from PhysicsTools.NanoAODTools.postprocessing.modules.skimmer.mvaTool import *
@@ -95,23 +96,40 @@ class skimProducer(Module):
 
     def passSkim_1l_1ak8(self, event):
         """>= 1 veto lepton(=e, mu only), >= 1 fat (ak8) jet skim"""
+        lep_p4s_veto = []
         # Loop over muons
-        nmuons_veto = 0
         for i, lep in enumerate(self.muons):
             if self.isMuonTTHIDVeto(i):
-                nmuons_veto += 1
-        # Loop over the electrons
-        nelectrons_veto = 0
+                lep_p4s_veto.append(ROOT.nt.Muon_p4()[i])
+        # Loop over electrons
         for i, lep in enumerate(self.electrons):
             if self.isElectronTTHIDVeto(i):
-                nelectrons_veto += 1
-        # Loop over the fat jets
+                lep_p4s_veto.append(ROOT.nt.Electron_p4()[i])
+
+        # Loop over ak8 jets
         nfatjets = 0
         for i, fatjet in enumerate(self.fatjets):
-            if fatjet.mass > 10 and fatjet.msoftdrop > 10 and fatjet.pt > 200:
+            is_overlap = False
+            for lep_p4 in lep_p4s_veto:
+                if ROOT.Math.VectorUtil.DeltaR(ROOT.nt.FatJet_p4()[i], lep_p4) < 0.8:
+                    is_overlap = True
+                    break
+            if not is_overlap and fatjet.mass > 10 and fatjet.msoftdrop > 10 and fatjet.pt > 200:
                 nfatjets += 1
 
-        if nelectrons_veto + nmuons_veto >= 1 and nfatjets >= 1:
+        # Loop over ak4 jets
+        njets = 0
+        for i, jet in enumerate(self.jets):
+            jet_p4 = ROOT.nt.Jet_p4()[i]
+            is_overlap = False
+            for lep_p4 in lep_p4s_veto:
+                if ROOT.Math.VectorUtil.DeltaR(jet_p4, lep_p4) < 0.4:
+                    is_overlap = True
+                    break
+            if not is_overlap and jet.pt > 20:
+                njets += 1
+
+        if len(lep_p4s_veto) >= 1 and njets >= 2 and nfatjets >= 1:
             return True
         else:
             return False
