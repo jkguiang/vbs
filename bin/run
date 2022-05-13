@@ -3,16 +3,18 @@
 import argparse
 import logging
 import glob
+import json
 import os
 from subprocess import Popen, PIPE
 from decimal import Decimal
-from tools.orchestrator import BabyMakerOrchestrator
+from tools.orchestrator import Orchestrator
 print("Importing ROOT...")
 import ROOT
 
-class VBSOrchestrator(BabyMakerOrchestrator):
+class VBSOrchestrator(Orchestrator):
     def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8):
         self.output_dir = f"studies/{study_name}/output/{year}"
+        self.year = year
         if year == "2016preVFP":
             self.lumi = 19.52
         elif year == "2016postVFP":
@@ -22,7 +24,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         elif year == "2018":
             self.lumi = 59.83
         else:
-            raise ValueError("year must be 2016, 2017, or 2018")
+            raise ValueError("year must be 2016preVFP, 2016postVFP, 2017, or 2018")
         os.makedirs(self.output_dir, exist_ok=True)
         super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
@@ -33,7 +35,7 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         # Get output info
         file_info["output_dir"] = self.output_dir
         file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
-        file_info["is_signal"] = ("VBS_VH" in file_info["output_name"])
+        file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
         if not file_info["is_data"]:
             # Get # events
             f = ROOT.TFile(file_name)
@@ -52,6 +54,8 @@ class VBSOrchestrator(BabyMakerOrchestrator):
 
     def _get_job(self, input_file):
         file_info = self.__get_file_info(input_file)
+        with open("data/wjets_ht-binned_xsecs.json", "r") as f_in:
+            wjets_xsecs = json.load(f_in)
         cmd = [self.executable]
         cmd.append(f"--input_ttree=Events")
         cmd.append(f"--output_dir={file_info['output_dir']}")
@@ -63,6 +67,8 @@ class VBSOrchestrator(BabyMakerOrchestrator):
         else:
             xsec = self.get_xsec(input_file)
             sf = xsec*1000*self.lumi/(file_info["n_events"])
+            if "WJetsToLNu_HT-" in file_info["output_name"]:
+                sf *= wjets_xsecs[self.year][file_info["output_name"]]
             cmd.append(f"--scale_factor={Decimal.from_float(sf)}")
         cmd.append(input_file)
         return cmd
@@ -70,8 +76,8 @@ class VBSOrchestrator(BabyMakerOrchestrator):
 def run_test_jobs():
     dummy_dir = "/ceph/cms/store/user/dummy/PhChangSkim/Tag"
     dummy_files = [f"{dummy_dir}/NanoSample{i:02d}_TuneCP5/merged/merged.root" for i in range(1, 11)]
-    skims = [(2016, dummy_files), (2017, dummy_files), (2018, dummy_files)]
-    for year, files in skims:
+    samples = [(2016, dummy_files), (2017, dummy_files), (2018, dummy_files)]
+    for year, files in samples:
         print(f"Orchestrating {year} jobs...")
         orchestrator = VBSOrchestrator(
             year, 
@@ -128,21 +134,23 @@ if __name__ == "__main__":
         print(f"ERROR: must be run within {vbs_pwd}")
         exit()
 
-    # Run study
+    # Gather samples
     ceph_dir = "/ceph/cms/store/user/jguiang"
-    skims = {
-        "2016preVFP": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL16NanoAODAPVv9*/merged.root"),
-        "2016postVFP": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL16NanoAODv9*/merged.root"),
-        "2017": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL17NanoAODv9*/merged.root"),
-        "2018": glob.glob(f"{ceph_dir}/VBSVHSkim_3l/v1/*UL18NanoAODv9*/merged.root"),
-    }
+    skim = "VBSVHSkim/1lep_1ak8_1ak4_v1"
+    samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
+    # Add background samples
+    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
+    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged.root")
+    samples["2017"] += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged.root")
+    samples["2018"] += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged.root")
     # Add signal samples
-    # skims["2016APV"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
-    # skims["2016"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    # skims["2017"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    skims["2018"].append(f"{ceph_dir}/VBSVHSignalGeneration/v1/VBS_VH_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
-    for year, files in skims.items():
+    samples["2016preVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2016postVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2017"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2018"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
+    for year, files in samples.items():
         print(f"Orchestrating {year} jobs...")
+        # Run study
         orchestrator = VBSOrchestrator(
             year, 
             args.study, 
