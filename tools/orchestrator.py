@@ -13,7 +13,7 @@ def run_job(args):
         process.wait()
     return
 
-class BabyMakerOrchestrator:
+class Orchestrator:
     def __init__(self, executable, input_files, xsecs_json="", n_workers=8):
         self.executable = executable
         self.input_files = input_files
