@@ -1,14 +1,14 @@
 {
     "2016preVFP": {
-        "WJetsToLNu_HT-0To70": 55960.0,
-        "WJetsToLNu_HT-70To100": 1283.91,
-        "WJetsToLNu_HT-100To200": 1303.06,
-        "WJetsToLNu_HT-200To400": 341.046,
-        "WJetsToLNu_HT-400To600": 45.4362,
-        "WJetsToLNu_HT-600To800": 11.0051,
-        "WJetsToLNu_HT-800To1200": 4.94177,
-        "WJetsToLNu_HT-1200To2500": 1.15544,
-        "WJetsToLNu_HT-2500ToInf": 0.0216234
+        "WJetsToLNu_HT-0To70": 55960,
+        "WJetsToLNu_HT-70To100": 1310.78,
+        "WJetsToLNu_HT-100To200": 1325.9,
+        "WJetsToLNu_HT-200To400": 348.57030,
+        "WJetsToLNu_HT-400To600": 47.308275,
+        "WJetsToLNu_HT-600To800": 11.358487,
+        "WJetsToLNu_HT-800To1200": 5.2086934,
+        "WJetsToLNu_HT-1200To2500": 1.1880809,
+        "WJetsToLNu_HT-2500ToInf": 0.024098031
     },
     "2016postVFP": {
         "WJetsToLNu_HT-0To70": 55960.0,
