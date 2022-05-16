@@ -96,7 +96,7 @@ if __name__ == "__main__":
         help="Name of the study to run"
     )
     cli.add_argument(
-        "--n_workers", type=int, default=4,
+        "--n_workers", type=int, default=8,
         help="Maximum number of worker processes"
     )
     cli.add_argument(
@@ -136,7 +136,7 @@ if __name__ == "__main__":
 
     # Gather samples
     ceph_dir = "/ceph/cms/store/user/jguiang"
-    skim = "VBSVHSkim/1lep_1ak8_1ak4_v1"
+    skim = "VBSVHSkim/1lep_1ak8_2ak4_v1"
     samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
     # Add background samples
     samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
