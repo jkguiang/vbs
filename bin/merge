@@ -8,18 +8,30 @@ from multiprocessing import Pool
 from subprocess import Popen, PIPE
 from tools.cutflow import Cutflow, CutflowCollection
 
-SAMPLE_MAP = {
+BKG_SAMPLE_MAP = {
+    "TTbar": {
+        "2016preVFP": ["TTTo*"],
+        "2016postVFP": ["TTTo*"],
+        "2017": ["TTTo*"],
+        "2018": ["TTTo*"],
+    },
     "TTX": {
-        "2016preVFP": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu"],
-        "2016postVFP": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu"],
-        "2017": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu", "TTWW", "TTWZ"],
-        "2018": ["ttHTobb_M125", "ttHToNonbb_M125", "TTWJetsToLNu", "TTTo2L2Nu", "TTWW", "TTWZ"]
+        "2016preVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
+        "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
+        "2017": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
+        "2018": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
+    },
+    "WJets": {
+        "2016preVFP": ["WJets*"],
+        "2016postVFP": ["WJets*"],
+        "2017": ["WJets*"],
+        "2018": ["WJets*"],
     },
     "Bosons": {
-        "2016preVFP": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
-        "2016postVFP": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
-        "2017": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"],
-        "2018": ["SSWW", "WWW_4F", "WWZ_4F", "WZZ", "ZZZ", "WZ"]
+        "2016preVFP": ["SSWW", "WW*", "WZ*", "ZZ*"],
+        "2016postVFP": ["SSWW", "WW*", "WZ*", "ZZ*"],
+        "2017": ["SSWW", "WW*", "WZ*", "ZZ*"],
+        "2018": ["SSWW", "WW*", "WZ*", "ZZ*"],
     },
     "VHToNonbb": {
         "2016preVFP": ["VHToNonbb_M125"],
@@ -29,46 +41,62 @@ SAMPLE_MAP = {
     }
 }
 
+SIG_SAMPLE_MAP = {
+    "VBSWH_mkW": {
+        "2016preVFP": ["VBSWH_mkW_Inclusive"],
+        "2016postVFP": ["VBSWH_mkW_Inclusive"],
+        "2017": ["VBSWH_mkW_Inclusive"],
+        "2018": ["VBSWH_mkW_Inclusive"]
+    }
+}
+
 def hadd_job(split_cmd):
     hadd = Popen(split_cmd, stdout=PIPE, stderr=PIPE)
     hadd.wait()
 
-def merge(study, sample_map, n_workers=8):
-    output_dir = f"studies/{study}/output"
+def merge(output_dir, sample_map, n_hadders=8):
+    # Set up output directory for merged files
     os.makedirs(f"{output_dir}/Run2", exist_ok=True)
-
+    # Collect cutflows and stage merge jobs
     hadd_cmds = []
     merged_cutflows = {}
     for group_name, group_map in sample_map.items():
+        groups = {}
         root_files_to_merge = []
         for year, sample_list in group_map.items():
+            groups[year] = []
             for sample_name in sample_list:
-                cflow_file = f"{output_dir}/{year}/{sample_name}_Cutflow.cflow"
-                if group_name in merged_cutflows.keys():
-                    merged_cutflows[group_name] += Cutflow.from_file(cflow_file)
-                else:
-                    merged_cutflows[group_name] = Cutflow.from_file(cflow_file)
-                root_files_to_merge.append(f"{output_dir}/{year}/{sample_name}.root")
-        # Merge (hadd) jobs
+                cflow_files = glob.glob(f"{output_dir}/{year}/{sample_name}_Cutflow.cflow")
+                root_files = glob.glob(f"{output_dir}/{year}/{sample_name}.root")
+                for root_file, cflow_file in zip(root_files, cflow_files):
+                    if group_name in merged_cutflows.keys():
+                        merged_cutflows[group_name] += Cutflow.from_file(cflow_file)
+                    else:
+                        merged_cutflows[group_name] = Cutflow.from_file(cflow_file)
+                    root_files_to_merge.append(root_file)
+                    groups[year].append(root_file.split("/")[-1].replace(".root", ""))
+        # Stage merge (hadd) jobs
         hadd_cmds.append(["hadd", f"{output_dir}/Run2/{group_name}.root"] + root_files_to_merge)
-    
-    cutflow_collection = CutflowCollection(merged_cutflows)
-    cutflow_collection["TotalBkg"] = cutflow_collection.sum()
-    for group_name, cutflow in cutflow_collection.items():
-        cutflow.write_mermaid(f"{output_dir}/Run2/{group_name}_cutflow.mmd")
-    for terminal_cut in ["Has3Leps0SFOS", "ZVeto70to110GeV_1SFOS", "ZVeto70to110GeV_2SFOS"]:
-        cutflow_collection.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut}.csv", terminal_cut)
+        # Write list of files that were hadded
+        with open(f"{output_dir}/Run2/{group_name}.txt", "w") as f_out:
+            for year, group in groups.items():
+                f_out.write("{0}:\n{1}\n\n".format(year, '\n'.join(sorted(group))))
 
-    with Pool(processes=n_workers) as pool:
+    # Run hadd jobs
+    with Pool(processes=n_hadders) as pool:
         list(tqdm(pool.imap(hadd_job, hadd_cmds), total=len(hadd_cmds), desc="Executing hadds"))
 
-    return
+    return CutflowCollection(merged_cutflows)
 
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run merge results from /bin/run")
     cli.add_argument(
         "study", type=str,
         help="Name of the study to run"
+    )
+    cli.add_argument(
+        "--terminals", nargs="*",
+        help="Names of terminal cuts in cutflow to write to CSV"
     )
     cli.add_argument(
         "--debug", action="store_true",
@@ -79,5 +107,32 @@ if __name__ == "__main__":
         help="Number of workers to run hadds"
     )
     args = cli.parse_args()
+    output_dir = f"studies/{args.study}/output"
+    # Get Cutflow objects for background samples
+    cutflows = merge(
+        output_dir,
+        BKG_SAMPLE_MAP,
+        n_hadders=args.n_workers
+    )
+    cutflows["TotalBkg"] = cutflows.sum()
+    # Get Cutflow objects for signal samples
+    cutflows += merge(
+        output_dir,
+        SIG_SAMPLE_MAP,
+        n_hadders=args.n_workers
+    )
+    cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar", "TotalBkg", "VBSWH_mkW"])
 
-    merge(args.study, SAMPLE_MAP, n_workers=args.n_workers)
+    # Write mermaid
+    for group_name, cutflow in cutflows.items():
+        cutflow.write_mermaid(f"{output_dir}/Run2/{group_name}_cutflow.mmd")
+    # Write CSV
+    cutflows.rename(
+        {
+            "Bosons": "VV/VVV/VBSWZ", "TTX": 
+            "TTbar+X", "WJets": "W+Jets", 
+            "VBSWH_mkW": "VBSWH (kW < 0)"
+        }
+    )
+    for terminal_cut_name in args.terminals if args.terminals else cutflow.terminal_cut_names:
+        cutflows.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.csv", terminal_cut_name)
