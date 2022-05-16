@@ -274,8 +274,8 @@ class CutflowCollection:
 
     def __add__(self, other_collection):
         summed_collection = {}
-        names = set(self.cutflow_names())
-        other_names = set(other_collection.cutflow_names())
+        names = set(self.names)
+        other_names = set(other_collection.names)
         # Add cutflows with the same name
         for name in (names & other_names):
             summed_collection[name] = self.__cutflows[name] + other_collection[name]
@@ -305,7 +305,7 @@ class CutflowCollection:
         return self.__cutflows.items()
 
     @property
-    def cutflow_names(self):
+    def names(self):
         return list(self.__cutflows.keys())
 
     @property
@@ -320,6 +320,18 @@ class CutflowCollection:
         for cutflow in self.cutflows:
             cutflow_sum += cutflow
         return cutflow_sum
+
+    def reorder(self, ordered_names):
+        if len(set(self.names) - set(ordered_names)) > 0:
+            raise ValueError("given cutflow names do not match current set")
+        self.__cutflows = {n: self.__cutflows[n] for n in ordered_names}
+
+    def rename(self, rename_map):
+        old_names = self.names
+        new_names = [n if n not in rename_map else rename_map[n] for n in old_names]
+        self.__cutflows = {
+            new_n: self.__cutflows[old_n] for old_n, new_n in zip(old_names, new_names)
+        }
 
     def write_csv(self, output_csv, terminal_cut_name):
         rows = []
