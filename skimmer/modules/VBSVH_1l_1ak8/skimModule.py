@@ -120,10 +120,9 @@ class skimProducer(Module):
         # Loop over ak4 jets
         njets = 0
         for i, jet in enumerate(self.jets):
-            jet_p4 = ROOT.nt.Jet_p4()[i]
             is_overlap = False
             for lep_p4 in lep_p4s_veto:
-                if ROOT.Math.VectorUtil.DeltaR(jet_p4, lep_p4) < 0.4:
+                if ROOT.Math.VectorUtil.DeltaR(ROOT.nt.Jet_p4()[i], lep_p4) < 0.4:
                     is_overlap = True
                     break
             if not is_overlap and jet.pt > 20:
