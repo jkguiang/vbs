@@ -5,11 +5,10 @@ import logging
 import glob
 import json
 import os
+import uproot
 from subprocess import Popen, PIPE
 from decimal import Decimal
 from tools.orchestrator import Orchestrator
-print("Importing ROOT...")
-import ROOT
 
 class VBSOrchestrator(Orchestrator):
     def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8):
@@ -37,13 +36,11 @@ class VBSOrchestrator(Orchestrator):
         file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
         file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
         if not file_info["is_data"]:
-            # Get # events
-            f = ROOT.TFile(file_name)
-            t = f.Get("Runs")
-            h = ROOT.TH1F("h", "h", 1, 0, 1)
-            t.Draw("0>>h", "genEventSumw", "goff")
-            file_info["n_events"] = h.GetBinContent(1)
-            f.Close()
+            # Get number of events
+            with uproot.open(file_name) as f:
+                t = f.get("Runs")
+                file_info["n_events"] = t["genEventSumw"].array(library="np").sum()
+
         return file_info
 
     def _get_log_files(self, input_file):
@@ -136,19 +133,20 @@ if __name__ == "__main__":
 
     # Gather samples
     ceph_dir = "/ceph/cms/store/user/jguiang"
-    skim = "VBSVHSkim/1lep_1ak8_2ak4_v1"
+    skim = "VBSVHSkim/1lep_1ak8_2ak4_postskim"
     samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
     # Add background samples
-    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
-    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged.root")
-    samples["2017"] += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged.root")
-    samples["2018"] += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged.root")
+    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/output_1.root")
+    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/output_1.root")
+    samples["2017"] += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/output_1.root")
+    samples["2018"] += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/output_1.root")
     # Add signal samples
     samples["2016preVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
     samples["2016postVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
     samples["2017"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
     samples["2018"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
     for year, files in samples.items():
+        # files = filter(files, lambda f: f.split("/")[-2][:4] == "TTTo")
         print(f"Orchestrating {year} jobs...")
         # Run study
         orchestrator = VBSOrchestrator(
