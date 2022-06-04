@@ -1,0 +1,143 @@
+#!/bin/bash
+
+print_help()
+{
+    echo "Usage:"
+    echo ""
+    echo "  ./bin/make_package [--module=MODULENAME] [--debug] [--test] [] [FILE1.root [FILE2.root FILE3.root ...]]"
+    echo ""
+    exit 0
+}
+
+# Read the CLI options
+TEMP=`getopt -o hm:dt --long help,module:,debug,test,no-nanocore -- "$@"`
+eval set -- "$TEMP"
+# Extract options and their arguments
+MODULE=""
+TEST=false
+DEBUG=false
+NANOCORE=true
+while true; do
+    case "$1" in
+        -h|--help)
+            print_help; shift 1;;
+        -m|--module)
+            MODULE=$2; shift 2;;
+        -t|--test)
+            TEST=true; shift 1;;
+        -d|--debug)
+            DEBUG=true; shift 1;;
+        --no-nanocore)
+            NANOCORE=false; shift 1;;
+        --) shift; break;;
+        *) echo "Internal error!"; exit 1;;
+    esac
+done
+NANOAODPATHS=($@)
+
+echo "----------------------------------------------------"
+echo "Generating NanoAOD skimmer for $MODULE"
+echo "----------------------------------------------------"
+echo ""
+
+# Go to a working directory that will be cleaned afterwards
+ORIG_DIR=$PWD
+mkdir -p temp_dir
+cd temp_dir
+
+# Check that module exists
+if [[ "$MODULE" == "" ]]; then
+    echo "ERROR: no NanoAODTools module provided!"
+    exit 1
+else
+    FOUNDMODULE=false
+    for m in $(ls $ORIG_DIR/modules); do
+        if [[ "$(basename $m)" == "$MODULE" ]]; then 
+            echo "Found $MODULE in $ORIG_DIR/modules"
+            FOUNDMODULE=true
+            break
+        fi
+    done
+fi
+if [[ "$FOUNDMODULE" == "false" ]]; then
+    echo "ERROR: NanoAODTools module $MODULE not found in $ORIG_DIR/modules!"
+    exit 1
+fi
+
+# Get nanoAOD-tools
+git clone https://github.com/cms-nanoAOD/nanoAOD-tools NanoAODTools
+cd NanoAODTools
+bash standalone/env_standalone.sh build
+source standalone/env_standalone.sh
+
+if [[ -f $ORIG_DIR/modules/$MODULE/run.sh ]]; then
+    cp $ORIG_DIR/modules/$MODULE/run.sh scripts/
+else
+    cp $ORIG_DIR/modules/common/run.sh scripts/
+fi
+
+mkdir -p python/postprocessing/modules/skimmer/
+
+# Install any common modules
+if [[ -d $ORIG_DIR/modules/common ]]; then
+    cp -R $ORIG_DIR/modules/common/*.py python/postprocessing/modules/skimmer/ 2>/dev/null
+    cp -R $ORIG_DIR/modules/common/*.txt python/postprocessing/modules/skimmer/ 2>/dev/null
+fi
+
+# Install module
+cp $ORIG_DIR/modules/$MODULE/*.py python/postprocessing/modules/skimmer/
+cp $ORIG_DIR/modules/$MODULE/*.txt python/postprocessing/modules/skimmer/
+
+# Copy any extra data files to where they need to go
+if [[ -d $ORIG_DIR/data ]]; then
+    cp -R $ORIG_DIR/data/* data/
+fi
+
+# Get the git information
+git diff > gitdiff.txt
+git status > gitstatus.txt
+git rev-parse HEAD > githash.txt
+
+if [[ "$NANOCORE" == "true" ]]; then
+    # Check if ROOT is on $PATH
+    if ! command -v root &> /dev/null; then
+        echo "ERROR: ROOT cannot be found and is needed to set up NanoCORE"
+        exit 1
+    fi
+    # Setup NanoCORE
+    git clone https://github.com/cmstas/NanoTools
+    cd NanoTools/NanoCORE
+    make clean
+    make -j
+fi
+
+cd $ORIG_DIR/temp_dir
+
+# Package the PhysicsTools directory
+tar -chJf package.tar.gz NanoAODTools \
+    --exclude="NanoAODTools/.git" \
+    --exclude="NanoAODTools/data/btagSF" \
+    --exclude="NanoAODTools/data/jme" \
+    --exclude="NanoAODTools/data/prefire_maps" \
+    --exclude="NanoAODTools/python/postprocessing/data" \
+    --exclude="NanoAODTools/NanoTools/.git" \
+    --exclude="NanoAODTools/package.tar.gz"
+    # --exclude="NanoAODTools/.git" \
+    # --exclude="NanoAODTools/NanoTools/.git" \
+    # --exclude="NanoAODTools/package.tar.gz"
+
+mkdir -p $ORIG_DIR/packages
+
+echo "Packaging up skim code..."
+mv package.tar.gz $ORIG_DIR/packages/${MODULE}_skmpkg.tar.gz
+echo "Wrote compiled skimmer to $ORIG_DIR/packages/${MODULE}_skmpkg.tar.gz"
+cd $ORIG_DIR
+
+if [[ "$DEBUG" == "false" ]]; then
+    # Clean up
+    rm -rf temp_dir
+fi
+
+if [[ "$TEST" == "true" ]]; then
+    ./bin/test_package.sh $ORIG_DIR/packages/${MODULE}_skmpkg.tar.gz ${NANOAODPATHS[@]}
+fi
