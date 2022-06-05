@@ -43,21 +43,28 @@ int main(int argc, char** argv)
     cutflow.globals.newVar<LorentzVector>("lep_p4");
     cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
 
-    // Pack above into struct for convenience
+    // Pack above into VBSWH struct (also adds branches)
     VBSWHAnalysis analysis = VBSWHAnalysis(arbol, nt, cli, cutflow);
+
+    std::cout << gconf.nanoAOD_ver << std::endl;
 
     // Bookkeeping
     Cut* bookkeeping = new Bookkeeping("Bookkeeping", analysis);
     cutflow.setRoot(bookkeeping);
-    // 1 Lep preselection
-    Cut* has_1lep_presel = new Has1LepPresel("Has1LepPresel", analysis);
-    cutflow.insert(bookkeeping->name, has_1lep_presel, Right);
     // Lepton selection
     Cut* select_leps = new SelectLeptons("SelectLeptons", analysis);
-    cutflow.insert(has_1lep_presel->name, select_leps, Right);
+    cutflow.insert(bookkeeping->name, select_leps, Right);
+    // == 1 lepton selection
+    Cut* has_1lep = new Has1Lep("Has1TightLep", analysis);
+    cutflow.insert(select_leps->name, has_1lep, Right);
+    // Lepton has pT > 40
+    Cut* lep_has_ptgt40 = new LambdaCut(
+        "LepPtGt40", [&]() { return arbol.getLeaf<float>("lep_pt") >= 40; }
+    );
+    cutflow.insert(has_1lep->name, lep_has_ptgt40, Right);
     // Fat jet selection
     Cut* select_fatjets = new SelectFatJets("SelectFatJets", analysis);
-    cutflow.insert(select_leps->name, select_fatjets, Right);
+    cutflow.insert(lep_has_ptgt40->name, select_fatjets, Right);
     // Geq1FatJet
     Cut* geq1fatjet = new LambdaCut(
         "Geq1FatJet", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 1; }
@@ -75,9 +82,12 @@ int main(int argc, char** argv)
     // Basic VBS jet requirements
     Cut* vbsjets_presel = new VBSPresel("MjjGt500detajjGt3", analysis);
     cutflow.insert(select_vbsjets_maxE->name, vbsjets_presel, Right);
-    // == 1 lepton selection
-    Cut* has_1lep = new Has1Lep("Has1TightLep", analysis);
-    cutflow.insert(vbsjets_presel->name, has_1lep, Right);
+
+    // DEBUG cuts
+    Cut* geq1lepton = new LambdaCut(
+        "Geq1VetoLepton", [&]() { return cutflow.globals.getVal<Integers>("good_lep_idxs").size() >= 1; }
+    );
+    cutflow.insert(select_leps->name, geq1lepton, Right);
 
     // Run looper
     looper.run(

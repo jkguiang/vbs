@@ -30,6 +30,8 @@ struct VBSWHAnalysis
     VBSWHAnalysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : arbol(arbol_ref), nt(nt_ref), cli(cli_ref), cutflow(cutflow_ref)
     {
+        gconf.nanoAOD_ver = 9;
+
         arbol.newBranch<float>("xsec_sf", -999);
         arbol.newBranch<int>("event", -999);
         arbol.newBranch<float>("MET", -999);
@@ -138,6 +140,7 @@ public:
         {
             if (!ttH::electronID(i, ttH::IDveto, nt.year())) { continue; }
             LorentzVector el_p4 = nt.Electron_p4().at(i);
+            // if (el_p4.pt() <= 40) { continue; } // DEBUG: add back in!!
             // Store basic info
             good_lep_p4s.push_back(el_p4);
             good_lep_pdgIDs.push_back(-nt.Electron_charge().at(i)*11);
@@ -168,6 +171,7 @@ public:
         {
             if (!ttH::muonID(i, ttH::IDveto, nt.year())) { continue; }
             LorentzVector mu_p4 = nt.Muon_p4().at(i);
+            // if (mu_p4.pt() <= 40) { continue; } // DEBUG: add back in!!
             // Store basic info
             good_lep_p4s.push_back(mu_p4);
             good_lep_pdgIDs.push_back(-nt.Muon_charge().at(i)*13);
@@ -206,15 +210,22 @@ public:
 class SelectJets : public VBSWHCut
 {
 public:
+    LorentzVectors good_lep_p4s;
+    Integers good_lep_jet_idxs;
+
     SelectJets(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
     {
         // Do nothing
     };
 
+    virtual void loadOverlapVars()
+    {
+        good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
+        good_lep_jet_idxs = globals.getVal<Integers>("good_lep_jet_idxs");
+    };
+
     bool overlapsLepton(int jet_i, LorentzVector jet_p4)
     {
-        LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
-        Integers good_lep_jet_idxs = globals.getVal<Integers>("good_lep_jet_idxs");
         for (unsigned int lep_i = 0; lep_i < good_lep_p4s.size(); ++lep_i)
         {
             int lep_jet_idx = good_lep_jet_idxs.at(lep_i);
@@ -241,6 +252,7 @@ public:
 
     bool evaluate()
     {
+        loadOverlapVars();
         int n_loose_b_jets = 0;
         int n_medium_b_jets = 0;
         int n_tight_b_jets = 0;
@@ -335,6 +347,7 @@ public:
         Floats good_fatjet_hbbtags;
         Floats good_fatjet_masses;
         Floats good_fatjet_msoftdrops;
+        LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
         for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
             LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
@@ -345,7 +358,6 @@ public:
             if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
             // Remove lepton overlap
             bool is_overlap = false;
-            LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
             for (auto lep_p4 : good_lep_p4s)
             {
                 if (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8) 

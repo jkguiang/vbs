@@ -138,7 +138,7 @@ class Cutflow:
         return content
 
     def get_csv(self, terminal_cut):
-        content = "cut,raw_events,weighted_events\n"
+        content = "cut,raw,wgt\n"
         cuts = list(terminal_cut.ancestry()) # ordered parent -> root
         cuts.reverse() # ordered root -> parent
         cuts.append(terminal_cut)
@@ -322,8 +322,11 @@ class CutflowCollection:
         return cutflow_sum
 
     def reorder(self, ordered_names):
-        if len(set(self.names) - set(ordered_names)) > 0:
-            raise ValueError("given cutflow names do not match current set")
+        mismatches = set(self.names) - set(ordered_names)
+        if len(mismatches) > 0:
+            raise ValueError(
+                f"given cutflow names do not match current set; mismatches:\n{mismatches}"
+            )
         self.__cutflows = {n: self.__cutflows[n] for n in ordered_names}
 
     def rename(self, rename_map):

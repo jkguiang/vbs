@@ -46,7 +46,6 @@ public:
 
     bool evaluate()
     {
-
         return (arbol.getLeaf<int>("n_jets_pt30") >= 2) && (globals.getVal<Integers>("good_fatjet_idxs").size() >= 1);
     };
 };
@@ -83,14 +82,22 @@ public:
 class SelectJetsNoHbbOverlap : public SelectJets
 {
 public:
+    LorentzVector hbbjet_p4;
+
     SelectJetsNoHbbOverlap(std::string name, VBSWHAnalysis& analysis) : SelectJets(name, analysis) 
     {
         // Do nothing
     };
 
+    void loadOverlapVars()
+    {
+        good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
+        good_lep_jet_idxs = globals.getVal<Integers>("good_lep_jet_idxs");
+        hbbjet_p4 = globals.getVal<LorentzVector>("hbbjet_p4");
+    };
+
     bool overlapsHbbJet(LorentzVector jet_p4)
     {
-        LorentzVector hbbjet_p4 = globals.getVal<LorentzVector>("hbbjet_p4");
         return ROOT::Math::VectorUtil::DeltaR(hbbjet_p4, jet_p4) < 0.8;
     };
 
@@ -114,6 +121,7 @@ public:
         Integers good_lep_pdgIDs = globals.getVal<Integers>("good_lep_pdgIDs");
         Integers good_lep_idxs = globals.getVal<Integers>("good_lep_idxs");
         int n_loose_leps = 0;
+        int n_tight_leps = 0;
         int tight_lep_idx = -999;
         for (unsigned int good_lep_i = 0; good_lep_i < good_lep_p4s.size(); ++good_lep_i)
         {
@@ -125,7 +133,7 @@ public:
                 if (ttH::electronID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
                 if (ttH::electronID(lep_i, ttH::IDtight, nt.year())) 
                 {
-                    if (tight_lep_idx != -999) { return false; }
+                    n_tight_leps++;
                     tight_lep_idx = good_lep_i;
                 }
             }
@@ -134,13 +142,13 @@ public:
                 if (ttH::muonID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
                 if (ttH::muonID(lep_i, ttH::IDtight, nt.year())) 
                 {
-                    if (tight_lep_idx != -999) { return false; }
+                    n_tight_leps++;
                     tight_lep_idx = good_lep_i;
                 }
             }
         }
         // Require 1 and only 1 lepton (all passing tight ID)
-        if (tight_lep_idx == -999 || n_loose_leps != 1) { return false; }
+        if (n_tight_leps != 1 || n_loose_leps != 1) { return false; }
         arbol.setLeaf<int>("lep_pdgID", good_lep_pdgIDs.at(tight_lep_idx));
         LorentzVector lep_p4 = good_lep_p4s.at(tight_lep_idx);
         globals.setVal<LorentzVector>("lep_p4", lep_p4);

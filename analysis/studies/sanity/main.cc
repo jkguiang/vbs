@@ -12,6 +12,8 @@
 
 int main(int argc, char** argv) 
 {
+    gconf.nanoAOD_ver = 9;
+
     // CLI
     HEPCLI cli = HEPCLI(argc, argv);
 
@@ -33,12 +35,21 @@ int main(int argc, char** argv)
     arbol.newBranch<int>("event");
 
     Integers missing_events = {
+        // Missing from nanoAOD-tools
         130298786, 90477383, 112696064,  37734046,  38305474,  31526393,
         10021439, 118900901,   2941052,  14543714,   1180118,  77619176,
         112044232, 31685067,  53600390, 113255849,  74702852, 115514661,
         11759130, 126632092,  64075356,  65957371,  54161067, 117859068,
         141135518,  9108043, 121872410,  91185720,  17536806,  93731328,
-        135946749, 122616630
+        135946749, 122616630,
+        // Missing from this
+        13932472,   47872923, 146988487, 105264637, 130851216,  38593547,
+        120579460,  63381761,  13272790,   8154638,  31418562,  19352114,
+        79175838,   78707236,  34087498,  41088806,  44095960,  61995283,
+        62478226,  100513352, 147427542,  34070105, 107802410,  87087771,
+        43347159,  138742686,  68564602,  93919191,  57600460, 118133133,
+        113422943, 147588651,  85496954,  52913903, 139297953, 140325884,
+        50749288,  130697046
     };
 
     // Exactly 1 lepton
@@ -168,57 +179,6 @@ int main(int argc, char** argv)
     );
     cutflow.insert(geq1fatjet_skim->name, exactly1tightlep, Right);
 
-    Cut* check_leps = new LambdaCut(
-        "DumpLeptonKinematics", 
-        [&]() 
-        { 
-            int event = nt.event();
-            bool is_missing = false;
-            for (unsigned int i = 0; i < missing_events.size(); i++)
-            {
-                if (event == missing_events.at(i))
-                {
-                    is_missing = true;
-                    missing_events.erase(missing_events.begin() + i);
-                    break;
-                }
-            }
-            if (is_missing)
-            {
-                std::cout << "-------- START: " << event << " --------" << std::endl;
-                std::cout << "N electrons: " << nt.nElectron() << std::endl;
-                for (unsigned int elec_i = 0; elec_i < nt.nElectron(); elec_i++)
-                {
-                    if (ttH::electronID(elec_i, ttH::IDfakable, nt.year()))
-                    {
-                        if (ttH::electronID(elec_i, ttH::IDtight, nt.year())) { std::cout << "electron ID: loose && tight" << std::endl; }
-                        else { std::cout << "electron ID: loose && NOT tight" << std::endl; }
-                    }
-                    std::cout << "electron pt: " << nt.Electron_pt().at(elec_i) << std::endl;
-                    std::cout << "electron eta: " << nt.Electron_eta().at(elec_i) << std::endl;
-                    std::cout << "electron phi: " << nt.Electron_phi().at(elec_i) << std::endl;
-                    std::cout << "electron ttH MVA: " << nt.Electron_mvaTTH().at(elec_i) << std::endl;
-                }
-                std::cout << "N muons: " << nt.nMuon() << std::endl;
-                for (unsigned int muon_i = 0; muon_i < nt.nMuon(); muon_i++)
-                {
-                    if (ttH::muonID(muon_i, ttH::IDfakable, nt.year()))
-                    {
-                        if (ttH::muonID(muon_i, ttH::IDtight, nt.year())) { std::cout << "muon ID: loose && tight" << std::endl; }
-                        else { std::cout << "muon ID: loose && NOT tight" << std::endl; }
-                    }
-                    std::cout << "muon pt: " << nt.Muon_pt().at(muon_i) << std::endl;
-                    std::cout << "muon eta: " << nt.Muon_eta().at(muon_i) << std::endl;
-                    std::cout << "muon phi: " << nt.Muon_phi().at(muon_i) << std::endl;
-                    std::cout << "muon ttH MVA: " << nt.Muon_mvaTTH().at(muon_i) << std::endl;
-                }
-                std::cout << "---------- END: " << event << " --------" << std::endl;
-            }
-            return true;
-        }
-    );
-    cutflow.insert(exactly1tightlep->name, check_leps, Left);
-
     // Geq1FatJet
     Cut* geq1fatjet_postskim = new LambdaCut(
         "Geq1FatJetNoTightLepOverlap", 
@@ -243,6 +203,16 @@ int main(int argc, char** argv)
         }
     );
     cutflow.insert(exactly1tightlep->name, geq1fatjet_postskim, Right);
+
+    Cut* update_branches = new LambdaCut(
+        "UpdateBranches", 
+        [&]() 
+        { 
+            arbol.setLeaf<int>("event", nt.event());
+            return true;
+        }
+    );
+    cutflow.insert(geq1fatjet_postskim->name, update_branches, Right);
 
     Cut* check_fatjets = new LambdaCut(
         "DumpFatJetKinematics", 
@@ -278,17 +248,58 @@ int main(int argc, char** argv)
             return true;
         }
     );
-    cutflow.insert(geq1fatjet_postskim->name, check_fatjets, Left);
+    cutflow.insert(exactly1tightlep->name, check_fatjets, Right);
 
-    Cut* update_branches = new LambdaCut(
-        "UpdateBranches", 
+    Cut* check_leps = new LambdaCut(
+        "DumpLeptonKinematics", 
         [&]() 
         { 
-            arbol.setLeaf<int>("event", nt.event());
+            int event = nt.event();
+            bool is_missing = false;
+            for (unsigned int i = 0; i < missing_events.size(); i++)
+            {
+                if (event == missing_events.at(i))
+                {
+                    is_missing = true;
+                    missing_events.erase(missing_events.begin() + i);
+                    break;
+                }
+            }
+            if (is_missing)
+            {
+                std::cout << "-------- START: " << event << " --------" << std::endl;
+                std::cout << "N electrons: " << nt.nElectron() << std::endl;
+                for (unsigned int elec_i = 0; elec_i < nt.nElectron(); elec_i++)
+                {
+                    if (ttH::electronID_DEBUG(elec_i, ttH::IDfakable, nt.year()))
+                    {
+                        if (ttH::electronID_DEBUG(elec_i, ttH::IDtight, nt.year())) { std::cout << "electron ID: loose && tight" << std::endl; }
+                        else { std::cout << "electron ID: loose && NOT tight" << std::endl; }
+                    }
+                    else
+                    {
+                        std::cout << "electron ID: veto && NOT loose" << std::endl;
+                    }
+                }
+                std::cout << "N muons: " << nt.nMuon() << std::endl;
+                for (unsigned int muon_i = 0; muon_i < nt.nMuon(); muon_i++)
+                {
+                    if (ttH::muonID_DEBUG(muon_i, ttH::IDfakable, nt.year()))
+                    {
+                        if (ttH::muonID_DEBUG(muon_i, ttH::IDtight, nt.year())) { std::cout << "muon ID: loose && tight" << std::endl; }
+                        else { std::cout << "muon ID: loose && NOT tight" << std::endl; }
+                    }
+                    else
+                    {
+                        std::cout << "muon ID: veto && NOT loose" << std::endl;
+                    }
+                }
+                std::cout << "---------- END: " << event << " --------" << std::endl;
+            }
             return true;
         }
     );
-    cutflow.insert(geq1fatjet_postskim->name, update_branches, Right);
+    cutflow.insert(geq1fatjet_skim->name, check_leps, Right);
 
     // Run looper
     // tqdm bar;

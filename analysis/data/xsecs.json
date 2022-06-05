@@ -55,12 +55,12 @@
     "TTbb_4f_TTTo2L2Nu": 0.04,
     "TTbb_4f_TTToSemiLeptonic": 0.62,
     "WWW_4F": 0.2086,
-    "WWZ": 0.1651,
+    "WWZ_4F": 0.1651,
     "WZG": 0.04123,
     "WZZ": 0.05565,
     "ZZZ": 0.01398,
     "WWToLNuQQ": 49.997,
     "WWTo2L2Nu": 12.178,
-    "VHToNonbb": 2.207,
+    "VHToNonbb_M125": 2.207,
     "Run201": 1
 }

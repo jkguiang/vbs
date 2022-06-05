@@ -9,12 +9,24 @@ from subprocess import Popen, PIPE
 from tools.cutflow import Cutflow, CutflowCollection
 
 BKG_SAMPLE_MAP = {
-    "TTbar": {
-        "2016preVFP": ["TTTo*"],
-        "2016postVFP": ["TTTo*"],
-        "2017": ["TTTo*"],
-        "2018": ["TTTo*"],
+    "TTbar1L": {
+        "2016preVFP": ["TTToSemiLep*"],
+        "2016postVFP": ["TTToSemiLep*"],
+        "2017": ["TTToSemiLep*"],
+        "2018": ["TTToSemiLep*"],
     },
+    "TTbar2L": {
+        "2016preVFP": ["TTTo2L*"],
+        "2016postVFP": ["TTTo2L*"],
+        "2017": ["TTTo2L*"],
+        "2018": ["TTTo2L*"],
+    },
+    # "TTbar": {
+    #     "2016preVFP": ["TTTo*"],
+    #     "2016postVFP": ["TTTo*"],
+    #     "2017": ["TTTo*"],
+    #     "2018": ["TTTo*"],
+    # },
     "TTX": {
         "2016preVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
         "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
@@ -121,7 +133,8 @@ if __name__ == "__main__":
         SIG_SAMPLE_MAP,
         n_hadders=args.n_workers
     )
-    cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar", "TotalBkg", "VBSWH_mkW"])
+    # cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar", "TotalBkg", "VBSWH_mkW"])
+    cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
 
     # Write mermaid
     for group_name, cutflow in cutflows.items():
@@ -134,5 +147,5 @@ if __name__ == "__main__":
             "VBSWH_mkW": "VBSWH (kW < 0)"
         }
     )
-    for terminal_cut_name in args.terminals if args.terminals else cutflow.terminal_cut_names:
+    for terminal_cut_name in args.terminals if args.terminals else cutflows.terminal_cut_names:
         cutflows.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.csv", terminal_cut_name)
