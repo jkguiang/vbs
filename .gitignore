@@ -1,0 +1,6 @@
+*.pyc
+
+*.o
+
+**/output
+**/.ipynb_checkpoints
