@@ -3,12 +3,19 @@
 ```
 git clone https://github.com/jkguiang/rapido
 cd rapido
-make -j5
+make -j6
 cd -
 ````
-2. Run `source setup.sh`
-3. Write source code to `studies/{STUDY}`
-4. Use `bin/run` to run over many samples in parallel
+2. Install NanoTools
+```
+git clone https://github.com/cmstas/NanoTools
+cd NanoTools/NanoCORE
+make -j12
+cd -
+````
+3. Run `source setup.sh`
+4. Write source code to `studies/{STUDY}`
+5. Use `bin/run` to run over many samples in parallel or `bin/{STUDY}` to run file-by-file
 ```
 $ ./bin/run --help
 usage: run [-h] --study STUDY [--n_workers N_WORKERS] [--debug] [--nomake]
@@ -23,4 +30,4 @@ optional arguments:
   --debug               Run in debug mode
   --nomake              Do not run make before running the study
 ```
-
+6. Use `bin/merge` to merge the results
