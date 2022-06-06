@@ -1,5 +1,88 @@
 #!/bin/env python
-from metis.Sample import DBSSample
+from metis.Sample import DBSSample, DirectorySample
+
+nanoaodv9_sig = [
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL16APV_VBSWZH_incl_C2V_4_Azure_v1/merged", 
+        dataset="RunIISummer20UL16APV_VBSWZH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL16_VBSWZH_incl_C2V_4_Azure_v1/merged", 
+        dataset="RunIISummer20UL16_VBSWZH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL17_VBSWZH_incl_C2V_4_Azure_v1/merged", 
+        dataset="RunIISummer20UL17_VBSWZH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL18_VBSWZH_incl_C2V_4_Azure_v1/merged", 
+        dataset="RunIISummer20UL18_VBSWZH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL16APV_VBSWWH_incl_v2_C2V_4_Azure_v2/merged", 
+        dataset="RunIISummer20UL16APV_VBSWWH_incl_v2_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL16_VBSWWH_incl_v2_C2V_4_Azure_v2/merged", 
+        dataset="RunIISummer20UL16_VBSWWH_incl_v2_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL17_VBSWWH_incl_v2_C2V_4_Azure_v2/merged", 
+        dataset="RunIISummer20UL17_VBSWWH_incl_v2_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL18_VBSWWH_incl_v2_C2V_4_Azure_v2/merged", 
+        dataset="RunIISummer20UL18_VBSWWH_incl_v2_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL16APV_VBSOSWWH_incl_C2V_4_Azure_v1/merged/", 
+        dataset="RunIISummer20UL16APV_VBSOSWWH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL16_VBSOSWWH_incl_C2V_4_Azure_v1/merged/", 
+        dataset="RunIISummer20UL16_VBSOSWWH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL17_VBSOSWWH_incl_C2V_4_Azure_v1/merged/", 
+        dataset="RunIISummer20UL17_VBSOSWWH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL18_VBSOSWWH_incl_C2V_4_Azure_v1/merged/", 
+        dataset="RunIISummer20UL18_VBSOSWWH_incl_C2V_4_Azure", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+]
 
 # DIS searches:
 # TTTo2L2Nu: /TTTo2L2Nu_TuneCP5_13TeV*/*NanoAOD*v9-106X*/NANOAODSIM
