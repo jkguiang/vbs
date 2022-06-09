@@ -26,17 +26,17 @@ int main(int argc, char** argv)
         "RECREATE"
     );
     Arbol arbol = Arbol(output_tfile);
-    arbol.newBranch<int>("lep_pdgID");
-    arbol.newBranch<float>("lep_pt");
-    arbol.newBranch<float>("lep_eta");
-    arbol.newBranch<float>("lep_phi");
-    arbol.newBranch<float>("LT");
-    arbol.newBranch<float>("hbbjet_score");
-    arbol.newBranch<float>("hbbjet_pt");
-    arbol.newBranch<float>("hbbjet_eta");
-    arbol.newBranch<float>("hbbjet_phi");
-    arbol.newBranch<float>("hbbjet_mass");
-    arbol.newBranch<float>("hbbjet_msoftdrop");
+    arbol.newBranch<int>("lep_pdgID", -999);
+    arbol.newBranch<float>("lep_pt", -999);
+    arbol.newBranch<float>("lep_eta", -999);
+    arbol.newBranch<float>("lep_phi", -999);
+    arbol.newBranch<float>("LT", -999);
+    arbol.newBranch<float>("hbbjet_score", -999);
+    arbol.newBranch<float>("hbbjet_pt", -999);
+    arbol.newBranch<float>("hbbjet_eta", -999);
+    arbol.newBranch<float>("hbbjet_phi", -999);
+    arbol.newBranch<float>("hbbjet_mass", -999);
+    arbol.newBranch<float>("hbbjet_msoftdrop", -999);
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
@@ -46,48 +46,55 @@ int main(int argc, char** argv)
     // Pack above into VBSWH struct (also adds branches)
     VBSWHAnalysis analysis = VBSWHAnalysis(arbol, nt, cli, cutflow);
 
-    std::cout << gconf.nanoAOD_ver << std::endl;
-
     // Bookkeeping
     Cut* bookkeeping = new Bookkeeping("Bookkeeping", analysis);
     cutflow.setRoot(bookkeeping);
+
     // Lepton selection
     Cut* select_leps = new SelectLeptons("SelectLeptons", analysis);
     cutflow.insert(bookkeeping->name, select_leps, Right);
+
     // == 1 lepton selection
     Cut* has_1lep = new Has1Lep("Has1TightLep", analysis);
     cutflow.insert(select_leps->name, has_1lep, Right);
+
     // Lepton has pT > 40
-    Cut* lep_has_ptgt40 = new LambdaCut(
+    Cut* lep_pt_gt40 = new LambdaCut(
         "LepPtGt40", [&]() { return arbol.getLeaf<float>("lep_pt") >= 40; }
     );
-    cutflow.insert(has_1lep->name, lep_has_ptgt40, Right);
+    cutflow.insert(has_1lep->name, lep_pt_gt40, Right);
+
     // Fat jet selection
     Cut* select_fatjets = new SelectFatJets("SelectFatJets", analysis);
-    cutflow.insert(lep_has_ptgt40->name, select_fatjets, Right);
+    cutflow.insert(lep_pt_gt40->name, select_fatjets, Right);
+
     // Geq1FatJet
     Cut* geq1fatjet = new LambdaCut(
         "Geq1FatJet", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 1; }
     );
     cutflow.insert(select_fatjets->name, geq1fatjet, Right);
+
     // Hbb selection
     Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", analysis);
     cutflow.insert(geq1fatjet->name, select_hbbjet, Right);
+
+    // Hbb score > 0.9
+    Cut* hbbjet_score_gt0p9 = new LambdaCut(
+        "PNetHbbScoreGt0p9", [&]() { return arbol.getLeaf<float>("hbbjet_score") > 0.9; }
+    );
+    cutflow.insert(select_hbbjet->name, hbbjet_score_gt0p9, Right);
+
     // Jet selection
     Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
-    cutflow.insert(select_hbbjet->name, select_jets, Right);
+    cutflow.insert(hbbjet_score_gt0p9->name, select_jets, Right);
+
     // VBS jet selection
     Cut* select_vbsjets_maxE = new SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
     cutflow.insert(select_jets->name, select_vbsjets_maxE, Right);
+
     // Basic VBS jet requirements
     Cut* vbsjets_presel = new VBSPresel("MjjGt500detajjGt3", analysis);
     cutflow.insert(select_vbsjets_maxE->name, vbsjets_presel, Right);
-
-    // DEBUG cuts
-    Cut* geq1lepton = new LambdaCut(
-        "Geq1VetoLepton", [&]() { return cutflow.globals.getVal<Integers>("good_lep_idxs").size() >= 1; }
-    );
-    cutflow.insert(select_leps->name, geq1lepton, Right);
 
     // Run looper
     looper.run(
@@ -106,7 +113,7 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.runUntil("Has1TightLep");
+                bool passed = cutflow.runUntil(vbsjets_presel->name);
                 if (passed) { arbol.fillTTree(); }
             }
         }
