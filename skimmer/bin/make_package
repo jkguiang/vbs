@@ -122,9 +122,6 @@ tar -chJf package.tar.gz NanoAODTools \
     --exclude="NanoAODTools/python/postprocessing/data" \
     --exclude="NanoAODTools/NanoTools/.git" \
     --exclude="NanoAODTools/package.tar.gz"
-    # --exclude="NanoAODTools/.git" \
-    # --exclude="NanoAODTools/NanoTools/.git" \
-    # --exclude="NanoAODTools/package.tar.gz"
 
 mkdir -p $ORIG_DIR/packages
 

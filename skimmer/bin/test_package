@@ -79,16 +79,30 @@ echo "----------------------------------------------------"
 sh scripts/run.sh $PYTHONX ${NANOAODPATHS[@]}
 echo ""
 
-SKIMFILES=($(ls *.root))
-if [[ "${#SKIMFILES[@]}" == "0" ]]; then
-    echo "ERROR: no skims were produced"
+RUN_STATUS=$?
+if [[ $RUN_STATUS != 0 ]]; then
+    echo "Removing output because scripts/nano_postproc.py crashed with exit code $?"
+    rm *.root
     exit 1
-else
-    echo "Produced the following skim(s): ${SKIMFILES[@]}"
-    mv *.root $ORIG_DIR/
 fi
 
+# Merge skims if multiple are made
+SKIMFILES=($(ls *_Skim.root))
+if [[ "${#SKIMFILES[@]}" == "0" ]]; then
+    echo "No output files to merge; exiting..."
+    exit 0
+elif [[ "${#SKIMFILES[@]}" == "1" ]]; then
+    mv ${SKIMFILES[0]} output.root
+else
+    MERGECMD="$PYTHONX scripts/haddnano.py output.root ${SKIMFILES[@]}"
+    echo $MERGECMD
+    $MERGECMD
+fi
+
+mv *.root $ORIG_DIR/
+
 cd $ORIG_DIR
+
 if [[ "$DEBUG" == "false" ]]; then
     # Clean up
     rm -rf temp_dir
