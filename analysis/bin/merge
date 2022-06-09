@@ -21,12 +21,6 @@ BKG_SAMPLE_MAP = {
         "2017": ["TTTo2L*"],
         "2018": ["TTTo2L*"],
     },
-    # "TTbar": {
-    #     "2016preVFP": ["TTTo*"],
-    #     "2016postVFP": ["TTTo*"],
-    #     "2017": ["TTTo*"],
-    #     "2018": ["TTTo*"],
-    # },
     "TTX": {
         "2016preVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
         "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
@@ -67,8 +61,6 @@ def hadd_job(split_cmd):
     hadd.wait()
 
 def merge(output_dir, sample_map, n_hadders=8):
-    # Set up output directory for merged files
-    os.makedirs(f"{output_dir}/Run2", exist_ok=True)
     # Collect cutflows and stage merge jobs
     hadd_cmds = []
     merged_cutflows = {}
@@ -88,9 +80,12 @@ def merge(output_dir, sample_map, n_hadders=8):
                     root_files_to_merge.append(root_file)
                     groups[year].append(root_file.split("/")[-1].replace(".root", ""))
         # Stage merge (hadd) jobs
-        hadd_cmds.append(["hadd", f"{output_dir}/Run2/{group_name}.root"] + root_files_to_merge)
+        output_file = f"{output_dir}/Run2/{group_name}.root"
+        hadd_cmds.append(["hadd", output_file] + root_files_to_merge)
+        if os.path.exists(output_file):
+            os.remove(output_file)
         # Write list of files that were hadded
-        with open(f"{output_dir}/Run2/{group_name}.txt", "w") as f_out:
+        with open(output_file.replace(".root", ".txt"), "w") as f_out:
             for year, group in groups.items():
                 f_out.write("{0}:\n{1}\n\n".format(year, '\n'.join(sorted(group))))
 
@@ -120,6 +115,7 @@ if __name__ == "__main__":
     )
     args = cli.parse_args()
     output_dir = f"studies/{args.study}/output"
+    os.makedirs(f"{output_dir}/Run2", exist_ok=True)
     # Get Cutflow objects for background samples
     cutflows = merge(
         output_dir,
@@ -133,7 +129,6 @@ if __name__ == "__main__":
         SIG_SAMPLE_MAP,
         n_hadders=args.n_workers
     )
-    # cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar", "TotalBkg", "VBSWH_mkW"])
     cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
 
     # Write mermaid
