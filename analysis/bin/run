@@ -133,7 +133,7 @@ if __name__ == "__main__":
 
     # Gather samples
     ceph_dir = "/ceph/cms/store/user/jguiang"
-    skim = "VBSVHSkim/1lep_1ak8_2ak4_postskim"
+    skim = "VBSVHSkim/bkg_1lep_1ak8_2ak4_postskim"
     samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
     # Add background samples
     samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/output_1.root")
@@ -146,7 +146,6 @@ if __name__ == "__main__":
     samples["2017"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
     samples["2018"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
     for year, files in samples.items():
-        # files = filter(files, lambda f: f.split("/")[-2][:4] == "TTTo")
         print(f"Orchestrating {year} jobs...")
         # Run study
         orchestrator = VBSOrchestrator(
