@@ -75,6 +75,10 @@ public:
         arbol.setLeaf<float>("hbbjet_phi", best_hbbjet_p4.phi());
         arbol.setLeaf<float>("hbbjet_mass", globals.getVal<Floats>("good_fatjet_masses").at(best_hbbjet_i));
         arbol.setLeaf<float>("hbbjet_msoftdrop", globals.getVal<Floats>("good_fatjet_msoftdrops").at(best_hbbjet_i));
+        arbol.setLeaf<float>(
+            "ST", 
+            (arbol.getLeaf<float>("LT") + best_hbbjet_p4.pt())
+        );
         return true;
     };
 };
@@ -156,10 +160,6 @@ public:
         arbol.setLeaf<float>("lep_eta", lep_p4.eta());
         arbol.setLeaf<float>("lep_phi", lep_p4.phi());
         arbol.setLeaf<float>("LT", (lep_p4.pt() + arbol.getLeaf<float>("MET")));
-        arbol.setLeaf<float>(
-            "ST", 
-            (arbol.getLeaf<float>("LT") + arbol.getLeaf<float>("hbbjet_pt"))
-        );
         return true;
     };
 };
