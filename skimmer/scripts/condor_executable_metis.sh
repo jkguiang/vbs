@@ -145,33 +145,31 @@ INPUTFILES_XROOTD=($INPUTFILES_XROOTD)
 
 # Run the postprocessor
 if [[ "$USEPYTHON2" != "" ]]; then PYTHONX="python2"; else PYTHONX="python3"; fi
-CMD="$PYTHONX scripts/nano_postproc.py \
-    ./ \
-    ${INPUTFILES_XROOTD[@]} \
-    -b python/postprocessing/modules/skimmer/keep_and_drop.txt \
-    -I PhysicsTools.NanoAODTools.postprocessing.modules.skimmer.lepJetBTagAdder lepJetBTagDeepFlav \
-    -I PhysicsTools.NanoAODTools.postprocessing.modules.skimmer.skimModule skimModuleConstr"
-echo $CMD
-echo "Running nano_postproc.py" | tee >(cat >&2)
-$CMD > >(tee nano_postproc.txt) 2> >(tee nano_postproc_stderr.txt >&2)
+
+echo ""
+echo "Running sh scripts/run.sh $PYTHONX ${NANOAODPATHS[@]}"
+echo "------------------ scripts/run.sh ------------------"
+cat scripts/run.sh
+echo "----------------------------------------------------"
+sh scripts/run.sh $PYTHONX ${NANOAODPATHS[@]}
+echo ""
 
 RUN_STATUS=$?
-
 if [[ $RUN_STATUS != 0 ]]; then
-    echo "Removing output file because scripts/nano_postproc.py crashed with exit code $?"
+    echo "Removing output because scripts/nano_postproc.py crashed with exit code $?"
     rm *.root
-    echo "Exiting..."
     exit 1
 fi
 
-NANO_POSTPROC_OUTPUTFILES=($(ls *_Skim.root))
-if [[ "${#NANO_POSTPROC_OUTPUTFILES[@]}" == "0" ]]; then
+# Merge skims if multiple are made
+SKIMFILES=($(ls *_Skim.root))
+if [[ "${#SKIMFILES[@]}" == "0" ]]; then
     echo "No output files to merge; exiting..."
     exit 0
-elif [[ "${#NANO_POSTPROC_OUTPUTFILES[@]}" == "1" ]]; then
-    mv ${NANO_POSTPROC_OUTPUTFILES[0]} ${OUTPUTNAME}.root
+elif [[ "${#SKIMFILES[@]}" == "1" ]]; then
+    mv ${SKIMFILES[0]} output.root
 else
-    MERGECMD="$PYTHONX scripts/haddnano.py ${OUTPUTNAME}.root ${NANO_POSTPROC_OUTPUTFILES[@]}"
+    MERGECMD="$PYTHONX scripts/haddnano.py ${OUTPUTNAME}.root ${SKIMFILES[@]}"
     echo $MERGECMD
     $MERGECMD
 fi
