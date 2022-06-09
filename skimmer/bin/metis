@@ -3,10 +3,15 @@
 import argparse
 import time
 import os
+import sys
+print(os.getcwd())
+sys.path.append(os.getcwd())
 from metis.CondorTask import CondorTask
 from metis.StatsParser import StatsParser
 from metis.Utils import good_sites
-from samples.mc import nanoaodv9_bkg as samples
+# from samples.mc import nanoaodv9_bkg as samples
+from samples.mc import nanoaodv9_sig as samples
+# from samples.data import nanoaodv9 as samples
 
 cli = argparse.ArgumentParser(description="Submit NanoAOD-skimming condor jobs")
 cli.add_argument(
