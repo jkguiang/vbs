@@ -37,7 +37,10 @@ class PandasAnalysis:
             for weight_col in weight_columns[1:]:
                 self.df["event_weight"] *= self.df[weight_col]
 
-        self.selections = set()
+    def make_selection(self, selection):
+        if selection and type(selection) == str:
+            selection = self.df.eval(selection)
+        self.df = self.df[selection].copy()
 
     def sig_df(self, selection=None):
         if not selection:
@@ -63,8 +66,17 @@ class PandasAnalysis:
         else:
             return sig_df.event_weight.sum(), bkg_df.event_weight.sum()
 
-    def set_split_column(self, ratio=0.5):
-        self.df["split"] = (np.random.rand(len(self.df)) < ratio)
+    def set_split_column(self, ratio=0.5, name="split"):
+        self.df[name] = (np.random.rand(len(self.df)) < ratio)
+        self.df[f"{name}_weight"] = self.df.event_weight
+        for sample_name in self.df.name.unique():
+            split_left = ((self.df.name == sample_name) & ~self.df[name])
+            split_right = ((self.df.name == sample_name) & self.df[name])
+            orig_integral = self.df[split_left | split_right].event_weight.sum()
+            split_left_integral = self.df[split_left].event_weight.sum()
+            split_right_integral = self.df[split_right].event_weight.sum()
+            self.df.loc[split_left, f"{name}_weight"] *= orig_integral/split_left_integral
+            self.df.loc[split_right, f"{name}_weight"] *= orig_integral/split_right_integral
 
     def plot_sig_vs_bkg(self, column, bins, selection="", raw=False, xlabel=""):
         fig, axes = plt.subplots(figsize=(12, 9))
@@ -106,5 +118,5 @@ class PandasAnalysis:
             else:
                 sel = f"{variable} {operator} {wp}"
                 
-            sig, bkg = vbswh.get_event_counts(selection=sel)
+            sig, bkg = self.get_event_counts(selection=sel)
             print(f"{sel},{sig},{bkg}")
