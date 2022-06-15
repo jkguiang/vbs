@@ -38,7 +38,7 @@ nanoaodv9_sig = [
         use_xrootd=True
     ),
     DirectorySample(
-        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL18_VBSWWH_incl_v2_C2V_4_Azure_v2/merged", 
+        location="/ceph/cms/store/user/phchang/VBSVVHSignalSamples/RunIISummer20UL18_VBSWWH_incl_v2_C2V_4_Azure/merged",
         dataset="RunIISummer20UL18_VBSWWH_incl_v2_C2V_4_Azure", 
         use_xrootd=True
     ),
@@ -62,26 +62,26 @@ nanoaodv9_sig = [
         dataset="RunIISummer20UL18_VBSOSWWH_incl_C2V_4_Azure", 
         use_xrootd=True
     ),
-    # DirectorySample(
-    #     location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1", 
-    #     dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN", 
-    #     use_xrootd=True
-    # ),
-    # DirectorySample(
-    #     location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1", 
-    #     dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN", 
-    #     use_xrootd=True
-    # ),
-    # DirectorySample(
-    #     location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN_v1", 
-    #     dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN", 
-    #     use_xrootd=True
-    # ),
-    # DirectorySample(
-    #     location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1", 
-    #     dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN", 
-    #     use_xrootd=True
-    # ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
+    DirectorySample(
+        location="/ceph/cms/store/user/jguiang/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1", 
+        dataset="VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN", 
+        use_xrootd=True
+    ),
 ]
 
 # DIS searches:
