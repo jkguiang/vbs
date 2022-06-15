@@ -1,4 +1,5 @@
 #include "../core.h"
+#include "../scalefactors.h"
 #include "cuts.h"
 // RAPIDO
 #include "arbol.h"
@@ -27,16 +28,16 @@ int main(int argc, char** argv)
     );
     Arbol arbol = Arbol(output_tfile);
     arbol.newBranch<int>("lep_pdgID", -999);
-    arbol.newBranch<float>("lep_pt", -999);
-    arbol.newBranch<float>("lep_eta", -999);
-    arbol.newBranch<float>("lep_phi", -999);
-    arbol.newBranch<float>("LT", -999);
-    arbol.newBranch<float>("hbbjet_score", -999);
-    arbol.newBranch<float>("hbbjet_pt", -999);
-    arbol.newBranch<float>("hbbjet_eta", -999);
-    arbol.newBranch<float>("hbbjet_phi", -999);
-    arbol.newBranch<float>("hbbjet_mass", -999);
-    arbol.newBranch<float>("hbbjet_msoftdrop", -999);
+    arbol.newBranch<double>("lep_pt", -999);
+    arbol.newBranch<double>("lep_eta", -999);
+    arbol.newBranch<double>("lep_phi", -999);
+    arbol.newBranch<double>("LT", -999);
+    arbol.newBranch<double>("hbbjet_score", -999);
+    arbol.newBranch<double>("hbbjet_pt", -999);
+    arbol.newBranch<double>("hbbjet_eta", -999);
+    arbol.newBranch<double>("hbbjet_phi", -999);
+    arbol.newBranch<double>("hbbjet_mass", -999);
+    arbol.newBranch<double>("hbbjet_msoftdrop", -999);
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
@@ -60,7 +61,7 @@ int main(int argc, char** argv)
 
     // Lepton has pT > 40
     Cut* lep_pt_gt40 = new LambdaCut(
-        "LepPtGt40", [&]() { return arbol.getLeaf<float>("lep_pt") >= 40; }
+        "LepPtGt40", [&]() { return arbol.getLeaf<double>("lep_pt") >= 40; }
     );
     cutflow.insert(has_1lep->name, lep_pt_gt40, Right);
 
@@ -80,7 +81,7 @@ int main(int argc, char** argv)
 
     // Hbb score > 0.9
     Cut* hbbjet_score_gt0p9 = new LambdaCut(
-        "PNetHbbScoreGt0p9", [&]() { return arbol.getLeaf<float>("hbbjet_score") > 0.9; }
+        "PNetHbbScoreGt0p9", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.9; }
     );
     cutflow.insert(select_hbbjet->name, hbbjet_score_gt0p9, Right);
 

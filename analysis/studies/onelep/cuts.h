@@ -61,7 +61,7 @@ public:
     bool evaluate()
     {
         // Select fatjet with best (highest) ParticleNet Hbb score
-        Floats good_fatjet_hbbtags = globals.getVal<Floats>("good_fatjet_hbbtags");
+        Doubles good_fatjet_hbbtags = globals.getVal<Doubles>("good_fatjet_hbbtags");
         int best_hbbjet_i = std::distance(
             good_fatjet_hbbtags.begin(), 
             std::max_element(good_fatjet_hbbtags.begin(), good_fatjet_hbbtags.end())
@@ -69,15 +69,15 @@ public:
         // Store the fatjet
         LorentzVector best_hbbjet_p4 = globals.getVal<LorentzVectors>("good_fatjet_p4s").at(best_hbbjet_i);
         globals.setVal<LorentzVector>("hbbjet_p4", best_hbbjet_p4);
-        arbol.setLeaf<float>("hbbjet_score", globals.getVal<Floats>("good_fatjet_hbbtags").at(best_hbbjet_i));
-        arbol.setLeaf<float>("hbbjet_pt", best_hbbjet_p4.pt());
-        arbol.setLeaf<float>("hbbjet_eta", best_hbbjet_p4.eta());
-        arbol.setLeaf<float>("hbbjet_phi", best_hbbjet_p4.phi());
-        arbol.setLeaf<float>("hbbjet_mass", globals.getVal<Floats>("good_fatjet_masses").at(best_hbbjet_i));
-        arbol.setLeaf<float>("hbbjet_msoftdrop", globals.getVal<Floats>("good_fatjet_msoftdrops").at(best_hbbjet_i));
-        arbol.setLeaf<float>(
+        arbol.setLeaf<double>("hbbjet_score", globals.getVal<Doubles>("good_fatjet_hbbtags").at(best_hbbjet_i));
+        arbol.setLeaf<double>("hbbjet_pt", best_hbbjet_p4.pt());
+        arbol.setLeaf<double>("hbbjet_eta", best_hbbjet_p4.eta());
+        arbol.setLeaf<double>("hbbjet_phi", best_hbbjet_p4.phi());
+        arbol.setLeaf<double>("hbbjet_mass", globals.getVal<Doubles>("good_fatjet_masses").at(best_hbbjet_i));
+        arbol.setLeaf<double>("hbbjet_msoftdrop", globals.getVal<Doubles>("good_fatjet_msoftdrops").at(best_hbbjet_i));
+        arbol.setLeaf<double>(
             "ST", 
-            (arbol.getLeaf<float>("LT") + best_hbbjet_p4.pt())
+            (arbol.getLeaf<double>("LT") + best_hbbjet_p4.pt())
         );
         return true;
     };
@@ -156,10 +156,10 @@ public:
         arbol.setLeaf<int>("lep_pdgID", good_lep_pdgIDs.at(tight_lep_idx));
         LorentzVector lep_p4 = good_lep_p4s.at(tight_lep_idx);
         globals.setVal<LorentzVector>("lep_p4", lep_p4);
-        arbol.setLeaf<float>("lep_pt", lep_p4.pt());
-        arbol.setLeaf<float>("lep_eta", lep_p4.eta());
-        arbol.setLeaf<float>("lep_phi", lep_p4.phi());
-        arbol.setLeaf<float>("LT", (lep_p4.pt() + arbol.getLeaf<float>("MET")));
+        arbol.setLeaf<double>("lep_pt", lep_p4.pt());
+        arbol.setLeaf<double>("lep_eta", lep_p4.eta());
+        arbol.setLeaf<double>("lep_phi", lep_p4.phi());
+        arbol.setLeaf<double>("LT", (lep_p4.pt() + arbol.getLeaf<double>("MET")));
         return true;
     };
 };
