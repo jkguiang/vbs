@@ -75,10 +75,15 @@ class PandasAnalysis:
             orig_integral = self.df[split_left | split_right].event_weight.sum()
             split_left_integral = self.df[split_left].event_weight.sum()
             split_right_integral = self.df[split_right].event_weight.sum()
-            self.df.loc[split_left, f"{name}_weight"] *= orig_integral/split_left_integral
-            self.df.loc[split_right, f"{name}_weight"] *= orig_integral/split_right_integral
+            if orig_integral*split_left_integral*split_right_integral == 0.:
+                self.df.loc[(split_left | split_right), f"{name}_weight"] *= 0.
+            else:
+                self.df.loc[split_left, f"{name}_weight"] *= orig_integral/split_left_integral
+                self.df.loc[split_right, f"{name}_weight"] *= orig_integral/split_right_integral
 
-    def plot_sig_vs_bkg(self, column, bins, selection="", raw=False, xlabel=""):
+    def plot_sig_vs_bkg(self, column, bins, selection="", abs=False, raw=False, 
+                        xlabel="", logy=False):
+
         fig, axes = plt.subplots(figsize=(12, 9))
 
         bkg_df = self.bkg_df(selection=selection)
@@ -89,29 +94,39 @@ class PandasAnalysis:
         else:
             bkg_weights, sig_weights = bkg_df.event_weight, sig_df.event_weight
 
+        bkg_data = bkg_df[column] if not abs else np.abs(bkg_df[column])
         axes.hist(
-            clip(bkg_df[column], bins),
+            clip(bkg_data, bins),
             bins=bins,
             weights=bkg_weights,
             alpha=0.5,
-            label=f"total background [{sum(bkg_weights):0.1f} events]"
+            label=f"total background [{sum(bkg_weights):0.1f} events]",
+            log=logy
         )
 
+        sig_data = sig_df[column] if not abs else np.abs(sig_df[column])
         axes.hist(
-            clip(sig_df[column], bins),
+            clip(sig_data, bins),
             bins=bins,
             weights=sig_weights,
             histtype="step",
             color="r",
-            label=f"total signal [{sum(sig_weights):0.1f} events]"
+            label=f"total signal [{sum(sig_weights):0.1f} events]",
+            log=logy
         )
         
         axes.set_xlabel(xlabel, size=18)
         axes.set_ylabel("Events", size=18)
         axes.legend(fontsize=16)
 
-    def mini_sig_scan(self, variable, working_points, operator=">", base_selection=""):
-        print("sel,sig,bkg")
+        return axes
+
+    def fom_scan(self, variable, working_points, abs=False, operator=">", 
+                 base_selection="", fom=lambda s, b: s/np.sqrt(b)):
+        if abs:
+            variable = f"abs({variable})"
+
+        print("sel,sig,bkg,fom")
         for wp in working_points:
             if base_selection:
                 sel = f"{base_selection} and {variable} {operator} {wp}"
@@ -119,4 +134,4 @@ class PandasAnalysis:
                 sel = f"{variable} {operator} {wp}"
                 
             sig, bkg = self.get_event_counts(selection=sel)
-            print(f"{sel},{sig},{bkg}")
+            print(f"{sel},{sig},{bkg},{fom(sig, bkg)}")
