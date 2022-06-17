@@ -132,15 +132,15 @@ Davix.GSI.CACheck: n
 EOL
 
 #------------------------------------------------------------------------------------------------------------------------------>
-INPUTFILES_XROOTD=""
+NANOAODPATHS=""
 for filename in $(echo $INPUTFILENAMES | sed s/,/\ /g); do
     if [[ "${XROOTDPROTOCOL}" == *"http"* ]]; then
-        INPUTFILES_XROOTD="$INPUTFILES_XROOTD ${XROOTDPROTOCOL}://${XROOTDHOST}${filename}"
+        NANOAODPATHS="$NANOAODPATHS ${XROOTDPROTOCOL}://${XROOTDHOST}${filename}"
     else
-        INPUTFILES_XROOTD="$INPUTFILES_XROOTD ${XROOTDPROTOCOL}://${XROOTDHOST}/${filename}"
+        NANOAODPATHS="$NANOAODPATHS ${XROOTDPROTOCOL}://${XROOTDHOST}/${filename}"
     fi
 done
-INPUTFILES_XROOTD=($INPUTFILES_XROOTD)
+NANOAODPATHS=($NANOAODPATHS)
 #------------------------------------------------------------------------------------------------------------------------------>
 
 # Run the postprocessor
