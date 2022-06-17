@@ -147,7 +147,6 @@ public:
         {
             if (!ttH::electronID(i, ttH::IDveto, nt.year())) { continue; }
             LorentzVector el_p4 = nt.Electron_p4().at(i);
-            // if (el_p4.pt() <= 40) { continue; } // DEBUG: add back in!!
             // Store basic info
             good_lep_p4s.push_back(el_p4);
             good_lep_pdgIDs.push_back(-nt.Electron_charge().at(i)*11);
@@ -178,7 +177,6 @@ public:
         {
             if (!ttH::muonID(i, ttH::IDveto, nt.year())) { continue; }
             LorentzVector mu_p4 = nt.Muon_p4().at(i);
-            // if (mu_p4.pt() <= 40) { continue; } // DEBUG: add back in!!
             // Store basic info
             good_lep_p4s.push_back(mu_p4);
             good_lep_pdgIDs.push_back(-nt.Muon_charge().at(i)*13);
