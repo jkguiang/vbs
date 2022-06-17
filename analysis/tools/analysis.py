@@ -2,6 +2,8 @@ import uproot
 import numpy as np
 import pandas as pd
 import matplotlib.pyplot as plt
+from matplotlib.colors import LogNorm, Normalize
+from mpl_toolkits.axes_grid1 import ImageGrid
 
 def clip(np_array, bins):
     clip_low = 0.5 * (bins[0] + bins[1])
@@ -118,6 +120,69 @@ class PandasAnalysis:
         axes.set_xlabel(xlabel, size=18)
         axes.set_ylabel("Events", size=18)
         axes.legend(fontsize=16)
+
+        return axes
+
+    def plot_sig_vs_bkg_2D(self, xcolumn, ycolumn, xbins, ybins, selection="", xabs=False, 
+                           yabs=False, raw=False, xlabel="", ylabel="", logz=False):
+
+        fig, axes = plt.subplots(1, 3, figsize=(24, 9), gridspec_kw={"width_ratios": [20, 20, 1]})
+
+        bkg_df = self.bkg_df(selection=selection)
+        sig_df = self.sig_df(selection=selection)
+
+        if raw:
+            bkg_weights, sig_weights = np.ones(len(bkg_df)), np.ones(len(sig_df))
+        else:
+            bkg_weights, sig_weights = bkg_df.event_weight, sig_df.event_weight
+
+        bkg_xdata = bkg_df[xcolumn] if not xabs else np.abs(bkg_df[xcolumn])
+        bkg_ydata = bkg_df[ycolumn] if not yabs else np.abs(bkg_df[ycolumn])
+        bkg_counts, _, _ = np.histogram2d(
+            clip(bkg_xdata, xbins),
+            clip(bkg_ydata, ybins),
+            bins=[xbins, ybins],
+            weights=bkg_weights,
+        )
+        axes[0].set_title(f"total background [{sum(bkg_weights):0.1f} events]", size=18)
+
+        sig_xdata = sig_df[xcolumn] if not xabs else np.abs(sig_df[xcolumn])
+        sig_ydata = sig_df[ycolumn] if not yabs else np.abs(sig_df[ycolumn])
+        sig_counts, _, _ = np.histogram2d(
+            clip(sig_xdata, xbins),
+            clip(sig_ydata, ybins),
+            bins=[xbins, ybins],
+            weights=sig_weights
+        )
+        axes[1].set_title(f"total signal [{sum(sig_weights):0.1f} events]", size=18)
+
+        if logz:
+            nonzero_counts = np.concatenate(
+                [bkg_counts[bkg_counts > 0].flatten(), sig_counts[sig_counts > 0].flatten()]
+            )
+            norm = LogNorm(
+                vmin=np.min(nonzero_counts),
+                vmax=np.max([bkg_counts, sig_counts])
+            )
+        else:
+            norm = Normalize(
+                vmin=np.min([bkg_counts, sig_counts]), 
+                vmax=np.max([bkg_counts, sig_counts])
+            )
+
+        bkg_mesh = axes[0].pcolormesh(xbins, ybins, bkg_counts.T, norm=norm)
+        sig_mesh = axes[1].pcolormesh(xbins, ybins, sig_counts.T, norm=norm)
+
+        axes[0].set_xlim(xbins[0], xbins[-1])
+        axes[0].set_ylim(ybins[0], ybins[-1])
+        axes[1].set_xlim(xbins[0], xbins[-1])
+        axes[1].set_ylim(ybins[0], ybins[-1])
+
+        fig.colorbar(sig_mesh, cax=axes[2])
+        
+        axes[0].set_xlabel(xlabel, size=18)
+        axes[0].set_ylabel(ylabel, size=18)
+        axes[1].set_xlabel(xlabel, size=18)
 
         return axes
 
