@@ -75,10 +75,7 @@ public:
         arbol.setLeaf<double>("hbbjet_phi", best_hbbjet_p4.phi());
         arbol.setLeaf<double>("hbbjet_mass", globals.getVal<Doubles>("good_fatjet_masses").at(best_hbbjet_i));
         arbol.setLeaf<double>("hbbjet_msoftdrop", globals.getVal<Doubles>("good_fatjet_msoftdrops").at(best_hbbjet_i));
-        arbol.setLeaf<double>(
-            "ST", 
-            (arbol.getLeaf<double>("LT") + best_hbbjet_p4.pt())
-        );
+        arbol.setLeaf<double>("ST", (arbol.getLeaf<double>("LT") + best_hbbjet_p4.pt()));
         return true;
     };
 };
