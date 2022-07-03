@@ -153,24 +153,25 @@ public:
             good_lep_idxs.push_back(i);
             good_lep_jet_idxs.push_back(nt.Electron_jetIdx().at(i));
             if (cli.is_data) { continue; }
-            /* FIXME: add lepton sf code
             // Get scale factor (and up/down variations)
             double el_eta = std::max(std::min(el_p4.eta(), 2.4999f), -2.4999f);
             double el_pt = el_p4.pt();
             // event --> reco
-            lep_sf *= ttH::getElecRecoEffSFUL(el_eta, el_pt, nt.year());
-            err_up += std::pow(ttH::getElecRecoEffSFULErr(el_eta, el_pt, nt.year()), 2);
-            err_dn += std::pow(ttH::getElecRecoEffSFULErr(el_eta, el_pt, nt.year()), 2);
+            lep_sf *= sfs.el_reco_sf->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_reco_sf->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_reco_sf->getErr(el_eta, el_pt), 2);
             // reco --> loose POG ID
-            lep_sf *= ttH::getElecPOGLooseSF(el_eta, el_pt, nt.year());
-            err_up += std::pow(ttH::getElecPOGLooseSFErr(el_eta, el_pt, nt.year()), 2);
-            err_dn += std::pow(ttH::getElecPOGLooseSFErr(el_eta, el_pt, nt.year()), 2);
-            // loose POG ID --> loose ttH ID --> tight ttH ID
-            lep_sf *= ttH::getElecLooseSF(el_eta, el_pt, nt.year());
-            lep_sf *= ttH::getElecTightSF(el_eta, el_pt, nt.year());
-            err_up += std::pow(ttH::getElecTTHSFErr(el_eta, el_pt, nt.year(), true), 2);
-            err_dn += std::pow(ttH::getElecTTHSFErr(el_eta, el_pt, nt.year(), false), 2);
-            */
+            lep_sf *= sfs.el_iso_loose_sf->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_iso_loose_sf->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_iso_loose_sf->getErr(el_eta, el_pt), 2);
+            // loose POG ID --> loose ttH ID
+            lep_sf *= sfs.el_tth_loose_sf->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_tth_loose_sf->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_tth_loose_sf->getErr(el_eta, el_pt), 2);
+            // loose ttH ID --> tight ttH ID
+            lep_sf *= sfs.el_tth_tight_sf->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_tth_tight_sf->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_tth_tight_sf->getErr(el_eta, el_pt), 2);
         }
         // Loop over muons
         for (unsigned int i = 0; i < nt.nMuon(); ++i)
@@ -183,16 +184,21 @@ public:
             good_lep_idxs.push_back(i);
             good_lep_jet_idxs.push_back(nt.Muon_jetIdx().at(i));
             if (cli.is_data) { continue; }
-            /* FIXME: add lepton sf code
             // Get scale factor (and up/down variations)
             double mu_eta = mu_p4.eta();
             double mu_pt = mu_p4.pt();
-            // medium POG ID --> loose ttH ID --> tight ttH ID (NOTE: POG sf is folded into ttH sf)
-            lep_sf *= ttH::getMuonLooseSF(mu_eta, mu_pt, nt.year());
-            lep_sf *= ttH::getMuonTightSF(mu_eta, mu_pt, nt.year());
-            err_up += std::pow(ttH::getMuonTTHSFErr(mu_eta, mu_pt, nt.year(), true), 2);
-            err_dn += std::pow(ttH::getMuonTTHSFErr(mu_eta, mu_pt, nt.year(), false), 2);
-            */
+            // event --> loose POG ID
+            lep_sf *= sfs.mu_pog_loose->getSF(mu_eta, mu_pt);
+            err_up += std::pow(sfs.mu_pog_loose->getErr(mu_eta, mu_pt), 2);
+            err_dn += std::pow(sfs.mu_pog_loose->getErr(mu_eta, mu_pt), 2);
+            // loose POG ID --> loose ttH ID
+            lep_sf *= sfs.mu_iso_loose->getSF(mu_eta, mu_pt);
+            err_up += std::pow(sfs.mu_iso_loose->getErr(mu_eta, mu_pt), 2);
+            err_dn += std::pow(sfs.mu_iso_loose->getErr(mu_eta, mu_pt), 2);
+            // loose ttH ID --> tight ttH ID
+            lep_sf *= sfs.mu_tth_tight->getSF(mu_eta, mu_pt);
+            err_up += std::pow(sfs.mu_tth_tight->getErr(mu_eta, mu_pt), 2);
+            err_dn += std::pow(sfs.mu_tth_tight->getErr(mu_eta, mu_pt), 2);
         }
         // Store lepton sf and its up/down variations
         if (!cli.is_data)
@@ -270,13 +276,13 @@ public:
         {
             // Read jet p4
             LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
-            /* FIXME: add JEC variation code
+            /* FIXME: add configurable 'jec_var' variable (from CLI?)
             // Apply up/down JECs
             if (jec_var == 1 || jec_var == -1)
             {
-                jec_unc->setJetEta(jet_p4.eta());
-                jec_unc->setJetPt(jet_p4.pt());
-                double jec_err = abs(jec_unc->getUncertainty(jec_var == 1))*jec_var;
+                sfs.jec_unc->setJetEta(jet_p4.eta());
+                sfs.jec_unc->setJetPt(jet_p4.pt());
+                double jec_err = abs(sfs.jec_unc->getUncertainty(jec_var == 1))*jec_var;
                 jet_p4 *= (1. + jec_err);
             }
             */

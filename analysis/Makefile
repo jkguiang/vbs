@@ -6,8 +6,10 @@ MAINDIR=.
 SRCDIR=studies/$(study)
 OBJDIR=studies/$(study)
 
-SOURCES=$(wildcard $(SRCDIR)/*.cc)
-OBJECTS=$(SOURCES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
+# SOURCES=$(wildcard $(SRCDIR)/*.cc)
+SOURCES=$(wildcard $(SRCDIR)/*.cc) $(wildcard tools/*.cc)
+# OBJECTS=$(SOURCES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
+OBJECTS=$(SOURCES:%.cc=%.o)
 HEADERS=$(SOURCES:.cc=.h)
 
 CC          = g++

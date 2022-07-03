@@ -8,7 +8,7 @@ import os
 import uproot
 from subprocess import Popen, PIPE
 from decimal import Decimal
-from tools.orchestrator import Orchestrator
+from utils.orchestrator import Orchestrator
 
 class VBSOrchestrator(Orchestrator):
     def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8):
@@ -64,6 +64,8 @@ class VBSOrchestrator(Orchestrator):
         else:
             xsec = self.get_xsec(input_file)
             sf = xsec*1000*self.lumi/(file_info["n_events"])
+            if "WminusH_HToBB_WToLNu_M-125" in file_info["output_name"]:
+                sf *= 137.64/self.lumi # TODO: delete this when 2018 sample is not longer missing
             if "WJetsToLNu_HT-" in file_info["output_name"]:
                 sf *= wjets_xsecs[self.year][file_info["output_name"]]
             cmd.append(f"--scale_factor={Decimal.from_float(sf)}")
@@ -136,10 +138,10 @@ if __name__ == "__main__":
     skim = "VBSVHSkim/bkg_1lep_1ak8_2ak4_postskim"
     samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
     # Add background samples
-    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/output_1.root")
-    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/output_1.root")
-    samples["2017"] += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/output_1.root")
-    samples["2018"] += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/output_1.root")
+    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
+    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged.root")
+    samples["2017"] += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged.root")
+    samples["2018"] += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged.root")
     # Add signal samples
     samples["2016preVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
     samples["2016postVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
