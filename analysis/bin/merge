@@ -6,7 +6,7 @@ import argparse
 from tqdm import tqdm
 from multiprocessing import Pool
 from subprocess import Popen, PIPE
-from tools.cutflow import Cutflow, CutflowCollection
+from utils.cutflow import Cutflow, CutflowCollection
 
 BKG_SAMPLE_MAP = {
     "TTbar1L": {
@@ -39,11 +39,11 @@ BKG_SAMPLE_MAP = {
         "2017": ["SSWW", "WW*", "WZ*", "ZZ*"],
         "2018": ["SSWW", "WW*", "WZ*", "ZZ*"],
     },
-    "VHToNonbb": {
-        "2016preVFP": ["VHToNonbb_M125"],
-        "2016postVFP": ["VHToNonbb_M125"],
-        "2017": ["VHToNonbb_M125"],
-        "2018": ["VHToNonbb_M125"]
+    "VH": {
+        "2016preVFP": ["*HToBB*", "VHToNonbb_M125"],
+        "2016postVFP": ["*HToBB*", "VHToNonbb_M125"],
+        "2017": ["*HToBB*", "VHToNonbb_M125"],
+        "2018": ["*HToBB*", "VHToNonbb_M125"]
     }
 }
 
@@ -129,7 +129,7 @@ if __name__ == "__main__":
         SIG_SAMPLE_MAP,
         n_hadders=args.n_workers
     )
-    cutflows.reorder(["VHToNonbb", "Bosons", "WJets", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
+    cutflows.reorder(["VH", "Bosons", "WJets", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
 
     # Write mermaid
     for group_name, cutflow in cutflows.items():
