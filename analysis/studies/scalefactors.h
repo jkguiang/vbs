@@ -24,30 +24,59 @@ struct SFHist
         tfile = new TFile(input_root_file);
         hist = (TH1*) tfile->Get(hist_name);
     };
+    
+    double clip (double val, double val_max)
+    {
+        return (val >= val_max) ? std::nextafter(val_max, 0.0f) : val;
+    };
 
     double getSF(double x) 
     { 
+        double x_max = hist->GetXaxis()->GetXmax();
+        x = clip(x, x_max);
         return hist->GetBinContent(hist->FindBin(x)); 
     };
     double getSF(double x, double y) 
     { 
+        double x_max = hist->GetXaxis()->GetXmax();
+        x = clip(x, x_max);
+        double y_max = hist->GetYaxis()->GetXmax();
+        y = clip(y, y_max);
         return hist->GetBinContent(hist->FindBin(x, y)); 
     };
     double getSF(double x, double y, double z) 
     { 
+        double x_max = hist->GetXaxis()->GetXmax();
+        x = clip(x, x_max);
+        double y_max = hist->GetYaxis()->GetXmax();
+        y = clip(y, y_max);
+        double z_max = hist->GetZaxis()->GetXmax();
+        y = clip(z, z_max);
         return hist->GetBinContent(hist->FindBin(x, y, z)); 
     };
 
     double getErr(double x) 
     { 
+        double x_max = hist->GetXaxis()->GetXmax();
+        x = clip(x, x_max);
         return hist->GetBinError(hist->FindBin(x)); 
     };
     double getErr(double x, double y) 
     { 
+        double x_max = hist->GetXaxis()->GetXmax();
+        x = clip(x, x_max);
+        double y_max = hist->GetYaxis()->GetXmax();
+        y = clip(y, y_max);
         return hist->GetBinError(hist->FindBin(x, y)); 
     };
     double getErr(double x, double y, double z) 
     { 
+        double x_max = hist->GetXaxis()->GetXmax();
+        x = clip(x, x_max);
+        double y_max = hist->GetYaxis()->GetXmax();
+        y = clip(y, y_max);
+        double z_max = hist->GetZaxis()->GetXmax();
+        y = clip(z, z_max);
         return hist->GetBinError(hist->FindBin(x, y, z)); 
     };
 };
