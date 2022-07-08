@@ -11,48 +11,60 @@ from decimal import Decimal
 from utils.orchestrator import Orchestrator
 
 class VBSOrchestrator(Orchestrator):
-    def __init__(self, year, study_name, study_exe, input_files, xsecs_json, n_workers=8):
-        self.output_dir = f"studies/{study_name}/output/{year}"
-        self.year = year
-        if year == "2016preVFP":
-            self.lumi = 19.52
-        elif year == "2016postVFP":
-            self.lumi = 16.81
-        elif year == "2017":
-            self.lumi = 41.48
-        elif year == "2018":
-            self.lumi = 59.83
-        else:
-            raise ValueError("year must be 2016preVFP, 2016postVFP, 2017, or 2018")
-        os.makedirs(self.output_dir, exist_ok=True)
+    def __init__(self, study_name, study_exe, input_files, xsecs_json, n_workers=8):
+        self.output_dir = f"studies/{study_name}/output"
         super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
-    def __get_file_info(self, file_name):
+    def get_year(self, input_file):
+        if "HIPM_UL2016" in input_file or "RunIISummer20UL16" in input_file or "UL16NanoAODAPVv9" in input_file:
+            return "2016preVFP"
+        elif "UL2016" in input_file or "RunIISummer20UL16" in input_file:
+            return "2016postVFP"
+        elif "UL2017" in input_file or "RunIISummer20UL17" in input_file:
+            return "2017"
+        elif "UL2018" in input_file or "RunIISummer20UL18" in input_file:
+            return "2018"
+        else:
+            raise Exception(f"No year found in {input_file}")
+
+    def get_lumi(self, input_file):
+        year = self.get_year(input_file)
+        if year == "2016preVFP":
+            return 19.52
+        elif year == "2016postVFP":
+            return 16.81
+        elif year == "2017":
+            return 41.48
+        elif year == "2018":
+            return 59.83
+
+    def get_file_info(self, input_file):
         file_info = {}
         file_info["n_events"] = 0
-        file_info["is_data"] = ("Run201" in file_name)
+        file_info["is_data"] = ("Run201" in input_file)
         # Get output info
-        file_info["output_dir"] = self.output_dir
+        file_info["output_dir"] = f"{self.output_dir}/{self.get_year(input_file)}"
+        os.makedirs(file_info["output_dir"], exist_ok=True)
         if not file_info["is_data"]:
-            file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
+            file_info["output_name"] = input_file.split("_Tune")[0].split('/')[-1]
             # Get number of events
-            with uproot.open(file_name) as f:
+            with uproot.open(input_file) as f:
                 t = f.get("Runs")
                 file_info["n_events"] = t["genEventSumw"].array(library="np").sum()
         else:
-            file_info["output_name"] = file_name.split("UL")[0][:-1].split('/')[-1]
+            file_info["output_name"] = input_file.split("UL")[0][:-1].split('/')[-1]
 
         file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
         return file_info
 
     def _get_log_files(self, input_file):
-        file_info = self.__get_file_info(input_file)
+        file_info = self.get_file_info(input_file)
         stdout_file = f"{self.output_dir}/{file_info['output_name']}.out"
         stderr_file = f"{self.output_dir}/{file_info['output_name']}.err"
         return stdout_file, stderr_file
 
     def _get_job(self, input_file):
-        file_info = self.__get_file_info(input_file)
+        file_info = self.get_file_info(input_file)
         with open("data/wjets_ht-binned_xsecs.json", "r") as f_in:
             wjets_xsecs = json.load(f_in)
         cmd = [self.executable]
@@ -65,30 +77,15 @@ class VBSOrchestrator(Orchestrator):
             cmd.append("--is_data")
         else:
             xsec = self.get_xsec(input_file)
-            sf = xsec*1000*self.lumi/(file_info["n_events"])
+            lumi = self.get_lumi(input_file)
+            sf = xsec*1000*lumi/(file_info["n_events"])
             if "WminusH_HToBB_WToLNu_M-125" in file_info["output_name"]:
-                sf *= 137.64/self.lumi # TODO: delete this when 2018 sample is not longer missing
+                sf *= 137.64/lumi # TODO: delete this when 2018 sample is not longer missing
             if "WJetsToLNu_HT-" in file_info["output_name"]:
-                sf *= wjets_xsecs[self.year][file_info["output_name"]]
+                sf *= wjets_xsecs[self.get_year(input_file)][file_info["output_name"]]
             cmd.append(f"--scale_factor={Decimal.from_float(sf)}")
         cmd.append(input_file)
         return cmd
-
-def run_test_jobs():
-    dummy_dir = "/ceph/cms/store/user/dummy/PhChangSkim/Tag"
-    dummy_files = [f"{dummy_dir}/NanoSample{i:02d}_TuneCP5/merged/merged.root" for i in range(1, 11)]
-    samples = [(2016, dummy_files), (2017, dummy_files), (2018, dummy_files)]
-    for year, files in samples:
-        print(f"Orchestrating {year} jobs...")
-        orchestrator = VBSOrchestrator(
-            year, 
-            "dummy",       # study name
-            "./bin/dummy", # study executable generated by: make study=[STUDY]
-            files,
-            xsecs_json="", # JSON with xsec->sample mapping; there is one in data/
-            n_workers=8
-        )
-        orchestrator.run()
 
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run a given study in parallel")
@@ -142,36 +139,34 @@ if __name__ == "__main__":
     # Gather samples
     ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
     skim = "1lep_1ak8_2ak4_postskim"
-    samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
+    samples = []
     # Add data samples
     if args.data:
-        samples["2016preVFP"] += glob.glob(f"{ceph_dir}/data_{skim}/*HIPM_UL2016*NanoAODv9*/merged.root")
-        samples["2016postVFP"] += glob.glob(f"{ceph_dir}/data_{skim}/*UL2016*NanoAODv9*/merged.root")
-        samples["2017"] += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/merged.root")
-        samples["2018"] += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/merged.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*HIPM_UL2016*NanoAODv9*/merged.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2016*NanoAODv9*/merged.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/merged.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/merged.root")
     # Add background samples
-    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/merged.root")
-    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/merged.root")
-    samples["2017"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL17NanoAODv9*/merged.root")
-    samples["2018"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL18NanoAODv9*/merged.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/merged.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/merged.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL17NanoAODv9*/merged.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL18NanoAODv9*/merged.root")
     # Add signal samples
-    samples["2016preVFP"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
-    samples["2016postVFP"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    samples["2017"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    samples["2018"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
-    # samples["2016preVFP"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16APV*/*.root")
-    # samples["2016postVFP"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16*/*.root")
-    # samples["2017"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL17*/*.root")
-    # samples["2018"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL18*/*.root")
-    for year, files in samples.items():
-        print(f"Orchestrating {year} jobs...")
-        # Run study
-        orchestrator = VBSOrchestrator(
-            year, 
-            args.study, 
-            f"./bin/{args.study}", 
-            files, 
-            xsecs_json="data/xsecs.json",
-            n_workers=args.n_workers
-        )
-        orchestrator.run()
+    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
+    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
+    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16APV*/*.root")
+    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16*/*.root")
+    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL17*/*.root")
+    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL18*/*.root")
+    print(f"Orchestrating {len(samples)} jobs...")
+    # Run study
+    orchestrator = VBSOrchestrator(
+        args.study, 
+        f"./bin/{args.study}", 
+        samples, 
+        xsecs_json="data/xsecs.json",
+        n_workers=args.n_workers
+    )
+    orchestrator.run()
