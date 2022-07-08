@@ -33,14 +33,16 @@ class VBSOrchestrator(Orchestrator):
         file_info["is_data"] = ("Run201" in file_name)
         # Get output info
         file_info["output_dir"] = self.output_dir
-        file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
-        file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
         if not file_info["is_data"]:
+            file_info["output_name"] = file_name.split("_Tune")[0].split('/')[-1]
             # Get number of events
             with uproot.open(file_name) as f:
                 t = f.get("Runs")
                 file_info["n_events"] = t["genEventSumw"].array(library="np").sum()
+        else:
+            file_info["output_name"] = file_name.split("UL")[0][:-1].split('/')[-1]
 
+        file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
         return file_info
 
     def _get_log_files(self, input_file):
@@ -102,6 +104,10 @@ if __name__ == "__main__":
         "--nomake", action="store_true",
         help="Do not run make before running the study"
     )
+    cli.add_argument(
+        "--data", action="store_true",
+        help="Run looper over data files (in addition to MC)"
+    )
     args = cli.parse_args()
 
     os.makedirs(f"studies/{args.study}/output", exist_ok=True)
@@ -134,19 +140,29 @@ if __name__ == "__main__":
         exit()
 
     # Gather samples
-    ceph_dir = "/ceph/cms/store/user/jguiang"
-    skim = "VBSVHSkim/bkg_1lep_1ak8_2ak4_postskim"
+    ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
+    skim = "1lep_1ak8_2ak4_postskim"
     samples = {"2016preVFP": [], "2016postVFP": [], "2017": [], "2018": []}
+    # Add data samples
+    if args.data:
+        samples["2016preVFP"] += glob.glob(f"{ceph_dir}/data_{skim}/*HIPM_UL2016*NanoAODv9*/merged.root")
+        samples["2016postVFP"] += glob.glob(f"{ceph_dir}/data_{skim}/*UL2016*NanoAODv9*/merged.root")
+        samples["2017"] += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/merged.root")
+        samples["2018"] += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/merged.root")
     # Add background samples
-    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
-    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged.root")
-    samples["2017"] += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged.root")
-    samples["2018"] += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged.root")
+    samples["2016preVFP"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/merged.root")
+    samples["2016postVFP"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/merged.root")
+    samples["2017"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL17NanoAODv9*/merged.root")
+    samples["2018"] += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL18NanoAODv9*/merged.root")
     # Add signal samples
-    samples["2016preVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
-    samples["2016postVFP"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    samples["2017"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    samples["2018"].append(f"{ceph_dir}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2016preVFP"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2016postVFP"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2017"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples["2018"].append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
+    # samples["2016preVFP"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16APV*/*.root")
+    # samples["2016postVFP"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16*/*.root")
+    # samples["2017"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL17*/*.root")
+    # samples["2018"] += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL18*/*.root")
     for year, files in samples.items():
         print(f"Orchestrating {year} jobs...")
         # Run study

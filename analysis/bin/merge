@@ -9,6 +9,12 @@ from subprocess import Popen, PIPE
 from utils.cutflow import Cutflow, CutflowCollection
 
 BKG_SAMPLE_MAP = {
+    "SingleTop": {
+        "2016preVFP": ["ST*"],
+        "2016postVFP": ["ST*"],
+        "2017": ["ST*"],
+        "2018": ["ST*"],
+    },
     "TTbar1L": {
         "2016preVFP": ["TTToSemiLep*"],
         "2016postVFP": ["TTToSemiLep*"],
@@ -129,7 +135,7 @@ if __name__ == "__main__":
         SIG_SAMPLE_MAP,
         n_hadders=args.n_workers
     )
-    cutflows.reorder(["VH", "Bosons", "WJets", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
+    cutflows.reorder(["VH", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
 
     # Write mermaid
     for group_name, cutflow in cutflows.items():
