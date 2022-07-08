@@ -240,7 +240,7 @@ public:
             good_lep_jet_idxs.push_back(nt.Electron_jetIdx().at(i));
             if (cli.is_data) { continue; }
             // Get scale factor (and up/down variations)
-            double el_eta = std::max(std::min(el_p4.eta(), 2.4999f), -2.4999f);
+            double el_eta = fabs(std::max(std::min(el_p4.eta(), 2.4999f), -2.4999f));
             double el_pt = el_p4.pt();
             // event --> reco
             lep_sf *= sfs.el_reco->getSF(el_eta, el_pt);
@@ -267,7 +267,7 @@ public:
             good_lep_jet_idxs.push_back(nt.Muon_jetIdx().at(i));
             if (cli.is_data) { continue; }
             // Get scale factor (and up/down variations)
-            double mu_eta = mu_p4.eta();
+            double mu_eta = fabs(mu_p4.eta());
             double mu_pt = mu_p4.pt();
             // event --> loose POG ID
             lep_sf *= sfs.mu_pog_loose->getSF(mu_eta, mu_pt);
