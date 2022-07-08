@@ -32,11 +32,7 @@ struct VBSWHAnalysis
     VBSWHAnalysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : arbol(arbol_ref), nt(nt_ref), cli(cli_ref), cutflow(cutflow_ref)
     {
-        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        sfs = NanoScaleFactorsUL(file_name);
-
         gconf.nanoAOD_ver = 9;
-        gconf.isAPV = (sfs.campaign == RunIISummer20UL16APV);
 
         arbol.newBranch<double>("xsec_sf", -999);
         arbol.newBranch<int>("event", -999);
@@ -82,6 +78,15 @@ struct VBSWHAnalysis
         cutflow.globals.newVar<int>("ld_vbs_jet_idx");
         cutflow.globals.newVar<int>("tr_vbs_jet_idx");
     };
+
+    void init()
+    {
+        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+        gconf.GetConfigs(nt.year());
+        gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
+
+        sfs.init(file_name);
+    };
 };
 
 class VBSWHCut : public Cut
@@ -122,6 +127,87 @@ public:
     };
 };
 
+class Passes1LepTriggers : public VBSWHCut
+{
+public:
+    Passes1LepTriggers(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    bool passesMuonTriggers()
+    {
+        switch (nt.year())
+        {
+        case (2016):
+            return (nt.HLT_IsoMu24() || nt.HLT_IsoTkMu24() || nt.HLT_IsoMu22() || nt.HLT_IsoTkMu22());
+            break;
+        case (2017):
+            return (nt.HLT_IsoMu27() || nt.HLT_IsoMu24());
+            break;
+        case (2018):
+            return (nt.HLT_IsoMu27() || nt.HLT_IsoMu24());
+            break;
+        default:
+            return false;
+            break;
+        }
+    };
+
+    bool passesElecTriggers()
+    {
+        switch (nt.year())
+        {
+        case (2016):
+            return (nt.HLT_Ele27_WPTight_Gsf() || nt.HLT_Ele25_eta2p1_WPTight_Gsf());
+            break;
+        case (2017):
+            return (nt.HLT_Ele35_WPTight_Gsf() || nt.HLT_Ele32_WPTight_Gsf());
+            break;
+        case (2018):
+            return (nt.HLT_Ele35_WPTight_Gsf() || nt.HLT_Ele32_WPTight_Gsf());
+            break;
+        default:
+            return false;
+            break;
+        }
+    };
+
+    bool evaluate()
+    {
+        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+        if (!cli.is_data) 
+        { 
+            int abs_lep_id = abs(arbol.getLeaf<int>("lep_pdgID"));
+            switch (abs_lep_id)
+            {
+            case (11):
+                return passesElecTriggers();
+                break;
+            case (13):
+                return passesMuonTriggers();
+                break;
+            default:
+                return true;
+                break;
+            }
+            return false; 
+        }
+        else if (file_name.Contains("SingleMuon"))
+        {
+            return passesMuonTriggers();
+        }
+        else if (file_name.Contains("SingleElectron") || file_name.Contains("EGamma"))
+        {
+            return passesElecTriggers();
+        }
+        else
+        {
+            return false;
+        }
+    };
+};
+
 class SelectLeptons : public VBSWHCut
 {
 public:
@@ -157,21 +243,17 @@ public:
             double el_eta = std::max(std::min(el_p4.eta(), 2.4999f), -2.4999f);
             double el_pt = el_p4.pt();
             // event --> reco
-            lep_sf *= sfs.el_reco_sf->getSF(el_eta, el_pt);
-            err_up += std::pow(sfs.el_reco_sf->getErr(el_eta, el_pt), 2);
-            err_dn += std::pow(sfs.el_reco_sf->getErr(el_eta, el_pt), 2);
-            // reco --> loose POG ID
-            lep_sf *= sfs.el_iso_loose_sf->getSF(el_eta, el_pt);
-            err_up += std::pow(sfs.el_iso_loose_sf->getErr(el_eta, el_pt), 2);
-            err_dn += std::pow(sfs.el_iso_loose_sf->getErr(el_eta, el_pt), 2);
-            // loose POG ID --> loose ttH ID
-            lep_sf *= sfs.el_tth_loose_sf->getSF(el_eta, el_pt);
-            err_up += std::pow(sfs.el_tth_loose_sf->getErr(el_eta, el_pt), 2);
-            err_dn += std::pow(sfs.el_tth_loose_sf->getErr(el_eta, el_pt), 2);
+            lep_sf *= sfs.el_reco->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_reco->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_reco->getErr(el_eta, el_pt), 2);
+            // reco --> loose ttH ID
+            lep_sf *= sfs.el_iso_loose->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_iso_loose->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_iso_loose->getErr(el_eta, el_pt), 2);
             // loose ttH ID --> tight ttH ID
-            lep_sf *= sfs.el_tth_tight_sf->getSF(el_eta, el_pt);
-            err_up += std::pow(sfs.el_tth_tight_sf->getErr(el_eta, el_pt), 2);
-            err_dn += std::pow(sfs.el_tth_tight_sf->getErr(el_eta, el_pt), 2);
+            lep_sf *= sfs.el_tth_tight->getSF(el_eta, el_pt);
+            err_up += std::pow(sfs.el_tth_tight->getErr(el_eta, el_pt), 2);
+            err_dn += std::pow(sfs.el_tth_tight->getErr(el_eta, el_pt), 2);
         }
         // Loop over muons
         for (unsigned int i = 0; i < nt.nMuon(); ++i)
