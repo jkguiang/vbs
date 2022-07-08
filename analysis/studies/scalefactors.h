@@ -66,12 +66,12 @@ struct NanoScaleFactorsUL
     NanoCampaignUL campaign;
     int year;
 
-    SFHist* el_reco_sf;
-    SFHist* el_iso_loose_sf;
-    SFHist* el_tth_tight_sf;
-    SFHist* mu_pog_loose_sf;
-    SFHist* mu_iso_loose_sf;
-    SFHist* mu_tth_tight_sf;
+    SFHist* el_reco;
+    SFHist* el_iso_loose;
+    SFHist* el_tth_tight;
+    SFHist* mu_pog_loose;
+    SFHist* mu_iso_loose;
+    SFHist* mu_tth_tight;
 
     TauIDSFTool* tau_vs_jet;
     TauIDSFTool* tau_vs_mu;
@@ -81,7 +81,7 @@ struct NanoScaleFactorsUL
 
     NanoScaleFactorsUL() {};
 
-    NanoScaleFactorsUL(TString file_name)
+    void init(TString file_name, bool taus = false)
     {
         if (file_name.Contains("RunIISummer20UL16"))
         {
@@ -101,29 +101,26 @@ struct NanoScaleFactorsUL
         }
         else
         {
-            throw std::runtime_error("ERROR - invalid year");
+            return;
         }
 
         // Init common scale factors
         switch (campaign)
         {
-        case(RunIISummer20UL16APV):
+        case (RunIISummer20UL16APV):
             set_goodrun_file("data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt");
             break;
-        case(RunIISummer20UL16):
+        case (RunIISummer20UL16):
             set_goodrun_file("data/golden_jsons/Cert_271036-325175_13TeV_Combined161718_JSON_snt.txt");
             break;
-        case(RunIISummer20UL17):
+        case (RunIISummer20UL17):
             set_goodrun_file("data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_snt.txt");
             break;
-        case(RunIISummer20UL18):
+        case (RunIISummer20UL18):
             set_goodrun_file("data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_snt.txt");
             break;
         }
-    };
 
-    void init(bool taus = false)
-    {
         // Init JEC uncertainty scale factors
         // NOTE: must download them first!
         jec_unc = new JetCorrectionUncertainty(
@@ -139,27 +136,27 @@ struct NanoScaleFactorsUL
         switch (campaign)
         {
         case (RunIISummer20UL16APV):
-            el_reco_sf = new SFHist(
+            el_reco = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2016APV_recoToloose_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_iso_loose_sf = new SFHist(
+            el_iso_loose = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2016APV_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_tth_tight_sf = new SFHist(
+            el_tth_tight = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2016APV_2lss_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_pog_loose_sf = new SFHist(
+            mu_pog_loose = new SFHist(
                 "data/lepton_sfs/muon/Efficiencies_muon_generalTracks_Z_Run2016_UL_HIPM_ID.root",
                 "NUM_LooseID_DEN_TrackerMuons_abseta_pt"
             );
-            mu_iso_loose_sf = new SFHist(
+            mu_iso_loose = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2016APV_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_tth_tight_sf = new SFHist(
+            mu_tth_tight = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2016APV_EGM2D.root",
                 "EGamma_SF2D"
             );
@@ -169,27 +166,27 @@ struct NanoScaleFactorsUL
             tau_vs_el = new TauIDSFTool("UL2016_preVFP", "DeepTau2017v2p1VSe", "VVLoose", false, false);
             break;
         case (RunIISummer20UL16):
-            el_reco_sf = new SFHist(
+            el_reco = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2016_recoToloose_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_iso_loose_sf = new SFHist(
+            el_iso_loose = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2016_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_tth_tight_sf = new SFHist(
+            el_tth_tight = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2016_2lss_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_pog_loose_sf = new SFHist(
+            mu_pog_loose = new SFHist(
                 "data/lepton_sfs/muon/Efficiencies_muon_generalTracks_Z_Run2016_UL_ID.root",
                 "NUM_LooseID_DEN_TrackerMuons_abseta_pt"
             );
-            mu_iso_loose_sf = new SFHist(
+            mu_iso_loose = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2016_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_tth_tight_sf = new SFHist(
+            mu_tth_tight = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2016_EGM2D.root",
                 "EGamma_SF2D"
             );
@@ -199,27 +196,27 @@ struct NanoScaleFactorsUL
             tau_vs_el = new TauIDSFTool("UL2016_postVFP", "DeepTau2017v2p1VSe", "VVLoose", false, false);
             break;
         case (RunIISummer20UL17):
-            el_reco_sf = new SFHist(
+            el_reco = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2017_recoToloose_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_iso_loose_sf = new SFHist(
+            el_iso_loose = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2017_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_tth_tight_sf = new SFHist(
+            el_tth_tight = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2017_2lss_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_pog_loose_sf = new SFHist(
+            mu_pog_loose = new SFHist(
                 "data/lepton_sfs/muon/Efficiencies_muon_generalTracks_Z_Run2017_UL_ID.root",
                 "NUM_LooseID_DEN_TrackerMuons_abseta_pt"
             );
-            mu_iso_loose_sf = new SFHist(
+            mu_iso_loose = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2017_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_tth_tight_sf = new SFHist(
+            mu_tth_tight = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2017_EGM2D.root",
                 "EGamma_SF2D"
             );
@@ -229,27 +226,27 @@ struct NanoScaleFactorsUL
             tau_vs_el = new TauIDSFTool("UL2017", "DeepTau2017v2p1VSe", "VVLoose", false, false);
             break;
         case (RunIISummer20UL18):
-            el_reco_sf = new SFHist(
+            el_reco = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2018_recoToloose_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_iso_loose_sf = new SFHist(
+            el_iso_loose = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2018_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            el_tth_tight_sf = new SFHist(
+            el_tth_tight = new SFHist(
                 "data/lepton_sfs/elec/egammaEffi2018_2lss_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_pog_loose_sf = new SFHist(
+            mu_pog_loose = new SFHist(
                 "data/lepton_sfs/muon/Efficiencies_muon_generalTracks_Z_Run2018_UL_ID.root",
                 "NUM_LooseID_DEN_TrackerMuons_abseta_pt"
             );
-            mu_iso_loose_sf = new SFHist(
+            mu_iso_loose = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2018_iso_EGM2D.root",
                 "EGamma_SF2D"
             );
-            mu_tth_tight_sf = new SFHist(
+            mu_tth_tight = new SFHist(
                 "data/lepton_sfs/muon/egammaEffi2018_EGM2D.root",
                 "EGamma_SF2D"
             );
