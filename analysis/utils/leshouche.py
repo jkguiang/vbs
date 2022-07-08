@@ -3,6 +3,7 @@ import argparse
 import json
 import sys
 import numpy as np
+import tqdm
 import uproot
 
 class LesHouche:
@@ -70,7 +71,8 @@ class LesHouche:
                 ("P_X", float), ("P_Y", float), ("P_Z", float), 
                 ("E", float), ("M", float),
                 ("VTIMUP", float), ("SPINUP", float)
-            ]
+            ],
+            "weights": ["rwgt"]
         }
 
     def __enter__(self):
@@ -102,8 +104,8 @@ class LesHouche:
         for xml_evt, xml_elem in self.xml_context:
             if xml_elem.tag == "event":
                 common_line, *particle_lines = self.__get_lines(xml_elem.text)
-                # Extract event information
                 event = {}
+                # Extract event information
                 for item_i, item in enumerate(common_line.split()):
                     key, typ = self.event_schema["common"][item_i]
                     event[key] = typ(item)
@@ -113,6 +115,13 @@ class LesHouche:
                         if key not in event:
                             event[key] = []
                         event[key].append(typ(item))
+                # Extract event weights
+                for wgt_elem in xml_elem.find("rwgt"):
+                    for wgt_name in self.event_schema["weights"]:
+                        if wgt_name in wgt_elem.attrib["id"]:
+                            if wgt_name not in event:
+                                event[wgt_name] = []
+                            event[wgt_name].append(float(wgt_elem.text))
                 xml_elem.clear()
                 yield event
 
@@ -128,16 +137,15 @@ def lhe_to_json(lhe_file):
 def lhe_to_root(lhe_file, basket_nbytes=100000):
     with uproot.recreate(lhe_file.replace('.lhe', '.root')) as root_file:
         with LesHouche(lhe_file) as lhe:
-            common_branches = [key for key, typ in lhe.event_schema["common"]]
             particle_branches = [key for key, typ in lhe.event_schema["particles"]]
             events = {}
-            events.update({branch: [] for branch in common_branches})
-            events.update({branch: [] for branch in particle_branches})
             events_nbytes = 0
-            for event in lhe.events:
+            for event in tqdm.tqdm(lhe.events):
+                if not events:
+                    events = {branch: [] for branch in event}
                 # Update events buffer
                 for branch, leaf in event.items():
-                    if branch in particle_branches:
+                    if type(leaf) == list:
                         leaf = np.array(leaf)
                         events_nbytes += leaf.nbytes
                     else:
@@ -145,7 +153,7 @@ def lhe_to_root(lhe_file, basket_nbytes=100000):
                     events[branch].append(leaf)
                 # Write out events buffer
                 if events_nbytes > basket_nbytes:
-                    events = __lhe_to_uproot_events(events, particle_branches)
+                    events = __lhe_to_uproot_events(events, jagged_branches=particle_branches)
                     if "Events" not in root_file:
                         root_file["Events"] = events
                     else:
@@ -154,7 +162,7 @@ def lhe_to_root(lhe_file, basket_nbytes=100000):
                     events = {branch: [] for branch in events}
                     events_nbytes = 0
             # Pick up remaining events
-            events = __lhe_to_uproot_events(events, particle_branches)
+            events = __lhe_to_uproot_events(events, jagged_branches=particle_branches)
             root_file["Events"].extend(events)
             # Convert header dict into a dict of lists
             header = {
@@ -162,7 +170,7 @@ def lhe_to_root(lhe_file, basket_nbytes=100000):
             }
             root_file["Header"] = header
 
-def __lhe_to_uproot_events(events, jagged_branches):
+def __lhe_to_uproot_events(events, jagged_branches=[]):
     for branch, leaves in events.items():
         if branch in jagged_branches:
             events[branch] = np.array(leaves, dtype=object)
@@ -171,5 +179,5 @@ def __lhe_to_uproot_events(events, jagged_branches):
     return events
 
 if __name__ == "__main__":
-    lhe_to_root("mkw_vbswh.lhe")
+    lhe_to_root("/ceph/cms/store/user/jguiang/VBSVVHSignalGeneration/lhe/VBSWWH_Inclusive_4f_LO_10k.lhe")
     input()
