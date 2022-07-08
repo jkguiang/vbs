@@ -11,8 +11,8 @@ def clip(np_array, bins):
     return np.clip(np_array, clip_low, clip_high)
 
 class PandasAnalysis:
-    def __init__(self, sig_root_files, bkg_root_files, ttree_name="Events", 
-                 weight_columns=[]):
+    def __init__(self, sig_root_files=[], bkg_root_files=[], data_root_files=[], 
+                 ttree_name="Events", weight_columns=[]):
         dfs = []
         # Load signal
         for root_file in sig_root_files:
@@ -21,6 +21,7 @@ class PandasAnalysis:
                 df = f.get(ttree_name).arrays(library="pd")
                 df["name"] = name
                 df["is_signal"] = True
+                df["is_data"] = False
                 dfs.append(df)
         # Load background
         for root_file in bkg_root_files:
@@ -29,6 +30,16 @@ class PandasAnalysis:
                 df = f.get(ttree_name).arrays(library="pd")
                 df["name"] = name
                 df["is_signal"] = False
+                df["is_data"] = False
+                dfs.append(df)
+        # Load data
+        for root_file in data_root_files:
+            name = root_file.split("/")[-1].replace(".root", "")
+            with uproot.open(root_file) as f:
+                df = f.get(ttree_name).arrays(library="pd")
+                df["name"] = name
+                df["is_signal"] = False
+                df["is_data"] = True
                 dfs.append(df)
 
         self.df = pd.concat(dfs)
@@ -59,6 +70,16 @@ class PandasAnalysis:
             if selection and type(selection) == str:
                 selection = self.df.eval(selection)
             return self.df[~self.df.is_signal & selection]
+
+    def data_df(self, selection=None):
+        if not selection:
+            return self.df[~self.df.is_signal]
+        else:
+            if selection and type(selection) == str:
+                selection = self.df.eval(selection)
+            return self.df[self.df.is_data & selection]
+
+class Optimization(PandasAnalysis):
 
     def get_event_counts(self, selection=None, raw=False):
         bkg_df = self.bkg_df(selection=selection)
@@ -209,3 +230,12 @@ class PandasAnalysis:
                 sig_raw, bkg_raw = self.get_event_counts(selection=sel, raw=True)
                 print(f"{sel},{sig_wgt},{sig_raw},{bkg_wgt},{bkg_raw},{fom(sig_wgt, bkg_wgt)}")
 
+class Validation(PandasAnalysis):
+
+    def get_event_counts(self, selection=None, raw=False):
+        bkg_df = self.bkg_df(selection=selection)
+        data_df = self.data_df(selection=selection)
+        if raw:
+            return len(data_df), len(bkg_df)
+        else:
+            return data_df.event_weight.sum(), bkg_df.event_weight.sum()
