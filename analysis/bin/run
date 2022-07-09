@@ -16,13 +16,13 @@ class VBSOrchestrator(Orchestrator):
         super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
     def get_year(self, input_file):
-        if "HIPM_UL2016" in input_file or "RunIISummer20UL16" in input_file or "UL16NanoAODAPVv9" in input_file:
+        if "HIPM_UL2016" in input_file or "UL16NanoAODAPVv9" in input_file or "RunIISummer20UL16APV" in input_file:
             return "2016preVFP"
-        elif "UL2016" in input_file or "RunIISummer20UL16" in input_file:
+        elif "UL2016" in input_file or "UL16NanoAODv9" in input_file or "RunIISummer20UL16" in input_file:
             return "2016postVFP"
-        elif "UL2017" in input_file or "RunIISummer20UL17" in input_file:
+        elif "UL2017" in input_file or "UL17NanoAODv9" in input_file or "RunIISummer20UL17" in input_file:
             return "2017"
-        elif "UL2018" in input_file or "RunIISummer20UL18" in input_file:
+        elif "UL2018" in input_file or "UL18NanoAODv9" in input_file or "RunIISummer20UL18" in input_file:
             return "2018"
         else:
             raise Exception(f"No year found in {input_file}")
@@ -59,8 +59,8 @@ class VBSOrchestrator(Orchestrator):
 
     def _get_log_files(self, input_file):
         file_info = self.get_file_info(input_file)
-        stdout_file = f"{self.output_dir}/{file_info['output_name']}.out"
-        stderr_file = f"{self.output_dir}/{file_info['output_name']}.err"
+        stdout_file = f"{file_info['output_dir']}/{file_info['output_name']}.out"
+        stderr_file = f"{file_info['output_dir']}/{file_info['output_name']}.err"
         return stdout_file, stderr_file
 
     def _get_job(self, input_file):
@@ -142,10 +142,10 @@ if __name__ == "__main__":
     samples = []
     # Add data samples
     if args.data:
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*HIPM_UL2016*NanoAODv9*/merged.root")
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2016*NanoAODv9*/merged.root")
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/merged.root")
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/merged.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*HIPM_UL2016*NanoAODv9*/*.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2016*NanoAODv9*/*.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/*.root")
+        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/*.root")
     # Add background samples
     samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/merged.root")
     samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/merged.root")
@@ -154,12 +154,8 @@ if __name__ == "__main__":
     # Add signal samples
     samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
     samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
+    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN_v1/merged.root")
     samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
-    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16APV*/*.root")
-    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL16*/*.root")
-    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL17*/*.root")
-    # samples += glob.glob(f"{ceph_dir}/sig_{skim}/VBSWH_mkW*RunIISummer20UL18*/*.root")
     print(f"Orchestrating {len(samples)} jobs...")
     # Run study
     orchestrator = VBSOrchestrator(

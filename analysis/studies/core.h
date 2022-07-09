@@ -364,7 +364,7 @@ public:
             {
                 sfs.jec_unc->setJetEta(jet_p4.eta());
                 sfs.jec_unc->setJetPt(jet_p4.pt());
-                double jec_err = abs(sfs.jec_unc->getUncertainty(jec_var == 1))*jec_var;
+                double jec_err = fabs(sfs.jec_unc->getUncertainty(jec_var == 1))*jec_var;
                 jet_p4 *= (1. + jec_err);
             }
             */
@@ -380,7 +380,7 @@ public:
             bool is_btagged_medium = false;
             bool is_btagged_tight = false;
             double deepflav_btag = nt.Jet_btagDeepFlavB().at(jet_i);
-            if (std::abs(jet_p4.eta()) < 2.4) 
+            if (fabs(jet_p4.eta()) < 2.4) 
             {
                 // Check DeepJet vs. working points in NanoCORE global config (gconf)
                 is_btagged_loose = deepflav_btag > gconf.WP_DeepFlav_loose;
@@ -451,7 +451,7 @@ public:
             if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
             // Remove lepton overlap
             bool is_overlap = false;
-            for (auto lep_p4 : good_lep_p4s)
+            for (auto& lep_p4 : good_lep_p4s)
             {
                 if (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8) 
                 {
@@ -490,7 +490,7 @@ public:
     {
         LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
         // Select VBS jet candidates
-        std::vector<int> vbs_jet_cand_idxs;
+        Integers vbs_jet_cand_idxs;
         for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
         {
             if (good_jet_p4s.at(jet_i).pt() >= 30.) { vbs_jet_cand_idxs.push_back(jet_i); }
@@ -510,8 +510,8 @@ public:
         else
         {
             // Collect jets in pos/neg eta hemispheres
-            std::vector<int> vbs_pos_eta_jet_idxs;
-            std::vector<int> vbs_neg_eta_jet_idxs;
+            Integers vbs_pos_eta_jet_idxs;
+            Integers vbs_neg_eta_jet_idxs;
             for (auto& jet_i : vbs_jet_cand_idxs)
             {
                 const LorentzVector& jet_p4 = good_jet_p4s.at(jet_i);
@@ -589,7 +589,7 @@ public:
 
     bool evaluate()
     {
-        return (arbol.getLeaf<double>("M_jj") > 500) && (abs(arbol.getLeaf<double>("deta_jj")) > 3);
+        return (arbol.getLeaf<double>("M_jj") > 500) && (fabs(arbol.getLeaf<double>("deta_jj")) > 3);
     };
 };
 

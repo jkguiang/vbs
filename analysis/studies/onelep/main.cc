@@ -202,9 +202,13 @@ int main(int argc, char** argv)
     );
     cutflow.insert(has_1lep->name, lep_pt_gt40, Right);
 
+    // Single-lepton triggers
+    Cut* lep_triggers = new Passes1LepTriggers("Passes1LepTriggers", analysis);
+    cutflow.insert(lep_pt_gt40->name, lep_triggers, Right);
+
     // Fat jet selection
     Cut* select_fatjets = new SelectFatJets("SelectFatJets", analysis);
-    cutflow.insert(lep_pt_gt40->name, select_fatjets, Right);
+    cutflow.insert(lep_triggers->name, select_fatjets, Right);
 
     // Geq1FatJet
     Cut* geq1fatjet = new LambdaCut(
@@ -226,14 +230,29 @@ int main(int argc, char** argv)
     Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
     cutflow.insert(hbbjet_score_gt0p9->name, select_jets, Right);
 
+    // Global AK4 b-veto
+    Cut* ak4bveto = new LambdaCut(
+        "Ak4GlobalBVeto", 
+        [&]()
+        {
+            for (auto& btag : cutflow.globals.getVal<Doubles>("good_jet_btags"))
+            {
+                if (btag > gconf.WP_DeepFlav_medium) { return false; }
+            }
+            return true;
+        }
+    );
+    cutflow.insert(select_jets->name, ak4bveto, Right);
+
     // VBS jet selection
     Cut* select_vbsjets_maxE = new SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
-    cutflow.insert(select_jets->name, select_vbsjets_maxE, Right);
+    cutflow.insert(ak4bveto->name, select_vbsjets_maxE, Right);
 
     // Basic VBS jet requirements
-    Cut* vbsjets_presel = new VBSPresel("MjjGt500detajjGt3", analysis);
+    Cut* vbsjets_presel = new VBSPresel("MjjGt500_detajjGt3", analysis);
     cutflow.insert(select_vbsjets_maxE->name, vbsjets_presel, Right);
 
+    /* Splits trigger by lepton flavor to check eff
     // Single-electron channel
     Cut* is_elec = new LambdaCut(
         "IsElectron", [&]() { return abs(arbol.getLeaf<int>("lep_pdgID")) == 11; }
@@ -253,6 +272,20 @@ int main(int argc, char** argv)
     // Single-muon triggers
     Cut* muon_triggers = new Passes1LepTriggers("Passes1MuonTriggers", analysis);
     cutflow.insert(is_muon->name, muon_triggers, Right);
+    */
+
+    // BDT Preselection
+    Cut* bdt_presel = new LambdaCut(
+        "MjjGt1500_detajjGt5_STGt500", 
+        [&]() 
+        { 
+            double M_jj = arbol.getLeaf<double>("M_jj");
+            double deta_jj = arbol.getLeaf<double>("deta_jj");
+            double ST = arbol.getLeaf<double>("ST");
+            return (M_jj > 1500 && fabs(deta_jj) > 5 && ST > 500); 
+        }
+    );
+    cutflow.insert(vbsjets_presel->name, bdt_presel, Right);
 
     // Run looper
     tqdm bar;
