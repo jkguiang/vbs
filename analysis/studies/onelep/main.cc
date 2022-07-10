@@ -313,8 +313,11 @@ int main(int argc, char** argv)
     );
 
     // Wrap up
-    cutflow.print();
-    cutflow.write(cli.output_dir);
+    if (!cli.is_data)
+    {
+        cutflow.print();
+        cutflow.write(cli.output_dir);
+    }
     arbol.writeTFile();
     return 0;
 }

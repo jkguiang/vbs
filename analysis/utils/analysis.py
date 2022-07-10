@@ -50,10 +50,33 @@ class PandasAnalysis:
             for weight_col in weight_columns[1:]:
                 self.df["event_weight"] *= self.df[weight_col]
 
+        self.cutflow = []
+        self.cutflow.append(f",{',,'.join(self.df.name.unique())},")
+        self.cutflow.append(
+            f",{','.join(['raw,wgt' for _ in filter(None, self.cutflow[0].split(','))])}"
+        )
+        self.__add_cutflow_row("base")
+
+    def __add_cutflow_row(self, selection):
+        selection = selection.replace(">", "gt")
+        selection = selection.replace("<", "lt")
+        selection = selection.replace(">=", "geq")
+        selection = selection.replace("<=", "leq")
+        selection = selection.replace(" ", "_")
+        row = [selection]
+        for name in filter(None, self.cutflow[0].split(",")):
+            _df = self.df[self.df.name == name]
+            row.append(f"{len(_df)},{_df.event_weight.sum()}")
+
+        self.cutflow.append(",".join(row))
+
+    def print_cutflow(self):
+        print("\n".join(self.cutflow))
+
     def make_selection(self, selection):
         if selection and type(selection) == str:
-            selection = self.df.eval(selection)
-        self.df = self.df[selection].copy()
+            self.df = self.df[self.df.eval(selection)].copy()
+            self.__add_cutflow_row(selection)
 
     def sig_df(self, selection=None):
         if not selection:
