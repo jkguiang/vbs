@@ -135,42 +135,68 @@ public:
         // Do nothing
     };
 
+    bool tryTrigger(std::function<bool()> trigger)
+    {
+        try { return trigger(); }
+        catch (const runtime_error& error) { return false; }
+    };
+
     bool passesMuonTriggers()
     {
+        bool passed = false;
         switch (nt.year())
         {
         case (2016):
-            return (nt.HLT_IsoMu24() || nt.HLT_IsoTkMu24() || nt.HLT_IsoMu22() || nt.HLT_IsoTkMu22());
+            try { passed = (passed || nt.HLT_IsoMu24()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_IsoTkMu24()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_IsoMu22()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_IsoTkMu22()); }
+            catch (const runtime_error& error) { /* do nothing */ }
             break;
         case (2017):
-            return (nt.HLT_IsoMu27() || nt.HLT_IsoMu24());
+            try { passed = (passed || nt.HLT_IsoMu27()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_IsoMu24()); }
+            catch (const runtime_error& error) { /* do nothing */ }
             break;
         case (2018):
-            return (nt.HLT_IsoMu27() || nt.HLT_IsoMu24());
-            break;
-        default:
-            return false;
+            try { passed = (passed || nt.HLT_IsoMu27()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_IsoMu24()); }
+            catch (const runtime_error& error) { /* do nothing */ }
             break;
         }
+        return passed;
     };
 
     bool passesElecTriggers()
     {
+        bool passed = false;
         switch (nt.year())
         {
         case (2016):
-            return (nt.HLT_Ele27_WPTight_Gsf() || nt.HLT_Ele25_eta2p1_WPTight_Gsf());
+            try { passed = (passed || nt.HLT_Ele27_WPTight_Gsf()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_Ele25_eta2p1_WPTight_Gsf()); }
+            catch (const runtime_error& error) { /* do nothing */ }
             break;
         case (2017):
-            return (nt.HLT_Ele35_WPTight_Gsf() || nt.HLT_Ele32_WPTight_Gsf());
+            try { passed = (passed || nt.HLT_Ele35_WPTight_Gsf()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_Ele32_WPTight_Gsf()); }
+            catch (const runtime_error& error) { /* do nothing */ }
             break;
         case (2018):
-            return (nt.HLT_Ele35_WPTight_Gsf() || nt.HLT_Ele32_WPTight_Gsf());
-            break;
-        default:
-            return false;
+            try { passed = (passed || nt.HLT_Ele35_WPTight_Gsf()); }
+            catch (const runtime_error& error) { /* do nothing */ }
+            try { passed = (passed || nt.HLT_Ele32_WPTight_Gsf()); }
+            catch (const runtime_error& error) { /* do nothing */ }
             break;
         }
+        return passed;
     };
 
     bool evaluate()
