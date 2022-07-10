@@ -1,3 +1,4 @@
+import os
 import json
 import logging
 from subprocess import Popen, PIPE
@@ -43,12 +44,19 @@ class Orchestrator:
 
     def run(self):
         jobs = []
+        stderr_files = []
         for input_file in tqdm(self.input_files, desc="Preparing jobs"):
             cmd = self._get_job(input_file)
             stdout_file, stderr_file = self._get_log_files(input_file)
             jobs.append((cmd, stdout_file, stderr_file))
+            stderr_files.append(stderr_file)
         with Pool(processes=self.n_workers) as pool:
             list(tqdm(pool.imap(run_job, jobs), total=len(jobs), desc="Executing jobs"))
+
+        for stderr_file in stderr_files:
+            if os.stat(stderr_file).st_size > 0:
+                job_name = stderr_file.split("/")[-1].replace(".err", "")
+                logging.error(f"job '{job_name}' failed; check logs: {stderr_file}")
 
     def _get_job(self, input_file):
         raise NotImplementedError
