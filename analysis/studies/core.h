@@ -318,6 +318,12 @@ public:
             arbol.setLeaf<double>("lep_sf_up", lep_sf + err_up*lep_sf);
             arbol.setLeaf<double>("lep_sf_dn", lep_sf - err_dn*lep_sf);
         }
+        else
+        {
+            arbol.setLeaf<double>("lep_sf", 1.);
+            arbol.setLeaf<double>("lep_sf_up", 1.);
+            arbol.setLeaf<double>("lep_sf_dn", 1.);
+        }
         globals.setVal<LorentzVectors>("good_lep_p4s", good_lep_p4s);
         globals.setVal<Integers>("good_lep_pdgIDs", good_lep_pdgIDs);
         globals.setVal<Integers>("good_lep_idxs", good_lep_idxs);
