@@ -28,10 +28,10 @@ BKG_SAMPLE_MAP = {
         "2018": ["TTTo2L*"],
     },
     "TTX": {
-        "2016preVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"], # TODO: add TTToHadronic* here and below!
-        "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
-        "2017": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
-        "2018": ["ttH*", "TTW*", "TTZ*", "TTbb*"],
+        "2016preVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+        "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+        "2017": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+        "2018": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
     },
     "WJets": {
         "2016preVFP": ["WJets*"],
