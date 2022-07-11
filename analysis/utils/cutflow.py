@@ -40,6 +40,19 @@ class Cut:
         else:
             raise ValueError("can only add equivalent cuts")
 
+    def __sub__(self, other_cut):
+        if self == other_cut:
+            cut_diff = Cut(
+                self.name,
+                n_pass=(self.n_pass - other_cut.n_pass),
+                n_pass_weighted=(self.n_pass_weighted - other_cut.n_pass_weighted),
+                n_fail=(self.n_fail - other_cut.n_fail),
+                n_fail_weighted=(self.n_fail_weighted - other_cut.n_fail_weighted),
+            )
+            return cut_diff
+        else:
+            raise ValueError("can only add equivalent cuts")
+
     def ancestry(self):
         next_parent = self.parent
         while next_parent:
@@ -53,7 +66,6 @@ class Cutflow:
     def __init__(self):
         self.__cuts = {}
         self.__root_cut_name = None
-        self.__cut_network = {}
         self.__terminal_cut_names = []
 
     def __len__(self):
@@ -63,7 +75,7 @@ class Cutflow:
         return self.__cuts[name]
 
     def __eq__(self, other_cutflow):
-        return self.__cut_network == other_cutflow.__cut_network
+        return self.get_cut_network() == other_cutflow.get_cut_network()
 
     def __add__(self, other_cutflow):
         if len(self) == 0:
@@ -77,13 +89,21 @@ class Cutflow:
             for name, cut in self.items():
                 other_cut = other_cutflow[name]
                 summed_cuts[name] = cut + other_cut
-            return Cutflow.from_network(cuts=summed_cuts, cut_network=self.__cut_network)
-    
-    @property
-    def terminal_cut_names(self):
-        if not self.__terminal_cut_names:
-            self.__recursive_find_terminals(self.__root_cut_name)
-        return self.__terminal_cut_names
+            return Cutflow.from_network(summed_cuts, self.get_cut_network())
+
+    def __sub__(self, other_cutflow):
+        if len(self) == 0:
+            return other_cutflow
+        elif len(other_cutflow) == 0:
+            return self
+        elif self != other_cutflow:
+            raise ValueError("can only add equivalent cutflows")
+        else:
+            diffed_cuts = {}
+            for name, cut in self.items():
+                other_cut = other_cutflow[name]
+                diffed_cuts[name] = cut - other_cut
+            return Cutflow.from_network(diffed_cuts, self.get_cut_network())
 
     def __recursive_find_terminals(self, cut_name):
         cut = self.__cuts[cut_name]
@@ -118,6 +138,60 @@ class Cutflow:
             self.__recursive_print(cut.left, tabs=tabs)
         if cut.right:
             self.__recursive_print(cut.right, tabs=tabs)
+    
+    @property
+    def terminal_cut_names(self):
+        self.__recursive_find_terminals(self.__root_cut_name)
+        return self.__terminal_cut_names
+
+    def print(self):
+        self.__recursive_print(self.root_cut())
+
+    def items(self):
+        return self.__cuts.items()
+
+    def cut_names(self):
+        return self.__cuts.keys()
+
+    def cuts(self):
+        return self.__cuts.values()
+
+    def set_root_cut(self, new_cut):
+        self.__root_cut_name = new_cut.name
+        self.__cuts[new_cut.name] = new_cut
+
+    def root_cut(self):
+        return self.__cuts[self.__root_cut_name]
+
+    def insert(self, target_cut_name, new_cut, direction="right"):
+        if new_cut.name in self.__cuts:
+            raise ValueError(f"{new_cut.name} already exists in this cutflow")
+
+        target_cut = self.__getitem__(target_cut_name)
+        new_cut.parent = target_cut
+
+        if direction.lower() == "right":
+            if target_cut.right:
+                new_cut.right = target_cut.right
+                target_cut.right.parent = new_cut
+            target_cut.right = new_cut
+        elif direction.lower() == "left":
+            if target_cut.right:
+                new_cut.left = target_cut.left
+                target_cut.left.parent = new_cut
+            target_cut.left = new_cut
+        else:
+            raise ValueError(f"direction can only be 'right' or 'left' not '{direction}'")
+        self.__cuts[new_cut.name] = new_cut
+
+    def get_cut_network(self):
+        cut_network = {}
+        for cut in self.__cuts.values():
+            parent = cut.parent.name if cut.parent else None
+            left = cut.left.name if cut.left else None
+            right = cut.right.name if cut.right else None
+            cut_network[cut.name] = (parent, left, right)
+        return cut_network
 
     def get_mermaid(self, cut, content=""):
         if cut is self.root_cut():
@@ -157,21 +231,6 @@ class Cutflow:
                 content += "\n"
 
         return content
-
-    def print(self):
-        self.__recursive_print(self.root_cut())
-
-    def items(self):
-        return self.__cuts.items()
-
-    def cut_names(self):
-        return self.__cuts.keys()
-
-    def cuts(self):
-        return self.__cuts.values()
-
-    def root_cut(self):
-        return self.__cuts[self.__root_cut_name]
 
     def write_mermaid(self, output_mmd, orientation="TD"):
         with open(output_mmd, "w") as f_out:
@@ -213,44 +272,48 @@ class Cutflow:
             return cutflow
 
     @staticmethod
-    def from_file(cflow_file, delimiter=","):
+    def from_text(cflow_text, delimiter=","):
         cuts = {}
         cut_network = {}
-        with open(cflow_file, "r") as f_in:
-            for line in f_in:
-                # Read cut attributes
-                line = line.replace("\n", "")
-                cut_attr = line.split(delimiter)
-                # Extract basic info
-                name = cut_attr[0]
-                n_pass, n_pass_weighted, n_fail, n_fail_weighted = cut_attr[1:5]
-                # Cast string counts into numbers
-                n_pass = int(n_pass)
-                n_fail = int(n_fail)
-                n_pass_weighted = float(n_pass_weighted)
-                n_fail_weighted = float(n_fail_weighted)
-                # Extract lineage
-                parent_name, left_name, right_name = cut_attr[5:]
-                # Cast 'null' values into NoneType
-                if parent_name == "null":
-                    parent_name = None
-                if left_name == "null":
-                    left_name = None
-                if right_name == "null":
-                    right_name = None
-                # Create new cut and update cut network
-                cuts[name] = Cut(
-                    name, 
-                    n_pass=n_pass, n_pass_weighted=n_pass_weighted, 
-                    n_fail=n_fail, n_fail_weighted=n_fail_weighted
-                )
-                cut_network[name] = (parent_name, left_name, right_name)
+        for line in cflow_text.split("\n"):
+            # Read cut attributes
+            cut_attr = line.split(delimiter)
+            # Extract basic info
+            name = cut_attr[0]
+            n_pass, n_pass_weighted, n_fail, n_fail_weighted = cut_attr[1:5]
+            # Cast string counts into numbers
+            n_pass = int(n_pass)
+            n_fail = int(n_fail)
+            n_pass_weighted = float(n_pass_weighted)
+            n_fail_weighted = float(n_fail_weighted)
+            # Extract lineage
+            parent_name, left_name, right_name = cut_attr[5:]
+            # Cast 'null' values into NoneType
+            if parent_name == "null":
+                parent_name = None
+            if left_name == "null":
+                left_name = None
+            if right_name == "null":
+                right_name = None
+            # Create new cut and update cut network
+            cuts[name] = Cut(
+                name, 
+                n_pass=n_pass, n_pass_weighted=n_pass_weighted, 
+                n_fail=n_fail, n_fail_weighted=n_fail_weighted
+            )
+            cut_network[name] = (parent_name, left_name, right_name)
 
         return Cutflow.from_network(cuts, cut_network)
 
+    @staticmethod
+    def from_file(cflow_file, delimiter=","):
+        with open(cflow_file, "r") as f_in:
+            cflow_text = f_in.read()
+
+        return Cutflow.from_text(cflow_text, delimiter=delimiter)
+
 class CutflowCollection:
     def __init__(self, cutflows={}):
-        self.terminal_cut_names = []
         self.__cutflows = {}
         if cutflows:
             if type(cutflows) == dict:
@@ -288,21 +351,22 @@ class CutflowCollection:
 
     def __consistency_check(self, new_cutflow=None):
         # Check cutflow equivalence
-        current_cutflows = self.cutflows
-        if len(current_cutflows) == 0:
+        if len(self.cutflows) == 0:
             return
         elif new_cutflow:
-            if new_cutflow != current_cutflows[-1]:
+            if new_cutflow != self.cutflows[-1]:
                 raise Exception("new cutflow is inconsistent with cutflows in collection")
         else:
-            for cutflow_i, cutflow in enumerate(current_cutflows[:-1]):
-                if cutflow != current_cutflows[cutflow_i+1]:
+            for cutflow_i, cutflow in enumerate(self.cutflows[:-1]):
+                if cutflow != self.cutflows[cutflow_i+1]:
                     raise Exception("cutflows are inconsistent")
-            if not self.terminal_cut_names:
-                self.terminal_cut_names = current_cutflows[0].terminal_cut_names
-
-    def items(self):
-        return self.__cutflows.items()
+    
+    @property
+    def terminal_cut_names(self):
+        if self.cutflows:
+            return self.cutflows[0].terminal_cut_names
+        else:
+            return []
 
     @property
     def names(self):
@@ -311,6 +375,9 @@ class CutflowCollection:
     @property
     def cutflows(self):
         return list(self.__cutflows.values())
+
+    def items(self):
+        return self.__cutflows.items()
 
     def pop(self, name):
         return self.__cutflows.pop(name)
@@ -336,7 +403,7 @@ class CutflowCollection:
             new_n: self.__cutflows[old_n] for old_n, new_n in zip(old_names, new_names)
         }
 
-    def write_csv(self, output_csv, terminal_cut_name):
+    def get_csv(self, terminal_cut_name):
         rows = []
         for cutflow_i, (cutflow_name, cutflow) in enumerate(self.items()):
             terminal_cut = cutflow[terminal_cut_name]
@@ -357,8 +424,11 @@ class CutflowCollection:
                 cutflow_rows.insert(0, header)
                 for row_i, cutflow_row in enumerate(cutflow_rows):
                     rows[row_i] = f"{rows[row_i]},{cutflow_row}"
+        return rows
+
+    def write_csv(self, output_csv, terminal_cut_name):
         with open(output_csv, "w") as f_out:
-            f_out.write("\n".join(rows))
+            f_out.write("\n".join(self.get_csv(terminal_cut_name)))
             f_out.write("\n")
 
     @staticmethod

@@ -10,6 +10,8 @@ from matplotlib.colors import LogNorm, Normalize
 from mpl_toolkits.axes_grid1 import ImageGrid
 import scipy.stats
 
+from utils.cutflow import Cut, Cutflow, CutflowCollection
+
 def clip(np_array, bins):
     clip_low = 0.5 * (bins[0] + bins[1])
     clip_high = 0.5 * (bins[-2] + bins[-1])
@@ -55,33 +57,53 @@ class PandasAnalysis:
             for weight_col in weight_columns[1:]:
                 self.df["event_weight"] *= self.df[weight_col]
 
-        self.cutflow = []
-        self.cutflow.append(f",{',,'.join(self.df.name.unique())},")
-        self.cutflow.append(
-            f",{','.join(['raw,wgt' for _ in filter(None, self.cutflow[0].split(','))])}"
+        self.cutflows = CutflowCollection(
+            cutflows={name: Cutflow() for name in self.df.name.unique()}
         )
-        self.__add_cutflow_row("base")
+        self.__update_cutflows("Base")
 
-    def __add_cutflow_row(self, selection):
+    def __update_cutflows(self, selection):
         selection = selection.replace(">", "gt")
         selection = selection.replace("<", "lt")
         selection = selection.replace(">=", "geq")
         selection = selection.replace("<=", "leq")
+        selection = selection.replace(".", "p")
+        selection = selection.replace("-", "m")
         selection = selection.replace(" ", "_")
-        row = [selection]
-        for name in filter(None, self.cutflow[0].split(",")):
+        for name, cutflow in self.cutflows.items():
+            # Get previous cut
+            if len(cutflow) > 0:
+                prev_cut = cutflow[cutflow.terminal_cut_names[-1]]
+            else:
+                prev_cut = Cut("Dummy")
+            # Create new cut
             _df = self.df[self.df.name == name]
-            row.append(f"{len(_df)},{_df.event_weight.sum()}")
+            n_pass_raw = len(_df)
+            n_pass_wgt = _df.event_weight.sum()
+            new_cut = Cut(
+                selection, 
+                n_pass=n_pass_raw,
+                n_pass_weighted=n_pass_wgt,
+                n_fail=(prev_cut.n_pass - n_pass_raw),
+                n_fail_weighted=(prev_cut.n_pass_weighted - n_pass_wgt),
+            )
+            # Insert new cut
+            if len(cutflow) > 0:
+                cutflow.insert(prev_cut.name, new_cut)
+            else:
+                cutflow.set_root_cut(new_cut)
 
-        self.cutflow.append(",".join(row))
+        self.cutflows["TotalBkg"] = self.cutflows.sum()
+        self.cutflows["TotalBkg"] -= self.cutflows["data"]
+
 
     def print_cutflow(self):
-        print("\n".join(self.cutflow))
+        print("\n".join(self.cutflows.get_csv(self.cutflows.terminal_cut_names[-1])))
 
     def make_selection(self, selection):
         if selection and type(selection) == str:
             self.df = self.df[self.df.eval(selection)].copy()
-            self.__add_cutflow_row(selection)
+            self.__update_cutflows(selection)
 
     def sig_df(self, selection=None):
         if not selection:
@@ -112,8 +134,7 @@ class PandasAnalysis:
         """Matching TEfficiency::ClopperPearson()
            stolen from Nick Amin: https://github.com/aminnj/yahist
         """
-
-        alpha = 0.5 * (1.0 - level)
+        alpha = 0.5*(1.0 - level)
         low = scipy.stats.beta.ppf(alpha, passed, total - passed + 1)
         high = scipy.stats.beta.ppf(1 - alpha, passed + 1, total - passed)
         return low, high
