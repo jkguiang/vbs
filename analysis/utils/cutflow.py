@@ -184,6 +184,14 @@ class Cutflow:
             raise ValueError(f"direction can only be 'right' or 'left' not '{direction}'")
         self.__cuts[new_cut.name] = new_cut
 
+    def replace(self, target_cut_name, new_cut):
+        target_cut = self.__cuts.pop(target_cut_name)
+        new_cut.parent = target_cut.parent
+        new_cut.left = target_cut.left
+        new_cut.right = target_cut.right
+        self.__cuts[new_cut.name] = new_cut
+        del target_cut
+
     def get_cut_network(self):
         cut_network = {}
         for cut in self.__cuts.values():
@@ -276,6 +284,8 @@ class Cutflow:
         cuts = {}
         cut_network = {}
         for line in cflow_text.split("\n"):
+            if not line:
+                continue
             # Read cut attributes
             cut_attr = line.split(delimiter)
             # Extract basic info
