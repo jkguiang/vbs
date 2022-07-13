@@ -2,7 +2,7 @@ import os
 import json
 import logging
 from subprocess import Popen, PIPE
-from multiprocessing import Pool
+import concurrent.futures
 from tqdm import tqdm
 
 def run_job(args):
@@ -43,6 +43,7 @@ class Orchestrator:
             return 1
 
     def run(self):
+        # Generate jobs
         jobs = []
         stderr_files = []
         for input_file in tqdm(self.input_files, desc="Preparing jobs"):
@@ -50,9 +51,14 @@ class Orchestrator:
             stdout_file, stderr_file = self._get_log_files(input_file)
             jobs.append((cmd, stdout_file, stderr_file))
             stderr_files.append(stderr_file)
-        with Pool(processes=self.n_workers) as pool:
-            list(tqdm(pool.imap(run_job, jobs), total=len(jobs), desc="Executing jobs"))
-
+        # Run jobs
+        with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
+                futures = {executor.submit(run_job, job): job for job in jobs}
+                for future in concurrent.futures.as_completed(futures):
+                    job = futures[future]
+                    pbar.update(1)
+        # Check for errors
         for stderr_file in stderr_files:
             if os.stat(stderr_file).st_size > 0:
                 job_name = stderr_file.split("/")[-1].replace(".err", "")
