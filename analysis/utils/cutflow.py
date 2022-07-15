@@ -323,7 +323,7 @@ class Cutflow:
         return Cutflow.from_text(cflow_text, delimiter=delimiter)
 
 class CutflowCollection:
-    def __init__(self, cutflows={}):
+    def __init__(self, cutflows=None):
         self.__cutflows = {}
         if cutflows:
             if type(cutflows) == dict:
@@ -397,6 +397,9 @@ class CutflowCollection:
         for cutflow in self.cutflows:
             cutflow_sum += cutflow
         return cutflow_sum
+
+    def copy(self):
+        return CutflowCollection(cutflows=self.__cutflows.copy())
 
     def reorder(self, ordered_names):
         mismatches = set(self.names) - set(ordered_names)
