@@ -15,7 +15,33 @@ cd -
 ````
 3. Run `source setup.sh`
 4. Write source code to `studies/{STUDY}`
-5. Use `bin/run` to run over many samples in parallel or `bin/{STUDY}` to run file-by-file
+
+## Running over one file
+1. Compile your study
+```
+make study={STUDY} clean
+make study={STUDY}
+```
+2. Run your study
+```
+./bin/{STUDY} --help
+RAPIDO HEP CLI
+usage: ./<executable> [options] <path/to/file1> [<path/to/file2> ...]
+
+Options:
+  -h, --help             display this message
+  -v, --verbose          toggle verbosity flag
+  -t, --input_ttree      name of ttree in input ROOT file(s) (e.g. Events)
+  -d, --output_dir       target directory for output file(s)
+  -n, --output_name      short name for output file(s)
+  -s, --scale_factor     global event weight
+  --is_data              data flag
+  --is_signal            signal flag
+  --debug                debug flag
+```
+
+## Running over Run 2
+1. Use `bin/run` to run over many samples in parallel or `bin/{STUDY}` to run file-by-file
 ```
 $ ./bin/run --help
 usage: run [-h] --study STUDY [--n_workers N_WORKERS] [--debug] [--nomake]
@@ -30,4 +56,4 @@ optional arguments:
   --debug               Run in debug mode
   --nomake              Do not run make before running the study
 ```
-6. Use `bin/merge` to merge the results
+2. Use `bin/merge` to merge the results
