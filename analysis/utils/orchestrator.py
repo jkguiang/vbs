@@ -26,6 +26,8 @@ class Orchestrator:
             with open(xsecs_json, "r") as f_in:
                 self.xsecs_db = json.load(f_in)
 
+        self.input_files.sort(key=lambda f: os.stat(f).st_size, reverse=True)
+
     def get_xsec(self, file_name):
         if not self.xsecs_db:
             return 1
