@@ -1,0 +1,29 @@
+#!/bin/bash
+
+STUDY=$1
+
+if [[ "$STUDY" != "" && -d studies/$STUDY ]]; then
+    if ! command -v root &> /dev/null; then
+        echo "ERROR: ROOT cannot be found"
+        exit 1
+    fi
+    make study=$STUDY clean
+    make study=$STUDY
+    # TODO add a check that make ran successfully
+
+    mkdir -p workdir
+    cp setup.sh workdir
+
+    mkdir -p workdir/rapido
+    cp -RL rapido/src workdir/rapido/src
+
+    mkdir -p workdir/NanoTools
+    cp -RL NanoTools/NanoCORE workdir/NanoTools/NanoCORE
+
+    mkdir -p workdir/bin
+    cp bin/$STUDY workdir/bin/$STUDY
+
+    tar -zcvf $STUDY.tar.gz workdir
+
+    rm -rf workdir
+fi
