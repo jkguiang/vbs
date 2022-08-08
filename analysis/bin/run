@@ -11,8 +11,8 @@ from decimal import Decimal
 from utils.orchestrator import Orchestrator
 
 class VBSOrchestrator(Orchestrator):
-    def __init__(self, study_name, study_exe, input_files, xsecs_json, n_workers=8):
-        self.output_dir = f"studies/{study_name}/output"
+    def __init__(self, output_dir, study_exe, input_files, xsecs_json, n_workers=8):
+        self.output_dir = output_dir
         super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
     def get_year(self, input_file):
@@ -94,11 +94,15 @@ if __name__ == "__main__":
         help="Name of the study to run"
     )
     cli.add_argument(
+        "--tag", type=str, default="",
+        help="Unique tag for output"
+    )
+    cli.add_argument(
         "--n_workers", type=int, default=8,
         help="Maximum number of worker processes"
     )
     cli.add_argument(
-        "--nomake", action="store_true",
+        "--no_make", action="store_true",
         help="Do not run make before running the study"
     )
     cli.add_argument(
@@ -107,23 +111,28 @@ if __name__ == "__main__":
     )
     args = cli.parse_args()
 
-    os.makedirs(f"studies/{args.study}/output", exist_ok=True)
+    if args.tag:
+        output_dir=f"studies/{args.study}/output_{args.tag}"
+    else:
+        output_dir=f"studies/{args.study}/output"
+
+    os.makedirs(output_dir, exist_ok=True)
     logging.basicConfig(
-        filename=f"studies/{args.study}/output/run.log",
+        filename=f"{output_dir}/run.log",
         filemode="w",
         format="%(levelname)s [%(asctime)s]: %(message)s",
         datefmt="%m-%d-%Y %H:%M:%S %p",
         level="DEBUG"
     )
 
-    if not args.nomake:
+    if not args.no_make:
         print(f"make study={args.study} clean")
         Popen(f"make study={args.study} clean".split(), stdout=PIPE).wait()
         print(f"make study={args.study}")
         stdout, stderr = Popen(f"make study={args.study}".split(), stdout=PIPE, stderr=PIPE).communicate()
         if stderr:
             raise RuntimeError(
-                f"make --study={args.study} failed with the following error\n\n"
+                f"make study={args.study} failed with the following error\n\n"
                 + stderr.decode("utf-8")
             )
 
@@ -138,7 +147,8 @@ if __name__ == "__main__":
 
     # Gather samples
     ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
-    skim = "1lep_1ak8_2ak4_postskim"
+    skim = "1lep_1ak8_2ak4_postskim_STgt800"
+    # skim = "1lep_1ak8_2ak4_postskim"
     samples = []
     # Add data samples
     if args.data:
@@ -147,10 +157,10 @@ if __name__ == "__main__":
         samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/*.root")
         samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/*.root")
     # Add background samples
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/merged.root")
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/merged.root")
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL17NanoAODv9*/merged.root")
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL18NanoAODv9*/merged.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/*.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/*.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL17NanoAODv9*/*.root")
+    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL18NanoAODv9*/*.root")
     # Add signal samples
     samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
     samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
@@ -159,7 +169,7 @@ if __name__ == "__main__":
     print(f"Orchestrating {len(samples)} jobs...")
     # Run study
     orchestrator = VBSOrchestrator(
-        args.study, 
+        output_dir,
         f"./bin/{args.study}", 
         samples, 
         xsecs_json="data/xsecs.json",

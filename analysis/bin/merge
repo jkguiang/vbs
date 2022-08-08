@@ -121,6 +121,10 @@ if __name__ == "__main__":
         help="Name of the study to run"
     )
     cli.add_argument(
+        "--tag", type=str, default="",
+        help="Unique tag for output"
+    )
+    cli.add_argument(
         "--terminals", nargs="*",
         help="Names of terminal cuts in cutflow to write to CSV"
     )
@@ -133,7 +137,12 @@ if __name__ == "__main__":
         help="Number of workers to run hadds"
     )
     args = cli.parse_args()
-    output_dir = f"studies/{args.study}/output"
+
+    if args.tag:
+        output_dir=f"studies/{args.study}/output_{args.tag}"
+    else:
+        output_dir=f"studies/{args.study}/output"
+
     os.makedirs(f"{output_dir}/Run2", exist_ok=True)
 
     # Get Cutflow objects for background samples
