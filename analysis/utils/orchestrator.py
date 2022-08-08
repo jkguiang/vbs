@@ -64,7 +64,7 @@ class Orchestrator:
         for stderr_file in stderr_files:
             if os.stat(stderr_file).st_size > 0:
                 job_name = stderr_file.split("/")[-1].replace(".err", "")
-                logging.error(f"job '{job_name}' failed; check logs: {stderr_file}")
+                logging.error(f"{job_name} failed; check logs: {stderr_file}")
 
     def _get_job(self, input_file):
         raise NotImplementedError
