@@ -99,13 +99,13 @@ int main(int argc, char** argv)
             return true;
         }
     );
-    cutflow.insert(base->name, findleps_skim, Right);
+    cutflow.insert(base, findleps_skim, Right);
 
     // Geq1VetoLep
     Cut* geq1vetolep_skim = new LambdaCut(
         "SKIM_Geq1VetoLep", [&]() { return cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s").size() >= 1; }
     );
-    cutflow.insert(findleps_skim->name, geq1vetolep_skim, Right);
+    cutflow.insert(findleps_skim, geq1vetolep_skim, Right);
 
     // Geq2Jets
     Cut* geq2jets_skim = new LambdaCut(
@@ -134,7 +134,7 @@ int main(int argc, char** argv)
             return (n_jets >= 2);
         }
     );
-    cutflow.insert(geq1vetolep_skim->name, geq2jets_skim, Right);
+    cutflow.insert(geq1vetolep_skim, geq2jets_skim, Right);
 
     // Geq1FatJet
     Cut* geq1fatjet_skim = new LambdaCut(
@@ -166,7 +166,7 @@ int main(int argc, char** argv)
             return (n_fatjets >= 1);
         }
     );
-    cutflow.insert(geq2jets_skim->name, geq1fatjet_skim, Right);
+    cutflow.insert(geq2jets_skim, geq1fatjet_skim, Right);
 
     // Exactly1Lep
     Cut* exactly1tightlep_postskim = new LambdaCut(
@@ -178,7 +178,7 @@ int main(int argc, char** argv)
             return (n_loose_leps == 1 && n_tight_leps == 1);
         }
     );
-    cutflow.insert(geq1fatjet_skim->name, exactly1tightlep_postskim, Right);
+    cutflow.insert(geq1fatjet_skim, exactly1tightlep_postskim, Right);
 
     // Geq1FatJet
     Cut* geq1fatjet_postskim = new LambdaCut(
@@ -221,7 +221,7 @@ int main(int argc, char** argv)
             }
         }
     );
-    cutflow.insert(exactly1tightlep_postskim->name, geq1fatjet_postskim, Right);
+    cutflow.insert(exactly1tightlep_postskim, geq1fatjet_postskim, Right);
 
     Cut* STgt800_postskim = new LambdaCut(
         "POSTSKIM_STgt800", 
@@ -235,7 +235,7 @@ int main(int argc, char** argv)
             return (ST > 800);
         }
     );
-    cutflow.insert(geq1fatjet_postskim->name, STgt800_postskim, Right);
+    cutflow.insert(geq1fatjet_postskim, STgt800_postskim, Right);
 
     // Run looper
     tqdm bar;
@@ -258,7 +258,7 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.runUntil(STgt800_postskim->name);
+                bool passed = cutflow.runUntil(STgt800_postskim);
                 if (passed) { arbusto.fill(); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
