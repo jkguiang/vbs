@@ -38,6 +38,7 @@ int main(int argc, char** argv)
     arbol.newBranch<double>("hbbjet_phi", -999);
     arbol.newBranch<double>("hbbjet_mass", -999);
     arbol.newBranch<double>("hbbjet_msoftdrop", -999);
+    arbol.newBranch<bool>("passes_bveto", false);
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
@@ -82,13 +83,13 @@ int main(int argc, char** argv)
             return true;
         }
     );
-    cutflow.insert(bookkeeping->name, findleps_skim, Right);
+    cutflow.insert(bookkeeping, findleps_skim, Right);
 
     // Geq1VetoLep
     Cut* geq1vetolep_skim = new LambdaCut(
         "SKIM_Geq1VetoLep", [&]() { return cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s").size() >= 1; }
     );
-    cutflow.insert(findleps_skim->name, geq1vetolep_skim, Right);
+    cutflow.insert(findleps_skim, geq1vetolep_skim, Right);
 
     // Geq2Jets
     Cut* geq2jets_skim = new LambdaCut(
@@ -117,7 +118,7 @@ int main(int argc, char** argv)
             return (n_jets >= 2);
         }
     );
-    cutflow.insert(geq1vetolep_skim->name, geq2jets_skim, Right);
+    cutflow.insert(geq1vetolep_skim, geq2jets_skim, Right);
 
     // Geq1FatJet
     Cut* geq1fatjet_skim = new LambdaCut(
@@ -149,7 +150,7 @@ int main(int argc, char** argv)
             return (n_fatjets >= 1);
         }
     );
-    cutflow.insert(geq2jets_skim->name, geq1fatjet_skim, Right);
+    cutflow.insert(geq2jets_skim, geq1fatjet_skim, Right);
 
     // Exactly1Lep
     Cut* exactly1tightlep_postskim = new LambdaCut(
@@ -161,7 +162,7 @@ int main(int argc, char** argv)
             return (n_loose_leps == 1 && n_tight_leps == 1);
         }
     );
-    cutflow.insert(geq1fatjet_skim->name, exactly1tightlep_postskim, Right);
+    cutflow.insert(geq1fatjet_skim, exactly1tightlep_postskim, Right);
 
     // Geq1FatJet
     Cut* geq1fatjet_postskim = new LambdaCut(
@@ -170,122 +171,188 @@ int main(int argc, char** argv)
         { 
             LorentzVector lep_p4 = cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").at(0);
             int n_fatjets = 0;
+            double hbbjet_score = -999.;
+            LorentzVector hbbjet_p4;
             for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
             {
+                // Basic requirements
+                if (nt.FatJet_pt().at(fatjet_i) <= 250) { continue; }
+                if (nt.FatJet_mass().at(fatjet_i) <= 50) { continue; }
+                if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
+                // Remove lepton overlap
                 LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
-                bool is_overlap = (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8);
-                if (!is_overlap 
-                    && nt.FatJet_mass().at(fatjet_i) > 25 
-                    && nt.FatJet_msoftdrop().at(fatjet_i) > 25 
-                    && nt.FatJet_pt().at(fatjet_i) > 250 
-                    && nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i) > 0.5)
+                if (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8) { continue; }
+
+                // Count good fat jets
+                n_fatjets++;
+                double pnet_xbb = nt.FatJet_particleNetMD_Xbb().at(fatjet_i);
+                double pnet_qcd = nt.FatJet_particleNetMD_QCD().at(fatjet_i);
+                double xbb_score = pnet_xbb/(pnet_xbb + pnet_qcd);
+                if (xbb_score > hbbjet_score)
                 {
-                    n_fatjets++;
+                    hbbjet_p4 = fatjet_p4;
+                    hbbjet_score = xbb_score;
                 }
             }
-            return (n_fatjets >= 1);
+            if (n_fatjets >= 1)
+            {
+                cutflow.globals.setVal<LorentzVector>("hbbjet_p4", hbbjet_p4);
+                return true;
+            }
+            else
+            {
+                return false;
+            }
         }
     );
-    cutflow.insert(exactly1tightlep_postskim->name, geq1fatjet_postskim, Right);
+    cutflow.insert(exactly1tightlep_postskim, geq1fatjet_postskim, Right);
+
+    Cut* STgt800_postskim = new LambdaCut(
+        "POSTSKIM_STgt800", 
+        [&]() 
+        { 
+            double ST = (
+                cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").at(0).pt()
+                + cutflow.globals.getVal<LorentzVector>("hbbjet_p4").pt()
+                + nt.MET_pt()
+            );
+            return (ST > 800);
+        }
+    );
+    cutflow.insert(geq1fatjet_postskim, STgt800_postskim, Right);
 
     // Lepton selection
     Cut* select_leps = new SelectLeptons("SelectLeptons", analysis);
-    cutflow.insert(geq1fatjet_postskim->name, select_leps, Right);
+    cutflow.insert(STgt800_postskim, select_leps, Right);
 
     // == 1 lepton selection
     Cut* has_1lep = new Has1Lep("Has1TightLep", analysis);
-    cutflow.insert(select_leps->name, has_1lep, Right);
+    cutflow.insert(select_leps, has_1lep, Right);
 
     // Lepton has pT > 40
     Cut* lep_pt_gt40 = new LambdaCut(
         "LepPtGt40", [&]() { return arbol.getLeaf<double>("lep_pt") >= 40; }
     );
-    cutflow.insert(has_1lep->name, lep_pt_gt40, Right);
+    cutflow.insert(has_1lep, lep_pt_gt40, Right);
 
     // Single-lepton triggers
     Cut* lep_triggers = new Passes1LepTriggers("Passes1LepTriggers", analysis);
-    cutflow.insert(lep_pt_gt40->name, lep_triggers, Right);
+    cutflow.insert(lep_pt_gt40, lep_triggers, Right);
 
     // Fat jet selection
     Cut* select_fatjets = new SelectFatJets("SelectFatJets", analysis);
-    cutflow.insert(lep_triggers->name, select_fatjets, Right);
+    cutflow.insert(lep_triggers, select_fatjets, Right);
 
     // Geq1FatJet
     Cut* geq1fatjet = new LambdaCut(
         "Geq1FatJet", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 1; }
     );
-    cutflow.insert(select_fatjets->name, geq1fatjet, Right);
+    cutflow.insert(select_fatjets, geq1fatjet, Right);
 
     // Hbb selection
-    Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", analysis);
-    cutflow.insert(geq1fatjet->name, select_hbbjet, Right);
-
-    // Hbb score > 0.9
-    Cut* hbbjet_score_gt0p9 = new LambdaCut(
-        "PNetHbbScoreGt0p9", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.9; }
-    );
-    cutflow.insert(select_hbbjet->name, hbbjet_score_gt0p9, Right);
+    Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", analysis, true);
+    cutflow.insert(geq1fatjet, select_hbbjet, Right);
 
     // Jet selection
     Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
-    cutflow.insert(hbbjet_score_gt0p9->name, select_jets, Right);
+    cutflow.insert(select_hbbjet, select_jets, Right);
 
     // Global AK4 b-veto
-    Cut* ak4bveto = new LambdaCut(
-        "Ak4GlobalBVeto", 
+    Cut* save_ak4bveto = new LambdaCut(
+        "SaveAk4GlobalBVeto", 
         [&]()
         {
+            bool passes_bveto = true;
             for (auto& btag : cutflow.globals.getVal<Doubles>("good_jet_btags"))
             {
-                if (btag > gconf.WP_DeepFlav_medium) { return false; }
+                if (btag > gconf.WP_DeepFlav_medium) 
+                { 
+                    passes_bveto = false;
+                    break;
+                }
             }
+            arbol.setLeaf<bool>("passes_bveto", passes_bveto);
             return true;
         }
     );
-    cutflow.insert(select_jets->name, ak4bveto, Right);
+    cutflow.insert(select_jets, save_ak4bveto, Right);
 
     // VBS jet selection
     Cut* select_vbsjets_maxE = new SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
-    cutflow.insert(ak4bveto->name, select_vbsjets_maxE, Right);
+    cutflow.insert(save_ak4bveto, select_vbsjets_maxE, Right);
 
     // Basic VBS jet requirements
-    Cut* vbsjets_presel = new VBSPresel("MjjGt500_detajjGt3", analysis);
-    cutflow.insert(select_vbsjets_maxE->name, vbsjets_presel, Right);
+    Cut* vbsjets_presel = new LambdaCut(
+        "MjjGt500_detajjGt3", 
+        [&]()
+        {
+            return arbol.getLeaf<double>("M_jj") > 500 && fabs(arbol.getLeaf<double>("deta_jj")) > 3;
+        }
+    );
+    cutflow.insert(select_vbsjets_maxE, vbsjets_presel, Right);
 
     /* Splits trigger by lepton flavor to check eff
     // Single-electron channel
     Cut* is_elec = new LambdaCut(
         "IsElectron", [&]() { return abs(arbol.getLeaf<int>("lep_pdgID")) == 11; }
     );
-    cutflow.insert(vbsjets_presel->name, is_elec, Right);
+    cutflow.insert(vbsjets_presel, is_elec, Right);
 
     // Single-electron triggers
     Cut* elec_triggers = new Passes1LepTriggers("Passes1ElecTriggers", analysis);
-    cutflow.insert(is_elec->name, elec_triggers, Right);
+    cutflow.insert(is_elec, elec_triggers, Right);
 
     // Single-muon channel
     Cut* is_muon = new LambdaCut(
         "IsMuon", [&]() { return abs(arbol.getLeaf<int>("lep_pdgID")) == 13; }
     );
-    cutflow.insert(is_elec->name, is_muon, Left);
+    cutflow.insert(is_elec, is_muon, Left);
 
     // Single-muon triggers
     Cut* muon_triggers = new Passes1LepTriggers("Passes1MuonTriggers", analysis);
-    cutflow.insert(is_muon->name, muon_triggers, Right);
+    cutflow.insert(is_muon, muon_triggers, Right);
     */
 
-    // BDT Preselection
-    Cut* bdt_presel = new LambdaCut(
-        "MjjGt1500_detajjGt5_STGt500", 
+    Cut* xbb_presel = new LambdaCut(
+        "XbbGt0p3", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.3; }
+    );
+    cutflow.insert(vbsjets_presel, xbb_presel, Right);
+
+    Cut* apply_ak4bveto = new LambdaCut(
+        "ApplyAk4GlobalBVeto", [&]() { return arbol.getLeaf<bool>("passes_bveto"); }
+    );
+    cutflow.insert(xbb_presel, apply_ak4bveto, Right);
+    
+    Cut* vbs_SR = new LambdaCut(
+        "MjjGt600_detajjGt4", 
         [&]() 
         { 
-            double M_jj = arbol.getLeaf<double>("M_jj");
-            double deta_jj = arbol.getLeaf<double>("deta_jj");
-            double ST = arbol.getLeaf<double>("ST");
-            return (M_jj > 1500 && fabs(deta_jj) > 5 && ST > 500); 
+            return arbol.getLeaf<double>("M_jj") > 600 && fabs(arbol.getLeaf<double>("deta_jj")) > 4; 
         }
     );
-    cutflow.insert(vbsjets_presel->name, bdt_presel, Right);
+    cutflow.insert(apply_ak4bveto, vbs_SR, Right);
+
+    Cut* ST_SR = new LambdaCut(
+        "STGt900", [&]() { return arbol.getLeaf<double>("ST") > 900; }
+    );
+    cutflow.insert(vbs_SR, ST_SR, Right);
+
+    Cut* Hbb_SR = new LambdaCut(
+        "XbbGt0p9_MSDLt150", 
+        [&]() 
+        { 
+            return (
+                arbol.getLeaf<double>("hbbjet_score") > 0.9 
+                && arbol.getLeaf<double>("hbbjet_msoftdrop") < 150
+            ); 
+        }
+    );
+    cutflow.insert(ST_SR, Hbb_SR, Right);
+
+    Cut* ST_SRtight = new LambdaCut(
+        "STGt1500", [&]() { return arbol.getLeaf<double>("ST") > 1500; }
+    );
+    cutflow.insert(Hbb_SR, ST_SRtight, Right);
 
     // Run looper
     tqdm bar;
@@ -305,8 +372,9 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.runUntil(vbsjets_presel->name);
-                if (passed) { arbol.fillTTree(); }
+                // bool passed = cutflow.runUntil(vbsjets_presel);
+                bool passed = cutflow.runUntil(select_vbsjets_maxE);
+                if (passed) { arbol.fill(); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
         }
@@ -318,6 +386,6 @@ int main(int argc, char** argv)
         cutflow.print();
         cutflow.write(cli.output_dir);
     }
-    arbol.writeTFile();
+    arbol.write();
     return 0;
 }
