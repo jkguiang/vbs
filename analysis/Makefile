@@ -6,9 +6,8 @@ MAINDIR=.
 SRCDIR=studies/$(study)
 OBJDIR=studies/$(study)
 
-# SOURCES=$(wildcard $(SRCDIR)/*.cc)
+# SOURCES=$(wildcard $(SRCDIR)/*.cc) $(wildcard tools/*.cc) $(wildcard Tools/*.cc) $(wildcard Tools/btagsf/*.cc) $(wildcard Tools/jetcorr/PhysicsTools/NanoAODTools/src/*.cc)
 SOURCES=$(wildcard $(SRCDIR)/*.cc) $(wildcard tools/*.cc)
-# OBJECTS=$(SOURCES:$(SRCDIR)/%.cc=$(OBJDIR)/%.o)
 OBJECTS=$(SOURCES:%.cc=%.o)
 HEADERS=$(SOURCES:.cc=.h)
 
@@ -19,14 +18,14 @@ LD          = g++
 LDFLAGS     = -g -O2
 SOFLAGS     = -g -shared
 CXXFLAGS    = -g -O2 -Wall -fPIC -Wshadow -Woverloaded-virtual
-LDFLAGS     = -g -O2 -L$(MAINDIR)/rapido/src -L$(MAINDIR)/NanoTools/NanoCORE
+LDFLAGS     = -g -O2 -L$(MAINDIR)/rapido/src -L$(MAINDIR)/NanoTools/NanoCORE -L${CMSSW_BASE}/lib/${SCRAM_ARCH}
 ROOTLIBS    = $(shell root-config --libs)
 ROOTCFLAGS  = $(shell root-config --cflags)
 CXXFLAGS   += $(ROOTCFLAGS)
 CFLAGS      = $(ROOTCFLAGS) -Wall -Wno-unused-function -g -O2 -fPIC -fno-var-tracking
-CFLAGS     += -I$(MAINDIR)/rapido/src -I$(MAINDIR)/NanoTools/NanoCORE
+CFLAGS     += -I$(MAINDIR)/rapido/src -I$(MAINDIR)/NanoTools/NanoCORE -I${CMSSW_BASE}/src -I${CMSSW_BASE}/../../../external/boost/1.67.0/include
 EXTRAFLAGS  = -fPIC -ITMultiDrawTreePlayer -Wunused-variable -lTMVA -lEG -lGenVector -lXMLIO -lMLP -lTreePlayer
-EXTRAFLAGS += -lRAPIDO -lNANO_CORE
+EXTRAFLAGS += -lRAPIDO -lNANO_CORE -lCondFormatsJetMETObjects -lJetMETCorrectionsModules
 
 all: $(EXE)
 

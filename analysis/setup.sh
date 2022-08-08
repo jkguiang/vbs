@@ -2,6 +2,7 @@ export VBSPWD=$PWD
 LIBPATHS="
 $VBSPWD/rapido/src
 $VBSPWD/NanoTools/NanoCORE
+$CMSSW_BASE/lib/$SCRAM_ARCH
 "
 for LIBPATH in $LIBPATHS; do
     # Add library to LD_LIBRARY_PATH

@@ -15,6 +15,7 @@
 #include "Config.h"
 #include "ElectronSelections.h"
 #include "MuonSelections.h"
+#include "Tools/goodrun.h"
 
 typedef std::vector<LorentzVector> LorentzVectors;
 typedef std::vector<double> Doubles;
@@ -70,7 +71,8 @@ struct VBSWHAnalysis
         cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
         cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
         cutflow.globals.newVar<Doubles>("good_fatjet_hbbtags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});
+        cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {}); // ParticleNet
+        cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});  // ParticleNet
         cutflow.globals.newVar<Doubles>("good_fatjet_msoftdrops", {});
         // VBS jet globals
         cutflow.globals.newVar<LorentzVector>("ld_vbs_jet_p4");
@@ -86,6 +88,29 @@ struct VBSWHAnalysis
         gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
 
         sfs.init(file_name);
+
+        if (cli.is_data)
+        {
+            if (nt.year() == 2016)
+            {
+                if (gconf.isAPV)
+                {
+                    set_goodrun_file("data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt");
+                }
+                else
+                {
+                    set_goodrun_file("data/golden_jsons/Cert_271036-325175_13TeV_Combined161718_JSON_snt.txt");
+                }
+            }
+            else if (nt.year() == 2017)
+            {
+                set_goodrun_file("data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_snt.txt");
+            }
+            else if (nt.year() == 2018)
+            {
+                set_goodrun_file("data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_snt.txt");
+            }
+        }
     };
 };
 
@@ -118,7 +143,7 @@ public:
         arbol.setLeaf<double>("xsec_sf", cli.is_data ? 1. : cli.scale_factor*nt.genWeight());
         arbol.setLeaf<int>("event", nt.event());
         arbol.setLeaf<double>("MET", nt.MET_pt());
-        return true;
+        return (cli.is_data) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
     };
 
     double weight()
@@ -386,19 +411,27 @@ public:
         Doubles good_jet_btags;
         LorentzVectors good_jet_p4s;
         Integers good_jet_idxs;
+        /* FIXME: not used, see FIXME below
+        int jer_seed = (
+            1 + (nt.run() << 20) 
+            + (nt.luminosityBlock() << 10) 
+            + nt.event() 
+            + (nt.nJet() > 0 ? nt.Jet_eta().at(0)/0.01 : 0)
+        );
+        */
         for (unsigned int jet_i = 0; jet_i < nt.nJet(); ++jet_i)
         {
             // Read jet p4
             LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
-            /* FIXME: add configurable 'jec_var' variable (from CLI?)
-            // Apply up/down JECs
-            if (jec_var == 1 || jec_var == -1)
-            {
-                sfs.jec_unc->setJetEta(jet_p4.eta());
-                sfs.jec_unc->setJetPt(jet_p4.pt());
-                double jec_err = fabs(sfs.jec_unc->getUncertainty(jec_var == 1))*jec_var;
-                jet_p4 *= (1. + jec_err);
-            }
+            // Apply JECs/JERs
+            jet_p4 = sfs.applyJEC(jet_p4);
+            /* FIXME: GenJet_* branches missing from current skim
+            jet_p4 = sfs.applyJER(
+                jer_seed, 
+                jet_p4, 
+                nt.fixedGridRhoFastjetAll(), 
+                nt.GenJet_p4()
+            );
             */
             if (jet_p4.pt() < 20) { continue; }
             // Apply jet ID
@@ -470,18 +503,18 @@ public:
         LorentzVectors good_fatjet_p4s;
         Integers good_fatjet_idxs;
         Doubles good_fatjet_hbbtags;
+        Doubles good_fatjet_xbbtags;
         Doubles good_fatjet_masses;
         Doubles good_fatjet_msoftdrops;
         LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
         for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
-            LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
-
             // Basic requirements
-            if (fatjet_p4.pt() <= 250) { continue; }
+            if (nt.FatJet_pt().at(fatjet_i) <= 250) { continue; }
             if (nt.FatJet_mass().at(fatjet_i) <= 50) { continue; }
             if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
             // Remove lepton overlap
+            LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
             bool is_overlap = false;
             for (auto& lep_p4 : good_lep_p4s)
             {
@@ -493,16 +526,22 @@ public:
             }
             if (is_overlap) { continue; }
 
+            double pnet_hbb = nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i);
+            double pnet_xbb = nt.FatJet_particleNetMD_Xbb().at(fatjet_i);
+            double pnet_qcd = nt.FatJet_particleNetMD_QCD().at(fatjet_i);
+
             // Store good fat jets
             good_fatjet_p4s.push_back(fatjet_p4);
             good_fatjet_idxs.push_back(fatjet_i);
-            good_fatjet_hbbtags.push_back(nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i));
-            good_fatjet_masses.push_back(nt.FatJet_mass().at(fatjet_i));
+            good_fatjet_hbbtags.push_back(pnet_hbb);
+            good_fatjet_xbbtags.push_back(pnet_xbb/(pnet_xbb + pnet_qcd));
+            good_fatjet_masses.push_back(nt.FatJet_particleNet_mass().at(fatjet_i));
             good_fatjet_msoftdrops.push_back(nt.FatJet_msoftdrop().at(fatjet_i));
         }
         globals.setVal<LorentzVectors>("good_fatjet_p4s", good_fatjet_p4s);
         globals.setVal<Integers>("good_fatjet_idxs", good_fatjet_idxs);
         globals.setVal<Doubles>("good_fatjet_hbbtags", good_fatjet_hbbtags);
+        globals.setVal<Doubles>("good_fatjet_xbbtags", good_fatjet_xbbtags);
         globals.setVal<Doubles>("good_fatjet_masses", good_fatjet_masses);
         globals.setVal<Doubles>("good_fatjet_msoftdrops", good_fatjet_msoftdrops);
         arbol.setLeaf<int>("n_fatjets", good_fatjet_p4s.size());
@@ -608,20 +647,6 @@ public:
         arbol.setLeaf<double>("deta_jj", ld_vbs_jet_p4.eta() - tr_vbs_jet_p4.eta());
         arbol.setLeaf<double>("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbs_jet_p4, tr_vbs_jet_p4));
         return true;
-    };
-};
-
-class VBSPresel : public VBSWHCut
-{
-public:
-    VBSPresel(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
-    {
-        // Do nothing
-    };
-
-    bool evaluate()
-    {
-        return (arbol.getLeaf<double>("M_jj") > 500) && (fabs(arbol.getLeaf<double>("deta_jj")) > 3);
     };
 };
 

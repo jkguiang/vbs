@@ -4,6 +4,7 @@
 // ROOT
 #include "TString.h"
 #include "TH1.h"
+#include "TRandom3.h"
 // NanoCORE
 #include "Nano.h"
 #include "Config.h"
@@ -11,6 +12,7 @@
 #include "Tools/btagsf/BTagCalibrationStandalone.h"
 #include "Tools/btagsf/BTagCalibrationStandalone_v2.h"
 #include "Tools/jetcorr/JetCorrectionUncertainty.h"
+#include "Tools/jetcorr/JetResolutionUncertainty.h"
 // Other
 #include "tools/TauIDSFTool.h"
 
@@ -81,7 +83,6 @@ struct SFHist
     };
 };
 
-
 enum NanoCampaignUL
 {
     RunIISummer20UL16APV,
@@ -107,8 +108,21 @@ struct NanoScaleFactorsUL
     TauIDSFTool* tau_vs_el;
 
     JetCorrectionUncertainty* jec_unc;
+    JetResolutionUncertainty* jer_unc;
+    // Note: jec_var == 1 means the nominal value is applied, 
+    //       +/-2 means a variation is applied, 
+    //       anything else means JECs are not applied.
+    int jec_var;
+    // Note: jer_var == 1 means the nominal value is applied, 
+    //       +/-2 means a variation is applied, 
+    //       anything else means JERs are not applied.
+    int jer_var;
+    TRandom3 random_num;
 
-    NanoScaleFactorsUL() {};
+    NanoScaleFactorsUL(int jec_var = 1, int jer_var = 1) : jec_var(jec_var), jer_var(jer_var)
+    {
+        random_num = TRandom3(12345);
+    };
 
     void init(TString file_name, bool taus = false)
     {
@@ -133,31 +147,17 @@ struct NanoScaleFactorsUL
             return;
         }
 
-        // Init common scale factors
-        switch (campaign)
-        {
-        case (RunIISummer20UL16APV):
-            set_goodrun_file("data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt");
-            break;
-        case (RunIISummer20UL16):
-            set_goodrun_file("data/golden_jsons/Cert_271036-325175_13TeV_Combined161718_JSON_snt.txt");
-            break;
-        case (RunIISummer20UL17):
-            set_goodrun_file("data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_snt.txt");
-            break;
-        case (RunIISummer20UL18):
-            set_goodrun_file("data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_snt.txt");
-            break;
-        }
-
-        // Init JEC uncertainty scale factors
+        // Init Jet Energy Correction (JEC) uncertainty scale factors
         // NOTE: must download them first!
         jec_unc = new JetCorrectionUncertainty(
-            "NanoTools/NanoCORE/Tools/jetcorr/data/"
-            + gconf.jecEraMC 
-            + "/"
-            + gconf.jecEraMC
-            + "_Uncertainty_AK4PFchs.txt"
+            "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jecEraMC+"/"+gconf.jecEraMC+"_Uncertainty_AK4PFchs.txt"
+        );
+
+        // Init Jet Energy Resolution (JER) uncertainty scale factors
+        // NOTE: must download them first!
+        jer_unc = new JetResolutionUncertainty(
+            "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jerEra+"/"+gconf.jerEra+"_PtResolution_AK4PFchs.txt",
+            "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jerEra+"/"+gconf.jerEra+"_SF_AK4PFchs.txt"
         );
 
         // Init ttH lepton ID scale factors
@@ -285,6 +285,28 @@ struct NanoScaleFactorsUL
             tau_vs_el = new TauIDSFTool("UL2018", "DeepTau2017v2p1VSe", "VVLoose", false, false);
             break;
         }
+    };
+
+    LorentzVector applyJEC(LorentzVector jet_p4)
+    {
+        if (abs(jec_var) != 2) { return jet_p4; }
+        jec_unc->setJetEta(jet_p4.eta());
+        jec_unc->setJetPt(jet_p4.pt());
+        float jec_err = fabs(jec_unc->getUncertainty(jec_var == 2))*jec_var/2;
+        return jet_p4*(1. + jec_err);
+    };
+
+    LorentzVector applyJER(int seed, LorentzVector jet_p4, float rho, 
+                           std::vector<LorentzVector> gen_jet_p4s)
+    {
+        /* FIXME: GenJet_* branches missing in current skim
+        random_num.SetSeed(seed);
+        jer_unc->setJetEta(jet_p4.eta());
+        jer_unc->setJetPt(jet_p4.pt());
+        jer_unc->setRho(rho);
+        jer_unc->applyJER(jet_p4, jer_var, gen_jet_p4s, random_num); 
+        */
+        return jet_p4;
     };
 };
 
