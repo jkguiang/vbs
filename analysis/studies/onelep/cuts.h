@@ -53,23 +53,41 @@ public:
 class SelectHbbFatJet : public VBSWHCut
 {
 public:
-    SelectHbbFatJet(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    bool use_md;
+
+    SelectHbbFatJet(std::string name, VBSWHAnalysis& analysis, bool md = false) : VBSWHCut(name, analysis) 
     {
-        // Do nothing
+        use_md = md;
     };
 
     bool evaluate()
     {
-        // Select fatjet with best (highest) ParticleNet Hbb score
-        Doubles good_fatjet_hbbtags = globals.getVal<Doubles>("good_fatjet_hbbtags");
-        int best_hbbjet_i = std::distance(
-            good_fatjet_hbbtags.begin(), 
-            std::max_element(good_fatjet_hbbtags.begin(), good_fatjet_hbbtags.end())
-        );
+        // Select fatjet with best (highest) ParticleNet score
+        int best_hbbjet_i = -1;
+        double best_hbbjet_score = -999.;
+        if (use_md)
+        {
+            Doubles xbbtags = globals.getVal<Doubles>("good_fatjet_xbbtags");
+            best_hbbjet_i = std::distance(
+                xbbtags.begin(), 
+                std::max_element(xbbtags.begin(), xbbtags.end())
+            );
+            best_hbbjet_score = xbbtags.at(best_hbbjet_i);
+        }
+        else
+        {
+            Doubles hbbtags = globals.getVal<Doubles>("good_fatjet_hbbtags");
+            best_hbbjet_i = std::distance(
+                hbbtags.begin(), 
+                std::max_element(hbbtags.begin(), hbbtags.end())
+            );
+            best_hbbjet_score = hbbtags.at(best_hbbjet_i);
+        }
+        if (best_hbbjet_i < 0) { return false; }
         // Store the fatjet
         LorentzVector best_hbbjet_p4 = globals.getVal<LorentzVectors>("good_fatjet_p4s").at(best_hbbjet_i);
         globals.setVal<LorentzVector>("hbbjet_p4", best_hbbjet_p4);
-        arbol.setLeaf<double>("hbbjet_score", globals.getVal<Doubles>("good_fatjet_hbbtags").at(best_hbbjet_i));
+        arbol.setLeaf<double>("hbbjet_score", best_hbbjet_score);
         arbol.setLeaf<double>("hbbjet_pt", best_hbbjet_p4.pt());
         arbol.setLeaf<double>("hbbjet_eta", best_hbbjet_p4.eta());
         arbol.setLeaf<double>("hbbjet_phi", best_hbbjet_p4.phi());
@@ -158,6 +176,11 @@ public:
         arbol.setLeaf<double>("lep_phi", lep_p4.phi());
         arbol.setLeaf<double>("LT", (lep_p4.pt() + arbol.getLeaf<double>("MET")));
         return true;
+    };
+
+    double weight()
+    {
+        return arbol.getLeaf<double>("lep_sf");
     };
 };
 
