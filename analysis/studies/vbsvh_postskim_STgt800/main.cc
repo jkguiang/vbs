@@ -27,7 +27,6 @@ int main(int argc, char** argv)
 
     // Initialize Looper
     Looper looper = Looper(cli.input_tchain);
-
     // Initialize Arbusto
     TFile* output_tfile = new TFile(
         TString(cli.output_dir+"/"+cli.output_name+".root"),
@@ -37,13 +36,13 @@ int main(int argc, char** argv)
         output_tfile,
         cli.input_tchain,
         {
-            "Electron*",
-            "Muon*",
-            "Jet*",
-            "Tau*",
-            "GenPart*",
+            "Electron*", "nElectron",
+            "Muon*", "nMuon",
+            "Tau*", "nTau", 
+            "Jet*", "nJet", 
+            "FatJet*", "nFatJet", 
+            "GenPart*", "nGenPart",
             "Generator*",
-            "FatJet*",
             "MET*",
             "event*",
             "run*",
@@ -58,6 +57,8 @@ int main(int argc, char** argv)
             "Pileup*"
         }
     );
+    TList* runs = new TList();
+    TList* lumis = new TList();
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
@@ -247,29 +248,41 @@ int main(int argc, char** argv)
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             gconf.GetConfigs(nt.year());
             gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
+            runs->Add(
+                (TTree*)cli.input_tchain->GetCurrentFile()->Get("Runs")
+            );
+            lumis->Add(
+                (TTree*)cli.input_tchain->GetCurrentFile()->Get("LuminosityBlocks")
+            );
         },
         [&](int entry) 
         {
             if (cli.debug && looper.n_events_processed == 10000) { looper.stop(); }
             else
             {
-                // Reset branches and globals
+                // reset branches and globals
                 arbusto.resetBranches();
                 cutflow.globals.resetVars();
-                // Run cutflow
+                // run cutflow
                 nt.GetEntry(entry);
                 bool passed = cutflow.runUntil(STgt800_postskim);
-                if (passed) { arbusto.fill(); }
+                if (passed) { arbusto.fill(entry); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
         }
     );
 
     // Wrap up
-    if (!cli.is_data)
-    {
-        cutflow.print();
-    }
+    if (!cli.is_data) { cutflow.print(); }
+
+    TTree* merged_runs = TTree::MergeTrees(runs);
+    merged_runs->SetName("Runs");
+    TTree* merged_lumis = TTree::MergeTrees(lumis);
+    merged_lumis->SetName("LuminosityBlocks");
+
+    output_tfile->cd();
+    merged_runs->Write();
+    merged_lumis->Write();
     arbusto.write();
     return 0;
 }
