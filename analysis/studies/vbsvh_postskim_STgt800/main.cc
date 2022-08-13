@@ -249,10 +249,10 @@ int main(int argc, char** argv)
             gconf.GetConfigs(nt.year());
             gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
             runs->Add(
-                (TTree*)cli.input_tchain->GetCurrentFile()->Get("Runs")
+                (TTree*)ttree->GetCurrentFile()->Get("Runs")
             );
             lumis->Add(
-                (TTree*)cli.input_tchain->GetCurrentFile()->Get("LuminosityBlocks")
+                (TTree*)ttree->GetCurrentFile()->Get("LuminosityBlocks")
             );
         },
         [&](int entry) 
