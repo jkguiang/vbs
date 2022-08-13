@@ -248,10 +248,10 @@ int main(int argc, char** argv)
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             gconf.GetConfigs(nt.year());
             gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
-            TTree* runtree = (TTree*)ttree->GetCurrentFile()->Get("Runs");
+            TTree* runtree = ((TTree*)ttree->GetCurrentFile()->Get("Runs"))->CloneTree();
             runtree->SetDirectory(0);
             runs->Add(runtree);
-            TTree* lumitree = (TTree*)ttree->GetCurrentFile()->Get("LuminosityBlocks");
+            TTree* lumitree = ((TTree*)ttree->GetCurrentFile()->Get("LuminosityBlocks"))->CloneTree();
             lumitree->SetDirectory(0);
             lumis->Add(lumitree);
         },
