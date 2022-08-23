@@ -128,12 +128,11 @@ if args.filter:
     if resp == "n":
         exit()
 
-print("hurrah")
-exit()
-
 total_summary = {}
-n_updates = args.n_monit_hrs*2 if args.n_monit_hrs > 0 else 1
-for _ in range(n_updates): # update every 30 mins
+n_updates = max(args.n_monit_hrs*2, 1)
+for update_i in range(n_updates): # update every 30 mins
+    if update_i > 0:
+        time.sleep(30*60) # Wait 30 minutes
     # Collect tasks
     tasks = []
     for sample in samples:
@@ -161,5 +160,3 @@ for _ in range(n_updates): # update every 30 mins
         break
     # Update monitoring GUI
     StatsParser(data=total_summary, webdir="~/public_html/{}_metis".format(NAME.lower())).do()
-    # Wait 30 minutes
-    time.sleep(30*60)
