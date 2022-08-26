@@ -5,14 +5,18 @@ import logging
 import glob
 import json
 import os
+import re
 import uproot
 from subprocess import Popen, PIPE
 from decimal import Decimal
 from utils.orchestrator import Orchestrator
 
 class VBSOrchestrator(Orchestrator):
-    def __init__(self, output_dir, study_exe, input_files, xsecs_json, n_workers=8):
+    def __init__(self, output_dir, output_ttree, study_exe, input_files, xsecs_json, 
+                 variation="", n_workers=8):
         self.output_dir = output_dir
+        self.output_ttree = output_ttree
+        self.variation = variation
         super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
 
     def get_year(self, input_file):
@@ -52,7 +56,7 @@ class VBSOrchestrator(Orchestrator):
                 t = f.get("Runs")
                 file_info["n_events"] = t["genEventSumw"].array(library="np").sum()
         else:
-            file_info["output_name"] = input_file.split("UL")[0][:-1].split('/')[-1]
+            file_info["output_name"] = input_file.split("/")[-2].split("UL")[0][:-1].split('/')[-1]
 
         file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
         return file_info
@@ -65,12 +69,12 @@ class VBSOrchestrator(Orchestrator):
 
     def _get_job(self, input_file):
         file_info = self.get_file_info(input_file)
-        with open("data/wjets_ht-binned_xsecs.json", "r") as f_in:
-            wjets_xsecs = json.load(f_in)
         cmd = [self.executable]
         cmd.append(f"--input_ttree=Events")
         cmd.append(f"--output_dir={file_info['output_dir']}")
         cmd.append(f"--output_name={file_info['output_name']}")
+        cmd.append(f"--output_ttree={self.output_ttree}")
+        cmd.append(f"--variation={self.variation}")
         if file_info["is_signal"]:
             cmd.append("--is_signal")
         if file_info["is_data"]:
@@ -82,20 +86,51 @@ class VBSOrchestrator(Orchestrator):
             if "WminusH_HToBB_WToLNu_M-125" in file_info["output_name"]:
                 sf *= 137.64/lumi # TODO: delete this when 2018 sample is not longer missing
             if "WJetsToLNu_HT-" in file_info["output_name"]:
+                with open("data/wjets_ht-binned_xsecs.json", "r") as f_in:
+                    wjets_xsecs = json.load(f_in)
                 sf *= wjets_xsecs[self.get_year(input_file)][file_info["output_name"]]
             cmd.append(f"--scale_factor={Decimal.from_float(sf)}")
         cmd.append(input_file)
         return cmd
 
 if __name__ == "__main__":
+    # Check that the PWD is correct
+    vbs_pwd = os.getenv("VBSPWD")
+    if vbs_pwd == "":
+        print(f"ERROR: `source setup.sh` must be run first")
+        exit()
+    elif os.getcwd() != vbs_pwd:
+        print(f"ERROR: must be run within {vbs_pwd}")
+        exit()
+
     cli = argparse.ArgumentParser(description="Run a given study in parallel")
     cli.add_argument(
         "study", type=str,
         help="Name of the study to run"
     )
     cli.add_argument(
+        "--skim", type=str, default="",
+        help="Name of skim (i.e. bkg_{SKIM}, sig_{SKIM}, data_{SKIM})"
+    )
+    cli.add_argument(
+        "--skims", type=str, nargs="*", default=[],
+        help="Space-separated list of standalone skims"
+    )
+    cli.add_argument(
         "--tag", type=str, default="",
         help="Unique tag for output"
+    )
+    cli.add_argument(
+        "--var", type=str, default="",
+        help="Type of variation (e.g. 'up', 'down', 'nominal', ...)"
+    )
+    cli.add_argument(
+        "--filter", type=str,
+        help="Regex filter for excluding matching datasets"
+    )
+    cli.add_argument(
+        "--output_ttree", type=str, default="tree",
+        help="Name of output ttree"
     )
     cli.add_argument(
         "--n_workers", type=int, default=8,
@@ -110,6 +145,33 @@ if __name__ == "__main__":
         help="Run looper over data files (in addition to MC)"
     )
     args = cli.parse_args()
+
+    ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
+    if args.skim:
+        if args.data:
+            skims = [f"{prefix}_{args.skim}" for prefix in ["bkg", "sig", "data"]]
+        else:
+            skims = [f"{prefix}_{args.skim}" for prefix in ["bkg", "sig"]]
+    elif args.skims:
+        skims = args.skims
+    else:
+        raise Exception("no skims provided")
+
+    samples = []
+    for skim in skims:
+        if skim == "sig_{args.skim}":
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/*.root") # Also picks up RunIISummer20UL16APV
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/*.root")
+        else:
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/*.root")
+    if not samples:
+        print("No samples found in these directories:")
+        print("\n".join([f"{ceph_dir}/{skim}" for skim in skims]))
+        exit()
 
     if args.tag:
         output_dir=f"studies/{args.study}/output_{args.tag}"
@@ -136,43 +198,28 @@ if __name__ == "__main__":
                 + stderr.decode("utf-8")
             )
 
-    # Check that the PWD is correct
-    vbs_pwd = os.getenv("VBSPWD")
-    if vbs_pwd == "":
-        print(f"ERROR: `source setup.sh` must be run first")
-        exit()
-    elif os.getcwd() != vbs_pwd:
-        print(f"ERROR: must be run within {vbs_pwd}")
-        exit()
+    if args.filter:
+        filter_re = re.compile(args.filter)
+        samples = [sample for sample in samples if filter_re.match(sample)]
+        if not samples:
+            print(f"Filter '{args.filter}' did not match any datasets")
+            exit()
+        print(f"Filter '{args.filter}' matched {len(samples)} datasets:")
+        print("\n".join(samples))
+        resp = ""
+        while resp != "y" and resp != "n":
+            resp = input("Run analysis jobs for these samples? y/n: ").lower()
+        if resp == "n":
+            exit()
 
-    # Gather samples
-    ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
-    skim = "1lep_1ak8_2ak4_postskim_STgt800"
-    # skim = "1lep_1ak8_2ak4_postskim"
-    samples = []
-    # Add data samples
-    if args.data:
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*HIPM_UL2016*NanoAODv9*/*.root")
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2016*NanoAODv9*/*.root")
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2017*NanoAODv9*/*.root")
-        samples += glob.glob(f"{ceph_dir}/data_{skim}/*UL2018*NanoAODv9*/*.root")
-    # Add background samples
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODAPVv9*/*.root")
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL16NanoAODv9*/*.root")
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL17NanoAODv9*/*.root")
-    samples += glob.glob(f"{ceph_dir}/bkg_{skim}/*UL18NanoAODv9*/*.root")
-    # Add signal samples
-    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16APV-106X_privateMC_NANOGEN_v1/merged.root")
-    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL16-106X_privateMC_NANOGEN_v1/merged.root")
-    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL17-106X_privateMC_NANOGEN_v1/merged.root")
-    samples.append(f"{ceph_dir[:-10]}/VBSWHSignalGeneration/v1/VBSWH_mkW_Inclusive_TuneCP5_RunIISummer20UL18-106X_privateMC_NANOGEN_v1/merged.root")
     print(f"Orchestrating {len(samples)} jobs...")
-    # Run study
     orchestrator = VBSOrchestrator(
         output_dir,
+        args.output_ttree,
         f"./bin/{args.study}", 
         samples, 
-        xsecs_json="data/xsecs.json",
+        "data/xsecs.json",
+        variation=args.var,
         n_workers=args.n_workers
     )
     orchestrator.run()
