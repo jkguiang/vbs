@@ -10,55 +10,44 @@ import uproot
 from subprocess import Popen, PIPE
 from decimal import Decimal
 from utils.orchestrator import Orchestrator
+import utils.file_info
 
 class VBSOrchestrator(Orchestrator):
-    def __init__(self, output_dir, output_ttree, study_exe, input_files, xsecs_json, 
-                 variation="", n_workers=8):
+    def __init__(self, output_dir, output_ttree, study_exe, input_files, 
+                 xsecs_json="data/xsecs.json", variation="", n_workers=8):
         self.output_dir = output_dir
         self.output_ttree = output_ttree
         self.variation = variation
-        super().__init__(study_exe, input_files, xsecs_json=xsecs_json, n_workers=n_workers)
-
-    def get_year(self, input_file):
-        if "HIPM_UL2016" in input_file or "UL16NanoAODAPVv9" in input_file or "RunIISummer20UL16APV" in input_file:
-            return "2016preVFP"
-        elif "UL2016" in input_file or "UL16NanoAODv9" in input_file or "RunIISummer20UL16" in input_file:
-            return "2016postVFP"
-        elif "UL2017" in input_file or "UL17NanoAODv9" in input_file or "RunIISummer20UL17" in input_file:
-            return "2017"
-        elif "UL2018" in input_file or "UL18NanoAODv9" in input_file or "RunIISummer20UL18" in input_file:
-            return "2018"
-        else:
-            raise Exception(f"No year found in {input_file}")
-
-    def get_lumi(self, input_file):
-        year = self.get_year(input_file)
-        if year == "2016preVFP":
-            return 19.52
-        elif year == "2016postVFP":
-            return 16.81
-        elif year == "2017":
-            return 41.48
-        elif year == "2018":
-            return 59.83
+        self.xsecs_json = xsecs_json
+        super().__init__(study_exe, input_files, n_workers=n_workers)
 
     def get_file_info(self, input_file):
-        file_info = {}
-        file_info["n_events"] = 0
-        file_info["is_data"] = ("Run201" in input_file)
+        file_info = {
+            "is_data": ("Run201" in input_file),
+            "is_signal": ("VBSWH_mkW_Inclusive" in input_file), 
+            "output_name": None, # set below, depends on is_data
+            "output_dir": None,  # set below, depends on year
+            "n_events": None,    # set by file_info.parse
+            "xsec": None,        # set by file_info.parse
+            "lumi": None,        # set by file_info.parse
+            "year": None,        # set by file_info.parse
+            "xsec_sf": None      # set by file_info.parse
+        }
+
         # Get output info
-        file_info["output_dir"] = f"{self.output_dir}/{self.get_year(input_file)}"
-        os.makedirs(file_info["output_dir"], exist_ok=True)
         if not file_info["is_data"]:
+            file_info.update(
+                utils.file_info.parse(input_file=input_file, xsecs_json=self.xsecs_json)
+            )
             file_info["output_name"] = input_file.split("_Tune")[0].split('/')[-1]
-            # Get number of events
-            with uproot.open(input_file) as f:
-                t = f.get("Runs")
-                file_info["n_events"] = t["genEventSumw"].array(library="np").sum()
         else:
+            file_info["xsec_sf"] = 1
+            file_info["year"] = utils.file_info.get_year(input_file)
             file_info["output_name"] = input_file.split("/")[-2].split("UL")[0][:-1].split('/')[-1]
 
-        file_info["is_signal"] = ("VBSWH" in file_info["output_name"])
+        file_info["output_dir"] = f"{self.output_dir}/{file_info['year']}"
+        os.makedirs(file_info["output_dir"], exist_ok=True)
+
         return file_info
 
     def _get_log_files(self, input_file):
@@ -80,15 +69,18 @@ class VBSOrchestrator(Orchestrator):
         if file_info["is_data"]:
             cmd.append("--is_data")
         else:
-            xsec = self.get_xsec(input_file)
-            lumi = self.get_lumi(input_file)
-            sf = xsec*1000*lumi/(file_info["n_events"])
+            xsec = file_info["xsec"]
+            lumi = file_info["lumi"]
+            year = file_info["year"]
+            n_events = file_info["n_events"]
+            sf = file_info["xsec_sf"]
+            logging.info(f"{file_info['output_name']} ({year}) sf = ({xsec})*1000*({lumi})/{n_events} = {sf}")
             if "WminusH_HToBB_WToLNu_M-125" in file_info["output_name"]:
                 sf *= 137.64/lumi # TODO: delete this when 2018 sample is not longer missing
             if "WJetsToLNu_HT-" in file_info["output_name"]:
                 with open("data/wjets_ht-binned_xsecs.json", "r") as f_in:
                     wjets_xsecs = json.load(f_in)
-                sf *= wjets_xsecs[self.get_year(input_file)][file_info["output_name"]]
+                sf *= wjets_xsecs[year][file_info["output_name"]]
             cmd.append(f"--scale_factor={Decimal.from_float(sf)}")
         cmd.append(input_file)
         return cmd
@@ -159,10 +151,15 @@ if __name__ == "__main__":
 
     samples = []
     for skim in skims:
-        if skim == "sig_{args.skim}":
+        if skim == f"sig_{args.skim}":
             samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/*.root") # Also picks up RunIISummer20UL16APV
             samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/*.root")
             samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/*.root")
+        elif skim == f"data_{args.skim}":
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2018*NanoAODv9*/*.root")
         else:
             samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/*.root")
             samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/*.root")
