@@ -4,14 +4,12 @@ import argparse
 import time
 import os
 import sys
-print(os.getcwd())
+import re
 sys.path.append(os.getcwd())
+import importlib
 from metis.CondorTask import CondorTask
 from metis.StatsParser import StatsParser
 from metis.Utils import good_sites
-# from samples.mc import nanoaodv9_bkg as samples
-from samples.mc import nanoaodv9_sig as samples
-# from samples.data import nanoaodv9 as samples
 
 cli = argparse.ArgumentParser(description="Submit NanoAOD-skimming condor jobs")
 cli.add_argument(
@@ -27,6 +25,14 @@ cli.add_argument(
 cli.add_argument(
     "--tag", type=str, required=True,
     help="Unique tag for submissions"
+)
+cli.add_argument(
+    "--samples", type=str, required=True,
+    help="sample to import"
+)
+cli.add_argument(
+    "--filter", type=str,
+    help="Regex filter for excluding matching datasets"
 )
 cli.add_argument(
     "--xrootd_protocol", type=str, default="root",
@@ -49,6 +55,9 @@ cli.add_argument(
     help="Number of hours to run Metis for"
 )
 args = cli.parse_args()
+
+samples_module, samples_obj = args.samples.rsplit(".", 1)
+samples = getattr(importlib.import_module(samples_module), samples_obj)
 
 NAME = "VBSVHSkim"
 
@@ -102,9 +111,22 @@ if args.debug:
 else:
     max_jobs = 0
 
+if args.filter:
+    filter_re = re.compile(args.filter)
+    samples = [s for s in samples if filter_re.match(s.get_datasetname())]
+    print("Filter '{}' matched the following datasets:".format(args.filter))
+    print("\n".join([s.get_datasetname() for s in samples]))
+    resp = ""
+    while resp != "y" and resp != "n":
+        resp = raw_input("Submit condor jobs for these samples? y/n: ").lower()
+    if resp == "n":
+        exit()
+
 total_summary = {}
-n_updates = args.n_monit_hrs*2 if args.n_monit_hrs > 0 else 1
-for _ in range(n_updates): # update every 30 mins
+n_updates = max(args.n_monit_hrs*2, 1)
+for update_i in range(n_updates): # update every 30 mins
+    if update_i > 0:
+        time.sleep(30*60) # Wait 30 minutes
     # Collect tasks
     tasks = []
     for sample in samples:
@@ -132,5 +154,3 @@ for _ in range(n_updates): # update every 30 mins
         break
     # Update monitoring GUI
     StatsParser(data=total_summary, webdir="~/public_html/{}_metis".format(NAME.lower())).do()
-    # Wait 30 minutes
-    time.sleep(30*60)
