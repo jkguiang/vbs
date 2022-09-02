@@ -136,5 +136,5 @@ if [[ "$DEBUG" == "false" ]]; then
 fi
 
 if [[ "$TEST" == "true" ]]; then
-    ./bin/test_package.sh $ORIG_DIR/packages/${MODULE}_skmpkg.tar.gz ${NANOAODPATHS[@]}
+    sh $ORIG_DIR/bin/test_package $ORIG_DIR/packages/${MODULE}_skmpkg.tar.gz ${NANOAODPATHS[@]}
 fi
