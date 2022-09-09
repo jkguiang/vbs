@@ -22,66 +22,33 @@ typedef std::vector<double> Doubles;
 typedef std::vector<int> Integers;
 typedef std::vector<unsigned int> Indices;
 
-struct VBSWHAnalysis
+namespace Core
+{
+
+struct Analysis
 {
     Arbol& arbol;
     Nano& nt;
     HEPCLI& cli;
     Cutflow& cutflow;
     NanoScaleFactorsUL sfs;
+    bool init_branches;
 
-    VBSWHAnalysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
+    Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : arbol(arbol_ref), nt(nt_ref), cli(cli_ref), cutflow(cutflow_ref)
     {
         gconf.nanoAOD_ver = 9;
-
-        arbol.newBranch<double>("xsec_sf", -999);
-        arbol.newBranch<int>("event", -999);
-        arbol.newBranch<double>("MET", -999);
-        arbol.newBranch<double>("ST", -999);
-        // Lepton branches
-        arbol.newBranch<double>("lep_sf", -999);
-        arbol.newBranch<double>("lep_sf_up", -999);
-        arbol.newBranch<double>("lep_sf_dn", -999);
-        // Jet (AK4) branches
-        arbol.newBranch<double>("HT", -999);
-        arbol.newBranch<int>("n_jets_pt30", -999);
-        // Jet (AK8) branches
-        arbol.newBranch<int>("n_fatjets", -999);
-        // b-jet branches
-        arbol.newBranch<int>("n_loose_b_jets", -999);
-        arbol.newBranch<int>("n_medium_b_jets", -999);
-        arbol.newBranch<int>("n_tight_b_jets", -999);
-        // VBS jet branches
-        arbol.newBranch<double>("ld_vbs_jet_pt", -999);
-        arbol.newBranch<double>("tr_vbs_jet_pt", -999);
-        arbol.newBranch<double>("M_jj", -999);
-        arbol.newBranch<double>("deta_jj", -999);
-        arbol.newBranch<double>("dR_jj", -999);
-        // Lepton globals
-        cutflow.globals.newVar<LorentzVectors>("good_lep_p4s", {});
-        cutflow.globals.newVar<Integers>("good_lep_pdgIDs", {});
-        cutflow.globals.newVar<Integers>("good_lep_idxs", {});
-        cutflow.globals.newVar<Integers>("good_lep_jet_idxs", {});
-        // Jet globals
-        cutflow.globals.newVar<LorentzVectors>("good_jet_p4s", {});
-        cutflow.globals.newVar<Integers>("good_jet_idxs", {});
-        cutflow.globals.newVar<Doubles>("good_jet_btags", {});
-        // Fat jet (AK8) globals
-        cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
-        cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
-        cutflow.globals.newVar<Doubles>("good_fatjet_hbbtags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});  // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_msoftdrops", {});
-        // VBS jet globals
-        cutflow.globals.newVar<LorentzVector>("ld_vbs_jet_p4");
-        cutflow.globals.newVar<LorentzVector>("tr_vbs_jet_p4");
-        cutflow.globals.newVar<int>("ld_vbs_jet_idx");
-        cutflow.globals.newVar<int>("tr_vbs_jet_idx");
+        if (cli.variation == "jec_up") { sfs = NanoScaleFactorsUL(2, 1); }
+        else if (cli.variation == "jec_dn") { sfs = NanoScaleFactorsUL(-2, 1); }
+        else if (cli.variation == "jer_up") { sfs = NanoScaleFactorsUL(1, 2); }
+        else if (cli.variation == "jer_dn") { sfs = NanoScaleFactorsUL(1, -2); }
+        else { sfs = NanoScaleFactorsUL(1, 1); }
+        init_branches = false;
     };
 
-    void init()
+    virtual void initBranches() { /* Initialize Arbol branches */ };
+
+    virtual void init()
     {
         TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
         gconf.GetConfigs(nt.year());
@@ -114,7 +81,60 @@ struct VBSWHAnalysis
     };
 };
 
-class VBSWHCut : public Cut
+struct VBSAnalysis : Analysis
+{
+    VBSAnalysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
+    : Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
+    {
+        // Lepton globals
+        cutflow.globals.newVar<LorentzVectors>("good_lep_p4s", {});
+        cutflow.globals.newVar<Integers>("good_lep_pdgIDs", {});
+        cutflow.globals.newVar<Integers>("good_lep_idxs", {});
+        cutflow.globals.newVar<Integers>("good_lep_jet_idxs", {});
+        // Jet globals
+        cutflow.globals.newVar<LorentzVectors>("good_jet_p4s", {});
+        cutflow.globals.newVar<Integers>("good_jet_idxs", {});
+        cutflow.globals.newVar<Doubles>("good_jet_btags", {});
+        // Fat jet (AK8) globals
+        cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
+        cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
+        cutflow.globals.newVar<Doubles>("good_fatjet_hbbtags", {}); // ParticleNet
+        cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {}); // ParticleNet
+        cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});  // ParticleNet
+        cutflow.globals.newVar<Doubles>("good_fatjet_msoftdrops", {});
+        // VBS jet globals
+        cutflow.globals.newVar<LorentzVector>("ld_vbs_jet_p4");
+        cutflow.globals.newVar<LorentzVector>("tr_vbs_jet_p4");
+        cutflow.globals.newVar<int>("ld_vbs_jet_idx");
+        cutflow.globals.newVar<int>("tr_vbs_jet_idx");
+    };
+
+    virtual void initBranches()
+    {
+        // Jet (AK4) branches
+        arbol.newBranch<double>("HT", -999);
+        arbol.newBranch<int>("n_jets_pt30", -999);
+        arbol.newBranch<int>("n_loose_b_jets", -999);
+        arbol.newBranch<int>("n_medium_b_jets", -999);
+        arbol.newBranch<int>("n_tight_b_jets", -999);
+        // Jet (AK8) branches
+        arbol.newBranch<int>("n_fatjets", -999);
+        // VBS jet branches
+        arbol.newBranch<double>("ld_vbs_jet_pt", -999);
+        arbol.newBranch<double>("tr_vbs_jet_pt", -999);
+        arbol.newBranch<double>("M_jj", -999);
+        arbol.newBranch<double>("deta_jj", -999);
+        arbol.newBranch<double>("dR_jj", -999);
+        // Other branches
+        arbol.newBranch<double>("xsec_sf", -999);
+        arbol.newBranch<int>("event", -999);
+        arbol.newBranch<double>("MET", -999);
+
+        init_branches = true;
+    };
+};
+
+class DressedCut : public Cut
 {
 public:
     Arbol& arbol;
@@ -122,147 +142,45 @@ public:
     HEPCLI& cli;
     Utilities::Variables& globals;
     NanoScaleFactorsUL& sfs;
+    bool& init_branches;
 
-    VBSWHCut(std::string new_name, VBSWHAnalysis& a) 
-    : Cut(new_name), arbol(a.arbol), nt(a.nt), cli(a.cli), globals(a.cutflow.globals), sfs(a.sfs)
+    DressedCut(std::string new_name, Analysis& a) 
+    : Cut(new_name), arbol(a.arbol), nt(a.nt), cli(a.cli), globals(a.cutflow.globals), sfs(a.sfs), 
+      init_branches(a.init_branches)
     {
         // Do nothing
     };
 };
 
-class Bookkeeping : public VBSWHCut
+class Bookkeeping : public DressedCut
 {
 public:
-    Bookkeeping(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    Bookkeeping(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
     {
         // Do nothing
     };
 
     bool evaluate()
     {
-        arbol.setLeaf<double>("xsec_sf", cli.is_data ? 1. : cli.scale_factor*nt.genWeight());
-        arbol.setLeaf<int>("event", nt.event());
-        arbol.setLeaf<double>("MET", nt.MET_pt());
+        if (init_branches)
+        {
+            arbol.setLeaf<double>("xsec_sf", cli.is_data ? 1. : cli.scale_factor*nt.genWeight());
+            arbol.setLeaf<int>("event", nt.event());
+            arbol.setLeaf<double>("MET", nt.MET_pt());
+        }
         return (cli.is_data) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
     };
 
     double weight()
     {
-        return arbol.getLeaf<double>("xsec_sf");
+        return cli.scale_factor*nt.genWeight();
     };
 };
 
-class Passes1LepTriggers : public VBSWHCut
+class SelectLeptons : public DressedCut
 {
 public:
-    Passes1LepTriggers(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
-    {
-        // Do nothing
-    };
-
-    bool tryTrigger(std::function<bool()> trigger)
-    {
-        try { return trigger(); }
-        catch (const runtime_error& error) { return false; }
-    };
-
-    bool passesMuonTriggers()
-    {
-        bool passed = false;
-        switch (nt.year())
-        {
-        case (2016):
-            try { passed = (passed || nt.HLT_IsoMu24()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_IsoTkMu24()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_IsoMu22()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_IsoTkMu22()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            break;
-        case (2017):
-            try { passed = (passed || nt.HLT_IsoMu27()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_IsoMu24()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            break;
-        case (2018):
-            try { passed = (passed || nt.HLT_IsoMu27()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_IsoMu24()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            break;
-        }
-        return passed;
-    };
-
-    bool passesElecTriggers()
-    {
-        bool passed = false;
-        switch (nt.year())
-        {
-        case (2016):
-            try { passed = (passed || nt.HLT_Ele27_WPTight_Gsf()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_Ele25_eta2p1_WPTight_Gsf()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            break;
-        case (2017):
-            try { passed = (passed || nt.HLT_Ele35_WPTight_Gsf()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_Ele32_WPTight_Gsf()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            break;
-        case (2018):
-            try { passed = (passed || nt.HLT_Ele35_WPTight_Gsf()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_Ele32_WPTight_Gsf()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            break;
-        }
-        return passed;
-    };
-
-    bool evaluate()
-    {
-        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        if (!cli.is_data) 
-        { 
-            int abs_lep_id = abs(arbol.getLeaf<int>("lep_pdgID"));
-            switch (abs_lep_id)
-            {
-            case (11):
-                return passesElecTriggers();
-                break;
-            case (13):
-                return passesMuonTriggers();
-                break;
-            default:
-                return true;
-                break;
-            }
-            return false; 
-        }
-        else if (file_name.Contains("SingleMuon"))
-        {
-            return passesMuonTriggers();
-        }
-        else if (file_name.Contains("SingleElectron") || file_name.Contains("EGamma"))
-        {
-            return passesElecTriggers();
-        }
-        else
-        {
-            return false;
-        }
-    };
-};
-
-class SelectLeptons : public VBSWHCut
-{
-public:
-    SelectLeptons(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    SelectLeptons(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
     {
         // Do nothing
     };
@@ -282,7 +200,7 @@ public:
         // Loop over electrons
         for (unsigned int i = 0; i < nt.nElectron(); ++i)
         {
-            if (!ttH::electronID(i, ttH::IDveto, nt.year())) { continue; }
+            if (!ttH_UL::electronID(i, ttH::IDveto, nt.year())) { continue; }
             LorentzVector el_p4 = nt.Electron_p4().at(i);
             // Store basic info
             good_lep_p4s.push_back(el_p4);
@@ -309,7 +227,7 @@ public:
         // Loop over muons
         for (unsigned int i = 0; i < nt.nMuon(); ++i)
         {
-            if (!ttH::muonID(i, ttH::IDveto, nt.year())) { continue; }
+            if (!ttH_UL::muonID(i, ttH::IDveto, nt.year())) { continue; }
             LorentzVector mu_p4 = nt.Muon_p4().at(i);
             // Store basic info
             good_lep_p4s.push_back(mu_p4);
@@ -333,6 +251,14 @@ public:
             err_up += std::pow(sfs.mu_tth_tight->getErr(mu_eta, mu_pt), 2);
             err_dn += std::pow(sfs.mu_tth_tight->getErr(mu_eta, mu_pt), 2);
         }
+
+        globals.setVal<LorentzVectors>("good_lep_p4s", good_lep_p4s);
+        globals.setVal<Integers>("good_lep_pdgIDs", good_lep_pdgIDs);
+        globals.setVal<Integers>("good_lep_idxs", good_lep_idxs);
+        globals.setVal<Integers>("good_lep_jet_idxs", good_lep_jet_idxs);
+
+        if (!init_branches) { return true; }
+
         // Store lepton sf and its up/down variations
         if (!cli.is_data)
         {
@@ -349,21 +275,17 @@ public:
             arbol.setLeaf<double>("lep_sf_up", 1.);
             arbol.setLeaf<double>("lep_sf_dn", 1.);
         }
-        globals.setVal<LorentzVectors>("good_lep_p4s", good_lep_p4s);
-        globals.setVal<Integers>("good_lep_pdgIDs", good_lep_pdgIDs);
-        globals.setVal<Integers>("good_lep_idxs", good_lep_idxs);
-        globals.setVal<Integers>("good_lep_jet_idxs", good_lep_jet_idxs);
         return true;
     };
 };
 
-class SelectJets : public VBSWHCut
+class SelectJets : public DressedCut
 {
 public:
     LorentzVectors good_lep_p4s;
     Integers good_lep_jet_idxs;
 
-    SelectJets(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    SelectJets(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
     {
         // Do nothing
     };
@@ -478,22 +400,27 @@ public:
             good_jet_p4s.push_back(jet_p4);
             good_jet_idxs.push_back(jet_i);
         }
+
         globals.setVal<Doubles>("good_jet_btags", good_jet_btags);
         globals.setVal<LorentzVectors>("good_jet_p4s", good_jet_p4s);
         globals.setVal<Integers>("good_jet_idxs", good_jet_idxs);
+
+        if (!init_branches) { return true; }
+
         arbol.setLeaf<int>("n_loose_b_jets", n_loose_b_jets);
         arbol.setLeaf<int>("n_medium_b_jets", n_medium_b_jets);
         arbol.setLeaf<int>("n_tight_b_jets", n_tight_b_jets);
         arbol.setLeaf<int>("n_jets_pt30", n_jets_pt30);
         arbol.setLeaf<double>("HT", ht);
+
         return true;
     };
 };
 
-class SelectFatJets : public VBSWHCut
+class SelectFatJets : public DressedCut
 {
 public:
-    SelectFatJets(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    SelectFatJets(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
     {
         // Do nothing
     };
@@ -513,6 +440,7 @@ public:
             if (nt.FatJet_pt().at(fatjet_i) <= 250) { continue; }
             if (nt.FatJet_mass().at(fatjet_i) <= 50) { continue; }
             if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
+            if (fabs(nt.FatJet_eta().at(fatjet_i)) >= 2.5) { continue; }
             // Remove lepton overlap
             LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
             bool is_overlap = false;
@@ -544,15 +472,19 @@ public:
         globals.setVal<Doubles>("good_fatjet_xbbtags", good_fatjet_xbbtags);
         globals.setVal<Doubles>("good_fatjet_masses", good_fatjet_masses);
         globals.setVal<Doubles>("good_fatjet_msoftdrops", good_fatjet_msoftdrops);
+
+        if (!init_branches) { return true; }
+
         arbol.setLeaf<int>("n_fatjets", good_fatjet_p4s.size());
+
         return true;
     };
 };
 
-class SelectVBSJetsMaxE : public VBSWHCut
+class SelectVBSJetsMaxE : public DressedCut
 {
 public:
-    SelectVBSJetsMaxE(std::string name, VBSWHAnalysis& analysis) : VBSWHCut(name, analysis) 
+    SelectVBSJetsMaxE(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
     {
         // Do nothing
     };
@@ -641,13 +573,19 @@ public:
         globals.setVal<int>("ld_vbs_jet_idx", ld_vbs_jet_idx);
         globals.setVal<LorentzVector>("tr_vbs_jet_p4", tr_vbs_jet_p4);
         globals.setVal<int>("tr_vbs_jet_idx", tr_vbs_jet_idx);
+
+        if (!init_branches) { return true; }
+
         arbol.setLeaf<double>("ld_vbs_jet_pt", ld_vbs_jet_p4.pt());
         arbol.setLeaf<double>("tr_vbs_jet_pt", tr_vbs_jet_p4.pt());
         arbol.setLeaf<double>("M_jj", (ld_vbs_jet_p4 + tr_vbs_jet_p4).M());
         arbol.setLeaf<double>("deta_jj", ld_vbs_jet_p4.eta() - tr_vbs_jet_p4.eta());
         arbol.setLeaf<double>("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbs_jet_p4, tr_vbs_jet_p4));
+
         return true;
     };
 };
+
+}; // End namespace Core
 
 #endif

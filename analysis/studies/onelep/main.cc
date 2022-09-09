@@ -1,8 +1,9 @@
 #include "../core.h"
 #include "../scalefactors.h"
-#include "cuts.h"
+#include "../vbswh.h"
 // RAPIDO
 #include "arbol.h"
+#include "hepcli.h"
 #include "looper.h"
 #include "cutflow.h"
 // ROOT
@@ -19,214 +20,61 @@ int main(int argc, char** argv)
     HEPCLI cli = HEPCLI(argc, argv);
 
     // Initialize Looper
-    Looper looper = Looper(cli.input_tchain);
+    Looper looper = Looper(cli);
 
     // Initialize Arbol
-    TFile* output_tfile = new TFile(
-        TString(cli.output_dir+"/"+cli.output_name+".root"),
-        "RECREATE"
-    );
-    Arbol arbol = Arbol(output_tfile);
-    arbol.newBranch<int>("lep_pdgID", -999);
-    arbol.newBranch<double>("lep_pt", -999);
-    arbol.newBranch<double>("lep_eta", -999);
-    arbol.newBranch<double>("lep_phi", -999);
-    arbol.newBranch<double>("LT", -999);
-    arbol.newBranch<double>("hbbjet_score", -999);
-    arbol.newBranch<double>("hbbjet_pt", -999);
-    arbol.newBranch<double>("hbbjet_eta", -999);
-    arbol.newBranch<double>("hbbjet_phi", -999);
-    arbol.newBranch<double>("hbbjet_mass", -999);
-    arbol.newBranch<double>("hbbjet_msoftdrop", -999);
-    arbol.newBranch<bool>("passes_bveto", false);
+    Arbol arbol = Arbol(cli);
+    // DEBUG
+    arbol.newBranch<int>("lhe_ld_q_pdgID", -999);
+    arbol.newBranch<int>("lhe_tr_q_pdgID", -999);
+    arbol.newBranch<int>("lhe_lep_pdgID", -999);
+    arbol.newBranch<double>("lhe_M_qq", -999);
+    arbol.newBranch<double>("lhe_deta_qq", -999);
+    arbol.newBranch<double>("lhe_M_lnu", -999);
+    arbol.newBranch<double>("lhe_M_lnuqq", -999);
+    arbol.newBranch<bool>("gen_is_VBSW", false);
+    arbol.newBranch<bool>("gen_is_WW", false);
+    arbol.newBranch<int>("gen_ld_q_pdgID", -999);
+    arbol.newBranch<double>("gen_ld_q_pt", -999);
+    arbol.newBranch<double>("gen_ld_q_eta", -999);
+    arbol.newBranch<double>("gen_ld_q_phi", -999);
+    arbol.newBranch<bool>("gen_ld_q_in_hbb_cone", false);
+    arbol.newBranch<int>("gen_tr_q_pdgID", -999);
+    arbol.newBranch<double>("gen_tr_q_pt", -999);
+    arbol.newBranch<double>("gen_tr_q_eta", -999);
+    arbol.newBranch<double>("gen_tr_q_phi", -999);
+    arbol.newBranch<bool>("gen_tr_q_in_hbb_cone", false);
+    arbol.newBranch<int>("gen_lep_pdgID", -999);
+    arbol.newBranch<double>("gen_lep_pt", -999);
+    arbol.newBranch<double>("gen_lep_eta", -999);
+    arbol.newBranch<double>("gen_lep_phi", -999);
+    arbol.newBranch<int>("n_gen_q_in_hbb_cone", -999);
+    arbol.newBranch<float>("n_gen_q_VBS_matches", -999);
+    arbol.newBranch<int>("n_gen_q_double_matches", -999);
+    arbol.newBranch<bool>("gen_lep_is_reco_match", false);
+    arbol.newBranch<bool>("gen_found_all", false);
 
     // Initialize Cutflow
-    Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
-    cutflow.globals.newVar<LorentzVector>("lep_p4");
-    cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
-    cutflow.globals.newVar<LorentzVectors>("veto_lep_p4s");
-    cutflow.globals.newVar<LorentzVectors>("loose_lep_p4s");
-    cutflow.globals.newVar<LorentzVectors>("tight_lep_p4s");
+    Cutflow cutflow = Cutflow(cli.output_name + "_Cutflow");
+    // DEBUG
+    cutflow.globals.newVar<LorentzVector>("gen_ld_q_p4");
+    cutflow.globals.newVar<LorentzVector>("gen_tr_q_p4");
+    cutflow.globals.newVar<LorentzVector>("gen_lep_p4");
 
     // Pack above into VBSWH struct (also adds branches)
-    VBSWHAnalysis analysis = VBSWHAnalysis(arbol, nt, cli, cutflow);
+    VBSWH::Analysis analysis = VBSWH::Analysis(arbol, nt, cli, cutflow);
+    analysis.initBranches();
 
     // Bookkeeping
-    Cut* bookkeeping = new Bookkeeping("Bookkeeping", analysis);
+    Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", analysis);
     cutflow.setRoot(bookkeeping);
 
-    // Exactly 1 lepton
-    Cut* findleps_skim = new LambdaCut(
-        "SKIM_FindLeptons", 
-        [&]() 
-        { 
-            LorentzVectors veto_lep_p4s;
-            LorentzVectors loose_lep_p4s;
-            LorentzVectors tight_lep_p4s;
-            for (unsigned int elec_i = 0; elec_i < nt.nElectron(); elec_i++)
-            {
-                LorentzVector lep_p4 = nt.Electron_p4().at(elec_i);
-                if (ttH::electronID(elec_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
-                if (ttH::electronID(elec_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
-                if (ttH::electronID(elec_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
-            }
-            for (unsigned int muon_i = 0; muon_i < nt.nMuon(); muon_i++)
-            {
-                LorentzVector lep_p4 = nt.Muon_p4().at(muon_i);
-                if (ttH::muonID(muon_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
-                if (ttH::muonID(muon_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
-                if (ttH::muonID(muon_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
-            }
-            cutflow.globals.setVal<LorentzVectors>("veto_lep_p4s", veto_lep_p4s);
-            cutflow.globals.setVal<LorentzVectors>("loose_lep_p4s", loose_lep_p4s);
-            cutflow.globals.setVal<LorentzVectors>("tight_lep_p4s", tight_lep_p4s);
-            return true;
-        }
-    );
-    cutflow.insert(bookkeeping, findleps_skim, Right);
-
-    // Geq1VetoLep
-    Cut* geq1vetolep_skim = new LambdaCut(
-        "SKIM_Geq1VetoLep", [&]() { return cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s").size() >= 1; }
-    );
-    cutflow.insert(findleps_skim, geq1vetolep_skim, Right);
-
-    // Geq2Jets
-    Cut* geq2jets_skim = new LambdaCut(
-        "SKIM_Geq2Jets", 
-        [&]() 
-        { 
-            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s");
-            int n_jets = 0;
-            for (unsigned int jet_i = 0; jet_i < nt.nJet(); jet_i++)
-            {
-                LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
-                bool is_overlap = false;
-                for (auto lep_p4 : lep_p4s)
-                {
-                    if (ROOT::Math::VectorUtil::DeltaR(lep_p4, jet_p4) < 0.4)
-                    {
-                        is_overlap = true;
-                        break;
-                    }
-                }
-                if (!is_overlap && nt.Jet_pt().at(jet_i) > 20)
-                {
-                    n_jets++;
-                }
-            }
-            return (n_jets >= 2);
-        }
-    );
-    cutflow.insert(geq1vetolep_skim, geq2jets_skim, Right);
-
-    // Geq1FatJet
-    Cut* geq1fatjet_skim = new LambdaCut(
-        "SKIM_Geq1FatJetNoVetoLepOverlap", 
-        [&]() 
-        { 
-            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s");
-            int n_fatjets = 0;
-            for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
-            {
-                LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
-                bool is_overlap = false;
-                for (auto lep_p4 : lep_p4s)
-                {
-                    if (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8)
-                    {
-                        is_overlap = true;
-                        break;
-                    }
-                }
-                if (!is_overlap 
-                    && nt.FatJet_mass().at(fatjet_i) > 10 
-                    && nt.FatJet_msoftdrop().at(fatjet_i) > 10 
-                    && nt.FatJet_pt().at(fatjet_i) > 200)
-                {
-                    n_fatjets++;
-                }
-            }
-            return (n_fatjets >= 1);
-        }
-    );
-    cutflow.insert(geq2jets_skim, geq1fatjet_skim, Right);
-
-    // Exactly1Lep
-    Cut* exactly1tightlep_postskim = new LambdaCut(
-        "POSTSKIM_Exactly1TightLep", 
-        [&]() 
-        { 
-            int n_loose_leps = cutflow.globals.getVal<LorentzVectors>("loose_lep_p4s").size();
-            int n_tight_leps = cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").size();
-            return (n_loose_leps == 1 && n_tight_leps == 1);
-        }
-    );
-    cutflow.insert(geq1fatjet_skim, exactly1tightlep_postskim, Right);
-
-    // Geq1FatJet
-    Cut* geq1fatjet_postskim = new LambdaCut(
-        "POSTSKIM_Geq1FatJetNoTightLepOverlap", 
-        [&]() 
-        { 
-            LorentzVector lep_p4 = cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").at(0);
-            int n_fatjets = 0;
-            double hbbjet_score = -999.;
-            LorentzVector hbbjet_p4;
-            for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
-            {
-                // Basic requirements
-                if (nt.FatJet_pt().at(fatjet_i) <= 250) { continue; }
-                if (nt.FatJet_mass().at(fatjet_i) <= 50) { continue; }
-                if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { continue; }
-                // Remove lepton overlap
-                LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
-                if (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8) { continue; }
-
-                // Count good fat jets
-                n_fatjets++;
-                double pnet_xbb = nt.FatJet_particleNetMD_Xbb().at(fatjet_i);
-                double pnet_qcd = nt.FatJet_particleNetMD_QCD().at(fatjet_i);
-                double xbb_score = pnet_xbb/(pnet_xbb + pnet_qcd);
-                if (xbb_score > hbbjet_score)
-                {
-                    hbbjet_p4 = fatjet_p4;
-                    hbbjet_score = xbb_score;
-                }
-            }
-            if (n_fatjets >= 1)
-            {
-                cutflow.globals.setVal<LorentzVector>("hbbjet_p4", hbbjet_p4);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
-        }
-    );
-    cutflow.insert(exactly1tightlep_postskim, geq1fatjet_postskim, Right);
-
-    Cut* STgt800_postskim = new LambdaCut(
-        "POSTSKIM_STgt800", 
-        [&]() 
-        { 
-            double ST = (
-                cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").at(0).pt()
-                + cutflow.globals.getVal<LorentzVector>("hbbjet_p4").pt()
-                + nt.MET_pt()
-            );
-            return (ST > 800);
-        }
-    );
-    cutflow.insert(geq1fatjet_postskim, STgt800_postskim, Right);
-
     // Lepton selection
-    Cut* select_leps = new SelectLeptons("SelectLeptons", analysis);
-    cutflow.insert(STgt800_postskim, select_leps, Right);
+    Cut* select_leps = new Core::SelectLeptons("SelectLeptons", analysis);
+    cutflow.insert(bookkeeping, select_leps, Right);
 
     // == 1 lepton selection
-    Cut* has_1lep = new Has1Lep("Has1TightLep", analysis);
+    Cut* has_1lep = new VBSWH::Has1Lep("Has1TightLep", analysis);
     cutflow.insert(select_leps, has_1lep, Right);
 
     // Lepton has pT > 40
@@ -236,11 +84,11 @@ int main(int argc, char** argv)
     cutflow.insert(has_1lep, lep_pt_gt40, Right);
 
     // Single-lepton triggers
-    Cut* lep_triggers = new Passes1LepTriggers("Passes1LepTriggers", analysis);
+    Cut* lep_triggers = new VBSWH::Passes1LepTriggers("Passes1LepTriggers", analysis);
     cutflow.insert(lep_pt_gt40, lep_triggers, Right);
 
     // Fat jet selection
-    Cut* select_fatjets = new SelectFatJets("SelectFatJets", analysis);
+    Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", analysis);
     cutflow.insert(lep_triggers, select_fatjets, Right);
 
     // Geq1FatJet
@@ -250,11 +98,11 @@ int main(int argc, char** argv)
     cutflow.insert(select_fatjets, geq1fatjet, Right);
 
     // Hbb selection
-    Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", analysis, true);
+    Cut* select_hbbjet = new VBSWH::SelectHbbFatJet("SelectHbbFatJet", analysis, true);
     cutflow.insert(geq1fatjet, select_hbbjet, Right);
 
     // Jet selection
-    Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
+    Cut* select_jets = new VBSWH::SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", analysis);
     cutflow.insert(select_hbbjet, select_jets, Right);
 
     // Global AK4 b-veto
@@ -278,7 +126,7 @@ int main(int argc, char** argv)
     cutflow.insert(select_jets, save_ak4bveto, Right);
 
     // VBS jet selection
-    Cut* select_vbsjets_maxE = new SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
+    Cut* select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
     cutflow.insert(save_ak4bveto, select_vbsjets_maxE, Right);
 
     // Basic VBS jet requirements
@@ -299,7 +147,7 @@ int main(int argc, char** argv)
     cutflow.insert(vbsjets_presel, is_elec, Right);
 
     // Single-electron triggers
-    Cut* elec_triggers = new Passes1LepTriggers("Passes1ElecTriggers", analysis);
+    Cut* elec_triggers = new VBSWH::Passes1LepTriggers("Passes1ElecTriggers", analysis);
     cutflow.insert(is_elec, elec_triggers, Right);
 
     // Single-muon channel
@@ -309,7 +157,7 @@ int main(int argc, char** argv)
     cutflow.insert(is_elec, is_muon, Left);
 
     // Single-muon triggers
-    Cut* muon_triggers = new Passes1LepTriggers("Passes1MuonTriggers", analysis);
+    Cut* muon_triggers = new VBSWH::Passes1LepTriggers("Passes1MuonTriggers", analysis);
     cutflow.insert(is_muon, muon_triggers, Right);
     */
 
@@ -327,7 +175,10 @@ int main(int argc, char** argv)
         "MjjGt600_detajjGt4", 
         [&]() 
         { 
-            return arbol.getLeaf<double>("M_jj") > 600 && fabs(arbol.getLeaf<double>("deta_jj")) > 4; 
+            return (
+                arbol.getLeaf<double>("M_jj") > 600 
+                && fabs(arbol.getLeaf<double>("deta_jj")) > 4
+            ); 
         }
     );
     cutflow.insert(apply_ak4bveto, vbs_SR, Right);
@@ -354,6 +205,215 @@ int main(int argc, char** argv)
     );
     cutflow.insert(Hbb_SR, ST_SRtight, Right);
 
+    // DEBUG DEBUG DEBUG
+    Cut* search_lhe = new LambdaCut(
+        "DEBUG_FindLHEQuarks",
+        [&]()
+        {
+            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            if (file_name.Contains("EWKW") || file_name.Contains("EWKZ") || file_name.Contains("WWTo"))
+            {
+                LorentzVector q1_p4 = nt.LHEPart_p4().at(4);
+                LorentzVector q2_p4 = nt.LHEPart_p4().at(5);
+                arbol.setLeaf<double>("lhe_M_qq", (q1_p4 + q2_p4).M());
+                arbol.setLeaf<double>("lhe_deta_qq", q1_p4.eta() - q2_p4.eta());
+                if (q1_p4.pt() > q2_p4.pt())
+                {
+                    arbol.setLeaf<int>("lhe_ld_q_pdgID", nt.LHEPart_pdgId().at(4));
+                    arbol.setLeaf<int>("lhe_tr_q_pdgID", nt.LHEPart_pdgId().at(5));
+                }
+                else
+                {
+                    arbol.setLeaf<int>("lhe_ld_q_pdgID", nt.LHEPart_pdgId().at(5));
+                    arbol.setLeaf<int>("lhe_tr_q_pdgID", nt.LHEPart_pdgId().at(4));
+                }
+                if (file_name.Contains("To1L1Nu") || file_name.Contains("ToLNu"))
+                {
+                    LorentzVector lep_p4 = nt.LHEPart_p4().at(2);
+                    LorentzVector nu_p4 = nt.LHEPart_p4().at(3);
+                    arbol.setLeaf<double>("lhe_M_lnu", (lep_p4 + nu_p4).M());
+                    arbol.setLeaf<int>("lhe_lep_pdgID", nt.LHEPart_pdgId().at(2));
+                    arbol.setLeaf<double>("lhe_M_lnuqq", (lep_p4 + nu_p4 + q1_p4 + q2_p4).M());
+                }
+            }
+            return true;
+        }
+    );
+    cutflow.insert(bookkeeping, search_lhe, Right);
+
+    Cut* search_gen = new LambdaCut(
+        "DEBUG_FindGenParticles",
+        [&]()
+        {
+            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            if (file_name.Contains("EWKWPlus") || file_name.Contains("EWKWMinus"))
+            {
+                int gen_lep_pdgID = -999;
+                LorentzVector gen_lep_p4;
+                Integers gen_W_q;
+                Integers gen_vbs_q;
+                for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); ++gen_i)
+                {
+                    unsigned int gen_mother_i = nt.GenPart_genPartIdxMother().at(gen_i);
+                    if (gen_mother_i < 0 || gen_mother_i > nt.nGenPart()) { continue; }
+                    int gen_pdgID = nt.GenPart_pdgId().at(gen_i);
+                    int gen_status = nt.GenPart_status().at(gen_i);
+                    int gen_mother_pdgID = nt.GenPart_pdgId().at(gen_mother_i);
+                    LorentzVector gen_p4 = nt.GenPart_p4().at(gen_i);
+                    switch (abs(gen_pdgID))
+                    {
+                    case 1:
+                    case 2:
+                    case 3:
+                    case 4:
+                    case 5:
+                    case 6:
+                        if (gen_status == 23)
+                        {
+                            if (abs(gen_mother_pdgID) == 24)
+                            {
+                                // Found q or q' from a W
+                                gen_W_q.push_back(gen_i);
+                            }
+                            else if (gen_mother_i == 0 || gen_mother_i == 1)
+                            {
+                                // Found a VBS quark
+                                gen_vbs_q.push_back(gen_i);
+                            }
+                        }
+                        break;
+                    case 11: // electron
+                    case 13: // muon
+                    case 15: // tau
+                        if ((gen_status == 1 || gen_status == 2 || gen_status == 23) 
+                            && (abs(gen_mother_pdgID) == 24))
+                        {
+                            // Found lepton from a W
+                            gen_lep_p4 = gen_p4;
+                            gen_lep_pdgID = gen_pdgID;
+                        }
+                        break;
+                    default:
+                        continue;
+                        break;
+                    }
+                }
+                LorentzVector q1_p4, q2_p4;
+                int q1_idx = 0;
+                int q2_idx = 0;
+                if (gen_vbs_q.size() == 2)
+                {
+                    arbol.setLeaf<bool>("gen_is_VBSW", true);
+                    arbol.setLeaf<bool>("gen_is_WW", false);
+                    q1_idx = gen_vbs_q.at(0);
+                    q2_idx = gen_vbs_q.at(1);
+                    q1_p4 = nt.GenPart_p4().at(q1_idx);
+                    q2_p4 = nt.GenPart_p4().at(q2_idx);
+                }
+                else if (gen_W_q.size() == 2)
+                {
+                    arbol.setLeaf<bool>("gen_is_VBSW", false);
+                    arbol.setLeaf<bool>("gen_is_WW", true);
+                    q1_idx = gen_W_q.at(0);
+                    q2_idx = gen_W_q.at(1);
+                    q1_p4 = nt.GenPart_p4().at(q1_idx);
+                    q2_p4 = nt.GenPart_p4().at(q2_idx);
+                }
+                int gen_ld_q_idx = (q1_p4.pt() > q2_p4.pt()) ? q1_idx : q2_idx;
+                int gen_tr_q_idx = (q1_p4.pt() > q2_p4.pt()) ? q2_idx : q1_idx;
+                LorentzVector gen_ld_q_p4 = (q1_p4.pt() > q2_p4.pt()) ? q1_p4 : q2_p4;
+                LorentzVector gen_tr_q_p4 = (q1_p4.pt() > q2_p4.pt()) ? q2_p4 : q1_p4;
+                arbol.setLeaf<int>("gen_ld_q_pdgID", nt.GenPart_pdgId().at(gen_ld_q_idx));
+                arbol.setLeaf<double>("gen_ld_q_pt", gen_ld_q_p4.pt());
+                arbol.setLeaf<double>("gen_ld_q_eta", gen_ld_q_p4.eta());
+                arbol.setLeaf<double>("gen_ld_q_phi", gen_ld_q_p4.phi());
+                arbol.setLeaf<int>("gen_tr_q_pdgID", nt.GenPart_pdgId().at(gen_tr_q_idx));
+                arbol.setLeaf<double>("gen_tr_q_pt", gen_tr_q_p4.pt());
+                arbol.setLeaf<double>("gen_tr_q_eta", gen_tr_q_p4.eta());
+                arbol.setLeaf<double>("gen_tr_q_phi", gen_tr_q_p4.phi());
+                arbol.setLeaf<int>("gen_lep_pdgID", gen_lep_pdgID);
+                arbol.setLeaf<double>("gen_lep_pt", gen_lep_p4.pt());
+                arbol.setLeaf<double>("gen_lep_eta", gen_lep_p4.eta());
+                arbol.setLeaf<double>("gen_lep_phi", gen_lep_p4.phi());
+                arbol.setLeaf<bool>("gen_found_all", (gen_lep_pdgID != -999) && (gen_W_q.size() == 2 || gen_vbs_q.size() == 2));
+                cutflow.globals.setVal<LorentzVector>("gen_ld_q_p4", gen_ld_q_p4);
+                cutflow.globals.setVal<LorentzVector>("gen_tr_q_p4", gen_tr_q_p4);
+                cutflow.globals.setVal<LorentzVector>("gen_lep_p4", gen_lep_p4);
+            }
+            return true;
+        }
+    );
+    cutflow.insert(search_lhe, search_gen, Right);
+
+    Cut* match_gen = new LambdaCut(
+        "DEBUG_MatchGenParticles",
+        [&]()
+        {
+            if (!arbol.getLeaf<bool>("gen_found_all")) { return true; }
+            LorentzVector gen_ld_q_p4 = cutflow.globals.getVal<LorentzVector>("gen_ld_q_p4");
+            LorentzVector gen_tr_q_p4 = cutflow.globals.getVal<LorentzVector>("gen_tr_q_p4");
+            LorentzVector gen_lep_p4 = cutflow.globals.getVal<LorentzVector>("gen_lep_p4");
+            LorentzVector ld_vbs_p4 = cutflow.globals.getVal<LorentzVector>("ld_vbs_jet_p4");
+            LorentzVector tr_vbs_p4 = cutflow.globals.getVal<LorentzVector>("tr_vbs_jet_p4");
+            LorentzVector lep_p4 = cutflow.globals.getVal<LorentzVector>("lep_p4");
+            LorentzVector hbb_p4 = cutflow.globals.getVal<LorentzVector>("hbbjet_p4");
+            arbol.setLeaf<bool>("gen_lep_is_reco_match", ROOT::Math::VectorUtil::DeltaR(gen_lep_p4, lep_p4) <= 0.4);
+
+            int n_gen_q_in_hbb_cone = 0;
+            bool ld_q_in_hbb_cone = false;
+            bool tr_q_in_hbb_cone = false;
+            if (ROOT::Math::VectorUtil::DeltaR(gen_ld_q_p4, hbb_p4) <= 0.8) 
+            { 
+                ld_q_in_hbb_cone = true;
+                n_gen_q_in_hbb_cone++; 
+            }
+            if (ROOT::Math::VectorUtil::DeltaR(gen_tr_q_p4, hbb_p4) <= 0.8) 
+            { 
+                tr_q_in_hbb_cone = true;
+                n_gen_q_in_hbb_cone++; 
+            }
+            arbol.setLeaf<int>("n_gen_q_in_hbb_cone", n_gen_q_in_hbb_cone);
+            arbol.setLeaf<bool>("gen_ld_q_in_hbb_cone", ld_q_in_hbb_cone);
+            arbol.setLeaf<bool>("gen_tr_q_in_hbb_cone", tr_q_in_hbb_cone);
+
+            double ld_ld_dR = ROOT::Math::VectorUtil::DeltaR(gen_ld_q_p4, ld_vbs_p4);
+            double tr_tr_dR = ROOT::Math::VectorUtil::DeltaR(gen_tr_q_p4, tr_vbs_p4);
+            double ld_tr_dR = ROOT::Math::VectorUtil::DeltaR(gen_ld_q_p4, tr_vbs_p4);
+            double tr_ld_dR = ROOT::Math::VectorUtil::DeltaR(gen_tr_q_p4, ld_vbs_p4);
+
+            int n_gen_q_double_matches = 0;
+            if ((ld_ld_dR <= 0.4 && tr_tr_dR <= 0.4) || (ld_tr_dR <= 0.4 && tr_ld_dR <= 0.4))
+            {
+                arbol.setLeaf<float>("n_gen_q_VBS_matches", 2);
+                if (ld_q_in_hbb_cone) { n_gen_q_double_matches++; }
+                if (tr_q_in_hbb_cone) { n_gen_q_double_matches++; }
+            }
+            else if ((ld_ld_dR <= 0.4 && tr_ld_dR <= 0.4) || (ld_tr_dR <= 0.4 && tr_tr_dR <= 0.4))
+            {
+                arbol.setLeaf<float>("n_gen_q_VBS_matches", 1.5);
+                if (ld_q_in_hbb_cone) { n_gen_q_double_matches++; }
+                if (tr_q_in_hbb_cone) { n_gen_q_double_matches++; }
+            }
+            else if (ld_ld_dR <= 0.4 || ld_tr_dR <= 0.4)
+            {
+                arbol.setLeaf<float>("n_gen_q_VBS_matches", 1);
+                if (ld_q_in_hbb_cone) { n_gen_q_double_matches++; }
+            }
+            else if (tr_tr_dR <= 0.4 || tr_ld_dR <= 0.4)
+            {
+                arbol.setLeaf<float>("n_gen_q_VBS_matches", 1);
+                if (tr_q_in_hbb_cone) { n_gen_q_double_matches++; }
+            }
+            else
+            {
+                arbol.setLeaf<float>("n_gen_q_VBS_matches", 0);
+            }
+            arbol.setLeaf<int>("n_gen_q_double_matches", n_gen_q_double_matches);
+            return true;
+        }
+    );
+    cutflow.insert(select_vbsjets_maxE, match_gen, Right);
+
     // Run looper
     tqdm bar;
     looper.run(
@@ -372,8 +432,8 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                // bool passed = cutflow.runUntil(vbsjets_presel);
-                bool passed = cutflow.runUntil(select_vbsjets_maxE);
+                bool passed = cutflow.runThrough(select_vbsjets_maxE);
+                // bool passed = cutflow.runThrough(bookkeeping);
                 if (passed) { arbol.fill(); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
