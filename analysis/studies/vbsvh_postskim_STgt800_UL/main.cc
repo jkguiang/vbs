@@ -26,15 +26,10 @@ int main(int argc, char** argv)
     HEPCLI cli = HEPCLI(argc, argv);
 
     // Initialize Looper
-    Looper looper = Looper(cli.input_tchain);
+    Looper looper = Looper(cli);
     // Initialize Arbusto
-    TFile* output_tfile = new TFile(
-        TString(cli.output_dir+"/"+cli.output_name+".root"),
-        "RECREATE"
-    );
     Arbusto arbusto = Arbusto(
-        output_tfile,
-        cli.input_tchain,
+        cli,
         {
             "Electron*", "nElectron",
             "Muon*", "nMuon",
@@ -72,7 +67,7 @@ int main(int argc, char** argv)
     Cut* base = new LambdaCut("Base", [&]() { return true; });
     cutflow.setRoot(base);
 
-    // Exactly 1 lepton
+    // Find leptons
     Cut* findleps_skim = new LambdaCut(
         "SKIM_FindLeptons", 
         [&]() 
@@ -83,16 +78,16 @@ int main(int argc, char** argv)
             for (unsigned int elec_i = 0; elec_i < nt.nElectron(); elec_i++)
             {
                 LorentzVector lep_p4 = nt.Electron_p4().at(elec_i);
-                if (ttH::electronID(elec_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
-                if (ttH::electronID(elec_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
-                if (ttH::electronID(elec_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
+                if (ttH_UL::electronID(elec_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
+                if (ttH_UL::electronID(elec_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
+                if (ttH_UL::electronID(elec_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
             }
             for (unsigned int muon_i = 0; muon_i < nt.nMuon(); muon_i++)
             {
                 LorentzVector lep_p4 = nt.Muon_p4().at(muon_i);
-                if (ttH::muonID(muon_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
-                if (ttH::muonID(muon_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
-                if (ttH::muonID(muon_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
+                if (ttH_UL::muonID(muon_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
+                if (ttH_UL::muonID(muon_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
+                if (ttH_UL::muonID(muon_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
             }
             cutflow.globals.setVal<LorentzVectors>("veto_lep_p4s", veto_lep_p4s);
             cutflow.globals.setVal<LorentzVectors>("loose_lep_p4s", loose_lep_p4s);
@@ -248,6 +243,7 @@ int main(int argc, char** argv)
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             gconf.GetConfigs(nt.year());
             gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
+            // Store metadata ttrees
             TTree* runtree = ((TTree*)ttree->GetCurrentFile()->Get("Runs"))->CloneTree();
             runtree->SetDirectory(0);
             runs->Add(runtree);
@@ -265,7 +261,7 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.runUntil(STgt800_postskim);
+                bool passed = cutflow.run(STgt800_postskim);
                 if (passed) { arbusto.fill(entry); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
@@ -280,7 +276,7 @@ int main(int argc, char** argv)
     TTree* merged_lumis = TTree::MergeTrees(lumis);
     merged_lumis->SetName("LuminosityBlocks");
 
-    output_tfile->cd();
+    arbusto.tfile->cd();
     merged_runs->Write();
     merged_lumis->Write();
     arbusto.write();
