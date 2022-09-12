@@ -15,10 +15,10 @@
 namespace VBSWH
 {
 
-struct Analysis : Core::VBSAnalysis
+struct Analysis : Core::Analysis
 {
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
-    : Core::VBSAnalysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
+    : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
     {
         // Lepton globals
         cutflow.globals.newVar<LorentzVector>("lep_p4");
@@ -28,7 +28,7 @@ struct Analysis : Core::VBSAnalysis
 
     virtual void initBranches()
     {
-        Core::VBSAnalysis::initBranches();
+        Core::Analysis::initBranches();
         // Lepton branches
         arbol.newBranch<double>("lep_sf", -999);
         arbol.newBranch<double>("lep_sf_up", -999);
@@ -49,15 +49,13 @@ struct Analysis : Core::VBSAnalysis
         // Other branches
         arbol.newBranch<double>("ST", -999);
         arbol.newBranch<bool>("passes_bveto", false);
-
-        init_branches = true;
     };
 };
 
 class Passes1LepTriggers : public Core::DressedCut
 {
 public:
-    Passes1LepTriggers(std::string name, Analysis& analysis) : Core::DressedCut(name, analysis) 
+    Passes1LepTriggers(std::string name, Core::Analysis& analysis) : Core::DressedCut(name, analysis) 
     {
         // Do nothing
     };
@@ -153,7 +151,7 @@ class SelectHbbFatJet : public Core::DressedCut
 public:
     bool use_md;
 
-    SelectHbbFatJet(std::string name, Analysis& analysis, bool md = false) 
+    SelectHbbFatJet(std::string name, Core::Analysis& analysis, bool md = false) 
     : Core::DressedCut(name, analysis) 
     {
         use_md = md;
@@ -214,8 +212,6 @@ public:
         // Store the fatjet
         globals.setVal<LorentzVector>("hbbjet_p4", best_hbbjet_p4);
 
-        if (!init_branches) { return true; }
-
         arbol.setLeaf<int>("n_hbbjet_genbquarks", n_hbbjet_genbquarks);
         arbol.setLeaf<double>("hbbjet_score", best_hbbjet_score);
         arbol.setLeaf<double>("hbbjet_pt", best_hbbjet_p4.pt());
@@ -234,7 +230,7 @@ class SelectJetsNoHbbOverlap : public Core::SelectJets
 public:
     LorentzVector hbbjet_p4;
 
-    SelectJetsNoHbbOverlap(std::string name, Analysis& analysis) : Core::SelectJets(name, analysis) 
+    SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis) : Core::SelectJets(name, analysis) 
     {
         // Do nothing
     };
@@ -260,12 +256,32 @@ public:
 class Has1Lep : public Core::DressedCut
 {
 public:
-    Has1Lep(std::string name, Analysis& analysis) : Core::DressedCut(name, analysis) 
+    Has1Lep(std::string name, Core::Analysis& analysis) : Core::DressedCut(name, analysis) 
     {
         // Do nothing
     };
 
-    bool evaluate()
+    virtual bool passesLooseElecID(int elec_i)
+    {
+        return ttH_UL::electronID(elec_i, ttH::IDfakable, nt.year());
+    };
+
+    virtual bool passesTightElecID(int elec_i)
+    {
+        return ttH_UL::electronID(elec_i, ttH::IDtight, nt.year());
+    };
+
+    virtual bool passesLooseMuonID(int muon_i)
+    {
+        return ttH_UL::muonID(muon_i, ttH::IDfakable, nt.year());
+    };
+
+    virtual bool passesTightMuonID(int muon_i)
+    {
+        return ttH_UL::muonID(muon_i, ttH::IDtight, nt.year());
+    };
+
+    virtual bool evaluate()
     {
         LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
         Integers good_lep_pdgIDs = globals.getVal<Integers>("good_lep_pdgIDs");
@@ -280,8 +296,8 @@ public:
             int lep_pdgID = good_lep_pdgIDs.at(good_lep_i);
             if (abs(lep_pdgID) == 11)
             {
-                if (ttH_UL::electronID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
-                if (ttH_UL::electronID(lep_i, ttH::IDtight, nt.year())) 
+                if (passesLooseElecID(lep_i)) { n_loose_leps++; }
+                if (passesTightElecID(lep_i)) 
                 {
                     n_tight_leps++;
                     tight_lep_idx = good_lep_i;
@@ -289,8 +305,8 @@ public:
             }
             else if (abs(lep_pdgID) == 13)
             {
-                if (ttH_UL::muonID(lep_i, ttH::IDfakable, nt.year())) { n_loose_leps++; }
-                if (ttH_UL::muonID(lep_i, ttH::IDtight, nt.year())) 
+                if (passesLooseMuonID(lep_i)) { n_loose_leps++; }
+                if (passesTightMuonID(lep_i)) 
                 {
                     n_tight_leps++;
                     tight_lep_idx = good_lep_i;
@@ -301,8 +317,6 @@ public:
         if (n_tight_leps != 1 || n_loose_leps != 1) { return false; }
         LorentzVector lep_p4 = good_lep_p4s.at(tight_lep_idx);
         globals.setVal<LorentzVector>("lep_p4", lep_p4);
-
-        if (!init_branches) { return true; }
 
         arbol.setLeaf<int>("lep_pdgID", good_lep_pdgIDs.at(tight_lep_idx));
         arbol.setLeaf<double>("lep_pt", lep_p4.pt());
@@ -315,14 +329,7 @@ public:
 
     double weight()
     {
-        if (init_branches)
-        {
-            return arbol.getLeaf<double>("lep_sf");
-        }
-        else
-        {
-            return 1.;
-        }
+        return arbol.getLeaf<double>("lep_sf");
     };
 };
 
