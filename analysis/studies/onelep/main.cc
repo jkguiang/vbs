@@ -353,8 +353,8 @@ int main(int argc, char** argv)
             LorentzVector gen_ld_q_p4 = cutflow.globals.getVal<LorentzVector>("gen_ld_q_p4");
             LorentzVector gen_tr_q_p4 = cutflow.globals.getVal<LorentzVector>("gen_tr_q_p4");
             LorentzVector gen_lep_p4 = cutflow.globals.getVal<LorentzVector>("gen_lep_p4");
-            LorentzVector ld_vbs_p4 = cutflow.globals.getVal<LorentzVector>("ld_vbs_jet_p4");
-            LorentzVector tr_vbs_p4 = cutflow.globals.getVal<LorentzVector>("tr_vbs_jet_p4");
+            LorentzVector ld_vbs_p4 = cutflow.globals.getVal<LorentzVector>("ld_vbsjet_p4");
+            LorentzVector tr_vbs_p4 = cutflow.globals.getVal<LorentzVector>("tr_vbsjet_p4");
             LorentzVector lep_p4 = cutflow.globals.getVal<LorentzVector>("lep_p4");
             LorentzVector hbb_p4 = cutflow.globals.getVal<LorentzVector>("hbbjet_p4");
             arbol.setLeaf<bool>("gen_lep_is_reco_match", ROOT::Math::VectorUtil::DeltaR(gen_lep_p4, lep_p4) <= 0.4);
@@ -432,8 +432,8 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.runThrough(select_vbsjets_maxE);
-                // bool passed = cutflow.runThrough(bookkeeping);
+                bool passed = cutflow.run(select_vbsjets_maxE);
+                // bool passed = cutflow.run(bookkeeping);
                 if (passed) { arbol.fill(); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }

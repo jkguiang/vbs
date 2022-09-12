@@ -79,7 +79,7 @@ def parse(input_file=None, input_files=None, xsecs_json="data/xsecs_json"):
 if __name__ == "__main__":
     # Check that the PWD is correct
     vbs_pwd = os.getenv("VBSPWD")
-    if vbs_pwd == "":
+    if not vbs_pwd:
         print(f"ERROR: `source setup.sh` must be run first")
         exit()
     elif os.getcwd() != vbs_pwd:
