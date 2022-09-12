@@ -15,34 +15,12 @@ def run_job(args):
     return
 
 class Orchestrator:
-    def __init__(self, executable, input_files, xsecs_json="", n_workers=8):
+    def __init__(self, executable, input_files, n_workers=8):
         self.executable = executable
         self.input_files = input_files
-        self.xsecs_json = xsecs_json
         self.n_workers = n_workers
-        if not xsecs_json:
-            self.xsecs_db = {}
-        else:
-            with open(xsecs_json, "r") as f_in:
-                self.xsecs_db = json.load(f_in)
 
         self.input_files.sort(key=lambda f: os.stat(f).st_size, reverse=True)
-
-    def get_xsec(self, file_name):
-        if not self.xsecs_db:
-            return 1
-        matched_keys = []
-        matched_chars = []
-        for key, xsec in self.xsecs_db.items():
-            if key in file_name:
-                matched_keys.append(key)
-                matched_chars.append(len(key))
-        if len(matched_keys) > 0:
-            best_match = matched_keys[matched_chars.index(max(matched_chars))]
-            return self.xsecs_db[best_match]
-        else:
-            logging.warning(f"no xsec for {file_name} in {self.xsecs_json}")
-            return 1
 
     def run(self):
         # Generate jobs
@@ -53,6 +31,7 @@ class Orchestrator:
             stdout_file, stderr_file = self._get_log_files(input_file)
             jobs.append((cmd, stdout_file, stderr_file))
             stderr_files.append(stderr_file)
+
         # Run jobs
         with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
@@ -60,6 +39,7 @@ class Orchestrator:
                 for future in concurrent.futures.as_completed(futures):
                     job = futures[future]
                     pbar.update(1)
+
         # Check for errors
         for stderr_file in stderr_files:
             if os.stat(stderr_file).st_size > 0:
