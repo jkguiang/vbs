@@ -348,7 +348,7 @@ class Optimization(PandasAnalysis):
             bins=bins, 
             weights=sig_weights,
             label=f"total signal [{sum(sig_weights):0.1f} events]",
-            color="k"
+            color="r"
         )
         if norm:
             bkg_hist = bkg_hist.normalize()
@@ -357,9 +357,9 @@ class Optimization(PandasAnalysis):
         # Plot everything
         if bkg_hists:
             bkg_hists.sort(key=lambda h: sum(h.counts))
-            yahist.utils.plot_stack(bkg_hists, ax=axes, histtype="stepfilled")
-        bkg_hist.plot(ax=axes, alpha=0.5)
-        sig_hist.plot(ax=axes, linewidth=2)
+            yahist.utils.plot_stack(bkg_hists, ax=axes, histtype="stepfilled", log=logy)
+        bkg_hist.plot(ax=axes, alpha=0.5, log=logy)
+        sig_hist.plot(ax=axes, linewidth=2, log=logy)
         
         axes.xaxis.set_minor_locator(AutoMinorLocator())
         axes.yaxis.set_minor_locator(AutoMinorLocator())
@@ -439,6 +439,9 @@ class Validation(PandasAnalysis):
         hist_axes = fig.add_subplot(gs[0])
         ratio_axes = fig.add_subplot(gs[1])
 
+        if logy:
+            hist_axes.set_yscale("log", nonpositive="clip")
+
         # Get numerator (data) and denominator (bkg MC)
         denom_df = self.bkg_df(selection=selection)
         denom = yahist.Hist1D(
@@ -488,6 +491,11 @@ class Validation(PandasAnalysis):
             + (denom.errors*numer.counts/denom.counts**2)**2
         )
 
+        # Plot stacked bkg hists
+        if bkg_hists:
+            bkg_hists.sort(key=lambda h: sum(h.counts))
+            yahist.utils.plot_stack(bkg_hists, ax=hist_axes, histtype="stepfilled")
+
         # Plot hists and ratio
         denom.plot(ax=hist_axes, alpha=0.5)
         numer.plot(ax=hist_axes, errors=True)
@@ -506,34 +514,37 @@ class Validation(PandasAnalysis):
             linestyle="-",
             zorder=2
         )
-
-        # Plot stacked bkg hists
-        if bkg_hists:
-            bkg_hists.sort(key=lambda h: sum(h.counts))
-            yahist.utils.plot_stack(bkg_hists, ax=hist_axes, histtype="stepfilled")
+        ratio_axes.axhline(y=1, color="k", linestyle="--", alpha=0.75, linewidth=0.75)
 
         if stacked:
             hist_axes.legend(fontsize=14)
         else:
             hist_axes.legend(fontsize=16)
-        hist_axes.xaxis.set_minor_locator(AutoMinorLocator())
-        hist_axes.yaxis.set_minor_locator(AutoMinorLocator())
+        if not logy:
+            hist_axes.xaxis.set_minor_locator(AutoMinorLocator())
+            hist_axes.yaxis.set_minor_locator(AutoMinorLocator())
+            hist_axes.set_ylim(bottom=0)
+        else:
+            hist_axes.set_ylim(bottom=0.1)
         hist_axes.set_xmargin(0)
-        hist_axes.set_ylim(bottom=0)
         if norm:
             hist_axes.set_ylabel("a.u.", size=18)
         else:
             hist_axes.set_ylabel("Events", size=18)
 
-        ratio_axes.axhline(y=1, color="k", linestyle="--", alpha=0.75, linewidth=0.75)
-        ratio_axes.xaxis.set_minor_locator(AutoMinorLocator())
-        ratio_axes.yaxis.set_minor_locator(AutoMinorLocator())
+        if not logy:
+            ratio_axes.xaxis.set_minor_locator(AutoMinorLocator())
+            ratio_axes.yaxis.set_minor_locator(AutoMinorLocator())
         ratio_axes.set_xlabel(x_label, size=18)
         ratio_axes.set_ylabel("data/MC", size=18)
         ratio_axes.set_ylim([0.5, 2.0])
 
         if self.plots_dir:
             plot_file = f"{self.plots_dir}/{column}_data_vs_mc.png"
+            if norm:
+                plot_file = plot_file.replace(".png", "_norm.png")
+            if logy:
+                plot_file = plot_file.replace(".png", "_log.png")
             if selection:
                 plot_file = plot_file.replace(".png", f"_{PandasAnalysis.get_selection_str(selection)}.png")
                 with open(plot_file.replace("png", "txt"), "w") as plot_txt:
