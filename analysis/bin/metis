@@ -54,6 +54,10 @@ cli.add_argument(
     "--n_monit_hrs", type=int, default=48,
     help="Number of hours to run Metis for"
 )
+cli.add_argument(
+    "--max_jobs", type=int, default=0,
+    help="Maximum number of jobs per sample"
+)
 args = cli.parse_args()
 
 samples_module, samples_obj = args.samples.rsplit(".", 1)
@@ -126,7 +130,7 @@ if args.debug:
     samples = samples[:1]
     max_jobs = 1
 else:
-    max_jobs = 0
+    max_jobs = args.max_jobs
 
 total_summary = {}
 n_updates = max(args.n_monit_hrs*2, 1)
