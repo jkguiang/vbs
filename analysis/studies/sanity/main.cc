@@ -318,7 +318,7 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.runUntil("UpdateBranches");
+                bool passed = cutflow.run("UpdateBranches");
                 if (passed) { arbol.fillTTree(); }
                 // bar.progress(looper.n_events_processed, looper.n_events_total);
             }

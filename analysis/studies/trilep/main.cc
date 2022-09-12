@@ -127,7 +127,7 @@ int main(int argc, char** argv)
             cutflow.globals.resetVars();
             // Run cutflow
             nt.GetEntry(entry);
-            bool passed = cutflow.runUntil("Has3LepsPresel");
+            bool passed = cutflow.run("Has3LepsPresel");
             if (passed) { arbol.fillTTree(); }
         }
     );
