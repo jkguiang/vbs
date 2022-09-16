@@ -14,11 +14,21 @@ if [[ "$STUDY" != "" && -d studies/$STUDY ]]; then
     mkdir -p workdir
     cp setup.sh workdir
 
+    mkdir -p workdir/data
+    cp -R data/lepton_sfs workdir/data/lepton_sfs
+    cp -R data/golden_jsons workdir/data/golden_jsons
+
+    mkdir -p workdir/studies/$STUDY
+    cp studies/*.h workdir/studies
+    cp studies/$STUDY/*.cc workdir/studies/$STUDY
+    cp studies/$STUDY/*.h workdir/studies/$STUDY
+
     mkdir -p workdir/rapido
     cp -RL rapido/src workdir/rapido/src
 
     mkdir -p workdir/NanoTools
     cp -RL NanoTools/NanoCORE workdir/NanoTools/NanoCORE
+    # rm -rf workdir/NanoTools/NanoCORE/Tools
 
     mkdir -p workdir/bin
     cp bin/$STUDY workdir/bin/$STUDY
