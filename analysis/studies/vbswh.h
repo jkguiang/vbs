@@ -15,43 +15,6 @@
 namespace VBSWH
 {
 
-struct Analysis : Core::Analysis
-{
-    Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
-    : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
-    {
-        // Lepton globals
-        cutflow.globals.newVar<LorentzVector>("lep_p4");
-        // Hbb jet globals
-        cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
-    };
-
-    virtual void initBranches()
-    {
-        Core::Analysis::initBranches();
-        // Lepton branches
-        arbol.newBranch<double>("lep_sf", -999);
-        arbol.newBranch<double>("lep_sf_up", -999);
-        arbol.newBranch<double>("lep_sf_dn", -999);
-        arbol.newBranch<int>("lep_pdgID", -999);
-        arbol.newBranch<double>("lep_pt", -999);
-        arbol.newBranch<double>("lep_eta", -999);
-        arbol.newBranch<double>("lep_phi", -999);
-        arbol.newBranch<double>("LT", -999);
-        // Hbb jet branches
-        arbol.newBranch<int>("n_hbbjet_genbquarks", -999);
-        arbol.newBranch<double>("hbbjet_score", -999);
-        arbol.newBranch<double>("hbbjet_pt", -999);
-        arbol.newBranch<double>("hbbjet_eta", -999);
-        arbol.newBranch<double>("hbbjet_phi", -999);
-        arbol.newBranch<double>("hbbjet_mass", -999);
-        arbol.newBranch<double>("hbbjet_msoftdrop", -999);
-        // Other branches
-        arbol.newBranch<double>("ST", -999);
-        arbol.newBranch<bool>("passes_bveto", false);
-    };
-};
-
 class PassesEventFilters : public Core::DressedCut
 {
 public:
@@ -426,6 +389,192 @@ public:
         if (nt.Muon_pt().at(muon_i) <= 26) { return false; }
         if (fabs(nt.Muon_eta().at(muon_i)) >= 2.4) { return false; }
         return true;
+    };
+};
+
+class SaveBJetVeto : public Core::DressedCut
+{
+public:
+    SaveBJetVeto(std::string name, Core::Analysis& analysis) : DressedCut(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    bool evaluate()
+    {
+        bool passes_bveto = true;
+        for (auto& btag : globals.getVal<Doubles>("good_jet_btags"))
+        {
+            if (btag > gconf.WP_DeepFlav_medium) 
+            { 
+                passes_bveto = false;
+                break;
+            }
+        }
+        arbol.setLeaf<bool>("passes_bveto", passes_bveto);
+        return true;
+    };
+};
+
+struct Analysis : Core::Analysis
+{
+    JetEnergySFs* jet_sfs;
+    // LeptonSFsTTH* lep_sfs;
+    LeptonSFsPKU* lep_sfs;
+
+    Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
+    : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
+    {
+        // Lepton globals
+        cutflow.globals.newVar<LorentzVector>("lep_p4");
+        // Hbb jet globals
+        cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
+    };
+
+    virtual void initBranches()
+    {
+        Core::Analysis::initBranches();
+        // Lepton branches
+        arbol.newBranch<double>("lep_sf", -999);
+        arbol.newBranch<double>("lep_sf_up", -999);
+        arbol.newBranch<double>("lep_sf_dn", -999);
+        arbol.newBranch<int>("lep_pdgID", -999);
+        arbol.newBranch<double>("lep_pt", -999);
+        arbol.newBranch<double>("lep_eta", -999);
+        arbol.newBranch<double>("lep_phi", -999);
+        arbol.newBranch<double>("LT", -999);
+        // Hbb jet branches
+        arbol.newBranch<int>("n_hbbjet_genbquarks", -999);
+        arbol.newBranch<double>("hbbjet_score", -999);
+        arbol.newBranch<double>("hbbjet_pt", -999);
+        arbol.newBranch<double>("hbbjet_eta", -999);
+        arbol.newBranch<double>("hbbjet_phi", -999);
+        arbol.newBranch<double>("hbbjet_mass", -999);
+        arbol.newBranch<double>("hbbjet_msoftdrop", -999);
+        // Other branches
+        arbol.newBranch<double>("ST", -999);
+        arbol.newBranch<bool>("passes_bveto", false);
+    };
+
+    virtual void initCutflow()
+    {
+        // Initialize scale factors
+        jet_sfs = new JetEnergySFs(cli.variation);
+        // lep_sfs = new LeptonSFsTTH();
+        lep_sfs = new LeptonSFsPKU();
+
+        // Bookkeeping
+        Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this);
+        cutflow.setRoot(bookkeeping);
+
+        // Event filters
+        Cut* event_filters = new PassesEventFilters("PassesEventFilters", *this);
+        cutflow.insert(bookkeeping, event_filters, Right);
+
+        // Lepton selection
+        // Cut* select_leps = new Core::SelectLeptons("SelectLeptons", *this, lep_sfs);
+        Cut* select_leps = new Core::SelectLeptonsPKU("SelectLeptons", *this, lep_sfs);
+        cutflow.insert(event_filters, select_leps, Right);
+
+        // == 1 lepton selection
+        // Cut* has_1lep = new Has1Lep("Has1TightLep", *this);
+        Cut* has_1lep = new Has1LepPKU("Has1TightLep", *this);
+        cutflow.insert(select_leps, has_1lep, Right);
+
+        // Lepton has pT > 40
+        Cut* lep_pt_gt40 = new LambdaCut(
+            "LepPtGt40", [&]() { return arbol.getLeaf<double>("lep_pt") >= 40; }
+        );
+        cutflow.insert(has_1lep, lep_pt_gt40, Right);
+
+        // Single-lepton triggers
+        Cut* lep_triggers = new Passes1LepTriggers("Passes1LepTriggers", *this);
+        cutflow.insert(lep_pt_gt40, lep_triggers, Right);
+
+        // Fat jet selection
+        Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this);
+        cutflow.insert(lep_triggers, select_fatjets, Right);
+
+        // Geq1FatJet
+        Cut* geq1fatjet = new LambdaCut(
+            "Geq1FatJet", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 1; }
+        );
+        cutflow.insert(select_fatjets, geq1fatjet, Right);
+
+        // Hbb selection
+        Cut* select_hbbjet = new SelectHbbFatJet("SelectHbbFatJet", *this, true);
+        cutflow.insert(geq1fatjet, select_hbbjet, Right);
+
+        // Jet selection
+        Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", *this, jet_sfs);
+        cutflow.insert(select_hbbjet, select_jets, Right);
+
+        // Global AK4 b-veto
+        Cut* save_ak4bveto = new SaveBJetVeto("SaveAk4GlobalBVeto", *this);
+        cutflow.insert(select_jets, save_ak4bveto, Right);
+
+        // VBS jet selection
+        Cut* select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("SelectVBSJetsMaxE", *this);
+        cutflow.insert(save_ak4bveto, select_vbsjets_maxE, Right);
+
+        // Basic VBS jet requirements
+        Cut* vbsjets_presel = new LambdaCut(
+            "MjjGt500_detajjGt3", 
+            [&]()
+            {
+                return arbol.getLeaf<double>("M_jj") > 500 && fabs(arbol.getLeaf<double>("deta_jj")) > 3;
+            }
+        );
+        cutflow.insert(select_vbsjets_maxE, vbsjets_presel, Right);
+
+        Cut* xbb_presel = new LambdaCut(
+            "XbbGt0p3", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.3; }
+        );
+        cutflow.insert(vbsjets_presel, xbb_presel, Right);
+
+        Cut* apply_ak4bveto = new LambdaCut(
+            "ApplyAk4GlobalBVeto", [&]() { return arbol.getLeaf<bool>("passes_bveto"); }
+        );
+        cutflow.insert(xbb_presel, apply_ak4bveto, Right);
+        
+        Cut* SR1_vbs_cuts = new LambdaCut(
+            "MjjGt600_detajjGt4", 
+            [&]() 
+            { 
+                return arbol.getLeaf<double>("M_jj") > 600 && fabs(arbol.getLeaf<double>("deta_jj")) > 4;
+            }
+        );
+        cutflow.insert(apply_ak4bveto, SR1_vbs_cuts, Right);
+
+        Cut* SR1_ST_cut = new LambdaCut(
+            "STGt900", [&]() { return arbol.getLeaf<double>("ST") > 900; }
+        );
+        cutflow.insert(SR1_vbs_cuts, SR1_ST_cut, Right);
+
+        Cut* SR1_hbb_cut = new LambdaCut(
+            "XbbGt0p9_MSDLt150", 
+            [&]() 
+            { 
+                return (
+                    arbol.getLeaf<double>("hbbjet_score") > 0.9 
+                    && arbol.getLeaf<double>("hbbjet_msoftdrop") < 150
+                ); 
+            }
+        );
+        cutflow.insert(SR1_ST_cut, SR1_hbb_cut, Right);
+
+        Cut* SR2 = new LambdaCut(
+            "STGt1500", [&]() { return arbol.getLeaf<double>("ST") > 1500; }
+        );
+        cutflow.insert(SR1_hbb_cut, SR2, Right);
+    };
+
+    void init()
+    {
+        Core::Analysis::init();
+        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+        jet_sfs->init(file_name);
+        lep_sfs->init(file_name);
     };
 };
 
