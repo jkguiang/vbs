@@ -14,6 +14,21 @@ def run_job(args):
         process.wait()
     return
 
+def prepare_job(args):
+    orchestrator, input_file = args
+    cmd = orchestrator._get_job(input_file)
+    stdout_file, stderr_file = orchestrator._get_log_files(input_file)
+    return cmd, stdout_file, stderr_file
+
+class Job:
+    def __init__(self, cmd, stdout_file, stderr_file):
+        self.cmd = cmd
+        self.stdout_file = stdout_file
+        self.stderr_file = stderr_file
+
+    def unpack(self):
+        return (self.cmd, self.stdout_file, self.stderr_file)
+
 class Orchestrator:
     def __init__(self, executable, input_files, n_workers=8):
         self.executable = executable
@@ -23,19 +38,22 @@ class Orchestrator:
         self.input_files.sort(key=lambda f: os.stat(f).st_size, reverse=True)
 
     def run(self):
-        # Generate jobs
+        # Prepare jobs
         jobs = []
         stderr_files = []
-        for input_file in tqdm(self.input_files, desc="Preparing jobs"):
-            cmd = self._get_job(input_file)
-            stdout_file, stderr_file = self._get_log_files(input_file)
-            jobs.append((cmd, stdout_file, stderr_file))
-            stderr_files.append(stderr_file)
+        with tqdm(total=len(self.input_files), desc="Preparing jobs") as pbar:
+            with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
+                futures = {executor.submit(prepare_job, (self, input_file)): input_file for input_file in self.input_files}
+                for future in concurrent.futures.as_completed(futures):
+                    job = Job(*future.result())
+                    jobs.append(job)
+                    stderr_files.append(job.stderr_file)
+                    pbar.update(1)
 
-        # Run jobs
+        # Execute jobs
         with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
-                futures = {executor.submit(run_job, job): job for job in jobs}
+                futures = {executor.submit(run_job, job.unpack()): job for job in jobs}
                 for future in concurrent.futures.as_completed(futures):
                     job = futures[future]
                     pbar.update(1)
