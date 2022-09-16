@@ -17,6 +17,11 @@ cli.add_argument(
     help="Name of the study to run"
 )
 cli.add_argument(
+    "-y", "--yes",
+    action="store_true",
+    help="Skip any (y/n) prompts"
+)
+cli.add_argument(
     "--debug",
     action="store_true",
     help="Run in debug mode"
@@ -120,11 +125,12 @@ if args.filter:
     samples = [s for s in samples if filter_re.match(s.get_datasetname())]
     print("Filter '{}' matched the following datasets:".format(args.filter))
     print("\n".join([s.get_datasetname() for s in samples]))
-    resp = ""
-    while resp != "y" and resp != "n":
-        resp = raw_input("Submit condor jobs for these samples? y/n: ").lower()
-    if resp == "n":
-        exit()
+    if not args.yes:
+        resp = ""
+        while resp != "y" and resp != "n":
+            resp = raw_input("Submit condor jobs for these samples? y/n: ").lower()
+        if resp == "n":
+            exit()
 
 if args.debug:
     samples = samples[:1]
