@@ -31,17 +31,11 @@ struct Analysis
     Nano& nt;
     HEPCLI& cli;
     Cutflow& cutflow;
-    NanoScaleFactorsUL sfs;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : arbol(arbol_ref), nt(nt_ref), cli(cli_ref), cutflow(cutflow_ref)
     {
         gconf.nanoAOD_ver = 9;
-        if (cli.variation == "jec_up") { sfs = NanoScaleFactorsUL(2, 1); }
-        else if (cli.variation == "jec_dn") { sfs = NanoScaleFactorsUL(-2, 1); }
-        else if (cli.variation == "jer_up") { sfs = NanoScaleFactorsUL(1, 2); }
-        else if (cli.variation == "jer_dn") { sfs = NanoScaleFactorsUL(1, -2); }
-        else { sfs = NanoScaleFactorsUL(1, 1); }
 
         // Lepton globals
         cutflow.globals.newVar<LorentzVectors>("good_lep_p4s", {});
@@ -78,7 +72,11 @@ struct Analysis
         arbol.newBranch<int>("n_fatjets", -999);
         // VBS jet branches
         arbol.newBranch<double>("ld_vbsjet_pt", -999);
+        arbol.newBranch<double>("ld_vbsjet_eta", -999);
+        arbol.newBranch<double>("ld_vbsjet_phi", -999);
         arbol.newBranch<double>("tr_vbsjet_pt", -999);
+        arbol.newBranch<double>("tr_vbsjet_eta", -999);
+        arbol.newBranch<double>("tr_vbsjet_phi", -999);
         arbol.newBranch<double>("M_jj", -999);
         arbol.newBranch<double>("deta_jj", -999);
         arbol.newBranch<double>("abs_deta_jj", 999);
@@ -95,9 +93,7 @@ struct Analysis
         gconf.GetConfigs(nt.year());
         gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
 
-        sfs.init(file_name);
-
-        if (cli.is_data)
+        if (nt.isData())
         {
             if (nt.year() == 2016)
             {
@@ -129,10 +125,9 @@ public:
     Nano& nt;
     HEPCLI& cli;
     Utilities::Variables& globals;
-    NanoScaleFactorsUL& sfs;
 
     DressedCut(std::string new_name, Analysis& a) 
-    : Cut(new_name), arbol(a.arbol), nt(a.nt), cli(a.cli), globals(a.cutflow.globals), sfs(a.sfs)
+    : Cut(new_name), arbol(a.arbol), nt(a.nt), cli(a.cli), globals(a.cutflow.globals)
     {
         // Do nothing
     };
@@ -148,24 +143,27 @@ public:
 
     bool evaluate()
     {
-        arbol.setLeaf<double>("xsec_sf", (cli.is_data) ? 1. : cli.scale_factor*nt.genWeight());
+        arbol.setLeaf<double>("xsec_sf", (nt.isData()) ? 1. : cli.scale_factor*nt.genWeight());
         arbol.setLeaf<int>("event", nt.event());
         arbol.setLeaf<double>("MET", nt.MET_pt());
-        return (cli.is_data) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
+        return (nt.isData()) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
     };
 
     double weight()
     {
-        return (cli.is_data) ? 1. : cli.scale_factor*nt.genWeight();
+        return (nt.isData()) ? 1. : cli.scale_factor*nt.genWeight();
     };
 };
 
 class SelectLeptons : public DressedCut
 {
 public:
-    SelectLeptons(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
+    LeptonSFs* sfs;
+
+    SelectLeptons(std::string name, Analysis& analysis, LeptonSFs* lep_sfs) 
+    : DressedCut(name, analysis)
     {
-        // Do nothing
+        sfs = lep_sfs;
     };
 
     virtual bool passesVetoElecID(int elec_i)
@@ -200,7 +198,11 @@ public:
             good_lep_pdgIDs.push_back(-nt.Electron_charge().at(i)*11);
             good_lep_idxs.push_back(i);
             good_lep_jet_idxs.push_back(nt.Electron_jetIdx().at(i));
-            if (cli.is_data) { continue; }
+            if (nt.isData()) { continue; }
+            lep_sf *= sfs->getElecSF(el_p4.pt(), el_p4.eta());
+            err_up += std::pow(sfs->getElecErrUp(el_p4.pt(), el_p4.eta()), 2);
+            err_dn += std::pow(sfs->getElecErrDn(el_p4.pt(), el_p4.eta()), 2);
+            /* TODO: delete this if the code above works
             // Get scale factor (and up/down variations)
             double el_eta = fabs(std::max(std::min(el_p4.eta(), 2.4999f), -2.4999f));
             double el_pt = el_p4.pt();
@@ -216,6 +218,7 @@ public:
             lep_sf *= sfs.el_tth_tight->getSF(el_eta, el_pt);
             err_up += std::pow(sfs.el_tth_tight->getErr(el_eta, el_pt), 2);
             err_dn += std::pow(sfs.el_tth_tight->getErr(el_eta, el_pt), 2);
+            */
         }
         // Loop over muons
         for (unsigned int i = 0; i < nt.nMuon(); ++i)
@@ -227,7 +230,11 @@ public:
             good_lep_pdgIDs.push_back(-nt.Muon_charge().at(i)*13);
             good_lep_idxs.push_back(i);
             good_lep_jet_idxs.push_back(nt.Muon_jetIdx().at(i));
-            if (cli.is_data) { continue; }
+            if (nt.isData()) { continue; }
+            lep_sf *= sfs->getMuonSF(mu_p4.pt(), mu_p4.eta());
+            err_up += std::pow(sfs->getMuonErrUp(mu_p4.pt(), mu_p4.eta()), 2);
+            err_dn += std::pow(sfs->getMuonErrDn(mu_p4.pt(), mu_p4.eta()), 2);
+            /* TODO: delete this if the code above works
             // Get scale factor (and up/down variations)
             double mu_eta = fabs(mu_p4.eta());
             double mu_pt = mu_p4.pt();
@@ -243,6 +250,7 @@ public:
             lep_sf *= sfs.mu_tth_tight->getSF(mu_eta, mu_pt);
             err_up += std::pow(sfs.mu_tth_tight->getErr(mu_eta, mu_pt), 2);
             err_dn += std::pow(sfs.mu_tth_tight->getErr(mu_eta, mu_pt), 2);
+            */
         }
 
         globals.setVal<LorentzVectors>("good_lep_p4s", good_lep_p4s);
@@ -251,7 +259,7 @@ public:
         globals.setVal<Integers>("good_lep_jet_idxs", good_lep_jet_idxs);
 
         // Store lepton sf and its up/down variations
-        if (!cli.is_data)
+        if (!nt.isData())
         {
             // Finish error computation
             err_up = std::sqrt(err_up);
@@ -270,15 +278,41 @@ public:
     };
 };
 
+class SelectLeptonsPKU : public SelectLeptons
+{
+    SelectLeptonsPKU(std::string name, Analysis& analysis, LeptonSFsPKU* lep_sfs) 
+    : Core::SelectLeptons(name, analysis, lep_sfs) 
+    {
+        // Do nothing
+    };
+
+    bool passesVetoElecID(int elec_i)
+    {
+        if (nt.Electron_pt().at(elec_i) <= 10) { return false; }
+        if (nt.Electron_cutBased().at(elec_i) < 1) { return false; }
+        return true;
+    };
+
+    bool passesVetoMuonID(int muon_i)
+    {
+        if (!nt.Muon_tightId().at(muon_i)) { return false; }
+        if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.4) { return false; }
+        if (nt.Muon_pt().at(muon_i) <= 10) { return false; }
+        return true;
+    };
+};
+
 class SelectJets : public DressedCut
 {
 public:
+    JetEnergySFs* sfs;
     LorentzVectors good_lep_p4s;
     Integers good_lep_jet_idxs;
 
-    SelectJets(std::string name, Analysis& analysis) : DressedCut(name, analysis) 
+    SelectJets(std::string name, Analysis& analysis, JetEnergySFs* jet_sfs) 
+    : DressedCut(name, analysis)
     {
-        // Do nothing
+        sfs = jet_sfs;
     };
 
     virtual void loadOverlapVars()
@@ -346,9 +380,9 @@ public:
             // Read jet p4
             LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
             // Apply JECs/JERs
-            jet_p4 = sfs.applyJEC(jet_p4);
+            jet_p4 = sfs->applyJEC(jet_p4);
             /* FIXME: GenJet_* branches missing from current skim
-            jet_p4 = sfs.applyJER(
+            jet_p4 = sfs->applyJER(
                 jer_seed, 
                 jet_p4, 
                 nt.fixedGridRhoFastjetAll(), 
@@ -573,6 +607,10 @@ public:
 
         arbol.setLeaf<double>("ld_vbsjet_pt", ld_vbsjet_p4.pt());
         arbol.setLeaf<double>("tr_vbsjet_pt", tr_vbsjet_p4.pt());
+        arbol.setLeaf<double>("ld_vbsjet_eta", ld_vbsjet_p4.eta());
+        arbol.setLeaf<double>("tr_vbsjet_eta", tr_vbsjet_p4.eta());
+        arbol.setLeaf<double>("ld_vbsjet_phi", ld_vbsjet_p4.phi());
+        arbol.setLeaf<double>("tr_vbsjet_phi", tr_vbsjet_p4.phi());
         arbol.setLeaf<double>("M_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).M());
         arbol.setLeaf<double>("deta_jj", ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta());
         arbol.setLeaf<double>("abs_deta_jj", fabs(ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta()));

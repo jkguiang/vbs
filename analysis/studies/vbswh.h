@@ -6,7 +6,7 @@
 #include "looper.h"
 #include "cutflow.h"
 #include "utilities.h"
-// VBS WH
+// VBS
 #include "core.h"
 
 // DEBUG
@@ -49,6 +49,31 @@ struct Analysis : Core::Analysis
         // Other branches
         arbol.newBranch<double>("ST", -999);
         arbol.newBranch<bool>("passes_bveto", false);
+    };
+};
+
+class PassesEventFilters : public Core::DressedCut
+{
+public:
+    PassesEventFilters(std::string name, Core::Analysis& analysis) : Core::DressedCut(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    bool evaluate()
+    {
+        bool passed = (
+            nt.Flag_goodVertices()
+            && nt.Flag_HBHENoiseFilter()
+            && nt.Flag_HBHENoiseIsoFilter()
+            && nt.Flag_EcalDeadCellTriggerPrimitiveFilter()
+            && nt.Flag_BadPFMuonFilter()
+        );
+        if (nt.isData())
+        {
+            passed = passed && nt.Flag_globalSuperTightHalo2016Filter();
+        }
+        return passed;
     };
 };
 
@@ -107,7 +132,7 @@ public:
 
     bool passesLepTriggers(unsigned int abs_lep_pdg_id)
     {
-        if (!cli.is_data) 
+        if (!nt.isData()) 
         { 
             switch (abs_lep_pdg_id)
             {
@@ -184,7 +209,7 @@ public:
         // Find number of gen-level b quarks in Hbb jet cone
         LorentzVector best_hbbjet_p4 = globals.getVal<LorentzVectors>("good_fatjet_p4s").at(best_hbbjet_i);
         int n_hbbjet_genbquarks = 0;
-        if (!cli.is_data)
+        if (!nt.isData())
         {
             for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); ++gen_i)
             {
@@ -230,7 +255,8 @@ class SelectJetsNoHbbOverlap : public Core::SelectJets
 public:
     LorentzVector hbbjet_p4;
 
-    SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis) : Core::SelectJets(name, analysis) 
+    SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis, JetEnergySFs* jet_sfs) 
+    : Core::SelectJets(name, analysis, jet_sfs) 
     {
         // Do nothing
     };
@@ -261,7 +287,7 @@ public:
         // Do nothing
     };
 
-    virtual bool passesLooseElecID(int elec_i)
+    virtual bool passesVetoElecID(int elec_i)
     {
         return ttH_UL::electronID(elec_i, ttH::IDfakable, nt.year());
     };
@@ -271,7 +297,7 @@ public:
         return ttH_UL::electronID(elec_i, ttH::IDtight, nt.year());
     };
 
-    virtual bool passesLooseMuonID(int muon_i)
+    virtual bool passesVetoMuonID(int muon_i)
     {
         return ttH_UL::muonID(muon_i, ttH::IDfakable, nt.year());
     };
@@ -286,7 +312,7 @@ public:
         LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
         Integers good_lep_pdgIDs = globals.getVal<Integers>("good_lep_pdgIDs");
         Integers good_lep_idxs = globals.getVal<Integers>("good_lep_idxs");
-        int n_loose_leps = 0;
+        int n_veto_leps = 0;
         int n_tight_leps = 0;
         int tight_lep_idx = -999;
         for (unsigned int good_lep_i = 0; good_lep_i < good_lep_p4s.size(); ++good_lep_i)
@@ -296,7 +322,7 @@ public:
             int lep_pdgID = good_lep_pdgIDs.at(good_lep_i);
             if (abs(lep_pdgID) == 11)
             {
-                if (passesLooseElecID(lep_i)) { n_loose_leps++; }
+                if (passesVetoElecID(lep_i)) { n_veto_leps++; }
                 if (passesTightElecID(lep_i)) 
                 {
                     n_tight_leps++;
@@ -305,7 +331,7 @@ public:
             }
             else if (abs(lep_pdgID) == 13)
             {
-                if (passesLooseMuonID(lep_i)) { n_loose_leps++; }
+                if (passesVetoMuonID(lep_i)) { n_veto_leps++; }
                 if (passesTightMuonID(lep_i)) 
                 {
                     n_tight_leps++;
@@ -313,8 +339,8 @@ public:
                 }
             }
         }
-        // Require 1 and only 1 lepton (all passing tight ID)
-        if (n_tight_leps != 1 || n_loose_leps != 1) { return false; }
+        // Require 1 and only 1 lepton (no additional >= veto leptons)
+        if (n_tight_leps != 1 || n_veto_leps != 1) { return false; }
         LorentzVector lep_p4 = good_lep_p4s.at(tight_lep_idx);
         globals.setVal<LorentzVector>("lep_p4", lep_p4);
 
@@ -330,6 +356,76 @@ public:
     double weight()
     {
         return arbol.getLeaf<double>("lep_sf");
+    };
+};
+
+class Has1LepPKU : public Has1Lep
+{
+public:
+    Has1LepPKU(std::string name, Core::Analysis& analysis) : Has1Lep(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    bool passesVetoElecID(int elec_i)
+    {
+        if (nt.Electron_pt().at(elec_i) <= 10) { return false; }
+        if (nt.Electron_cutBased().at(elec_i) < 1) { return false; }
+        return true;
+    };
+
+    bool passesTightElecID(int elec_i)
+    {
+        /* Peking U. Tight ID
+           tight_electrons = events.Electron[
+               (events.Electron.pt > 35) 
+               & (events.Electron.cutBased >= 3) 
+               & (events.Electron.eta + events.Electron.deltaEtaSC < 2.5) 
+               & (((abs(events.Electron.dz) < 0.1) & (abs(events.Electron.dxy) < 0.05) 
+                   & (events.Electron.eta + events.Electron.deltaEtaSC < 1.479)) 
+                  | ((abs(events.Electron.dz) < 0.2) & (abs(events.Electron.dxy) < 0.1) 
+                       & (events.Electron.eta + events.Electron.deltaEtaSC > 1.479)))
+           ]
+        */
+        if (nt.Electron_pt().at(elec_i) <= 35) { return false; }
+        if (nt.Electron_cutBased().at(elec_i) < 3) { return false; }
+        if (nt.Electron_eta().at(elec_i) + nt.Electron_deltaEtaSC().at(elec_i) >= 2.5) { return false; }
+        if (nt.Electron_eta().at(elec_i) + nt.Electron_deltaEtaSC().at(elec_i) >= 1.479)
+        {
+            if (fabs(nt.Electron_dz().at(elec_i)) >= 0.2) { return false; }
+            if (fabs(nt.Electron_dxy().at(elec_i)) >= 0.1) { return false; }
+        }
+        else
+        {
+            if (fabs(nt.Electron_dz().at(elec_i)) >= 0.1) { return false; }
+            if (fabs(nt.Electron_dxy().at(elec_i)) >= 0.05) { return false; }
+        }
+        return true;
+    };
+
+    bool passesVetoMuonID(int muon_i)
+    {
+        if (!nt.Muon_tightId().at(muon_i)) { return false; }
+        if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.4) { return false; }
+        if (nt.Muon_pt().at(muon_i) <= 10) { return false; }
+        return true;
+    };
+
+    bool passesTightMuonID(int muon_i)
+    {
+        /* Peking U. Tight ID
+           tight_muons = events.Muon[
+               events.Muon.tightId 
+               & (events.Muon.pfRelIso04_all < 0.15) 
+               & (events.Muon.pt > 26) 
+               & (abs(events.Muon.eta) < 2.4)
+           ]
+        */
+        if (!nt.Muon_tightId().at(muon_i)) { return false; }
+        if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.15) { return false; }
+        if (nt.Muon_pt().at(muon_i) <= 26) { return false; }
+        if (fabs(nt.Muon_eta().at(muon_i)) >= 2.4) { return false; }
+        return true;
     };
 };
 

@@ -91,40 +91,14 @@ enum NanoCampaignUL
     RunIISummer20UL18
 };
 
-struct NanoScaleFactorsUL
+struct NanoSFsUL
 {
     NanoCampaignUL campaign;
     int year;
 
-    SFHist* el_reco;
-    SFHist* el_iso_loose;
-    SFHist* el_tth_tight;
-    SFHist* mu_pog_loose;
-    SFHist* mu_iso_loose;
-    SFHist* mu_tth_tight;
+    NanoSFsUL() { /* Do nothing */ };
 
-    TauIDSFTool* tau_vs_jet;
-    TauIDSFTool* tau_vs_mu;
-    TauIDSFTool* tau_vs_el;
-
-    JetCorrectionUncertainty* jec_unc;
-    JetResolutionUncertainty* jer_unc;
-    // Note: jec_var == 1 means the nominal value is applied, 
-    //       +/-2 means a variation is applied, 
-    //       anything else means JECs are not applied.
-    int jec_var;
-    // Note: jer_var == 1 means the nominal value is applied, 
-    //       +/-2 means a variation is applied, 
-    //       anything else means JERs are not applied.
-    int jer_var;
-    TRandom3 random_num;
-
-    NanoScaleFactorsUL(int jec_var = 1, int jer_var = 1) : jec_var(jec_var), jer_var(jer_var)
-    {
-        random_num = TRandom3(12345);
-    };
-
-    void init(TString file_name, bool taus = false)
+    virtual void init(TString file_name)
     {
         if (file_name.Contains("RunIISummer20UL16"))
         {
@@ -144,8 +118,55 @@ struct NanoScaleFactorsUL
         }
         else
         {
-            return;
+            year = -1;
         }
+    };
+};
+
+struct JetEnergySFs : NanoSFsUL
+{
+
+    JetCorrectionUncertainty* jec_unc;
+    JetResolutionUncertainty* jer_unc;
+    // Note: jec_var == 1 means the nominal value is applied, 
+    //       +/-2 means a variation is applied, 
+    //       anything else means JECs are not applied.
+    int jec_var;
+    // Note: jer_var == 1 means the nominal value is applied, 
+    //       +/-2 means a variation is applied, 
+    //       anything else means JERs are not applied.
+    int jer_var;
+    TRandom3 random_num;
+
+    JetEnergySFs(std::string variation)
+    {
+        if (variation == "jec_up") 
+        {
+            jec_var = 2;
+            jer_var = 1;
+        }
+        else if (variation == "jec_dn") 
+        { 
+            jec_var = -2;
+            jer_var = 1;
+        }
+        else if (variation == "jer_up") 
+        { 
+            jec_var = 1;
+            jer_var = 2;
+        }
+        else if (variation == "jer_dn") 
+        { 
+            jec_var = 1;
+            jer_var = -2;
+        }
+        random_num = TRandom3(12345);
+    };
+
+    void init(TString file_name)
+    {
+        NanoSFsUL::init(file_name);
+        if (year == -1) { return; }
 
         // Init Jet Energy Correction (JEC) uncertainty scale factors
         // NOTE: must download them first!
@@ -159,6 +180,60 @@ struct NanoScaleFactorsUL
             "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jerEra+"/"+gconf.jerEra+"_PtResolution_AK4PFchs.txt",
             "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jerEra+"/"+gconf.jerEra+"_SF_AK4PFchs.txt"
         );
+    };
+
+    LorentzVector applyJEC(LorentzVector jet_p4)
+    {
+        if (abs(jec_var) != 2) { return jet_p4; }
+        jec_unc->setJetEta(jet_p4.eta());
+        jec_unc->setJetPt(jet_p4.pt());
+        float jec_err = fabs(jec_unc->getUncertainty(jec_var == 2))*jec_var/2;
+        return jet_p4*(1. + jec_err);
+    };
+
+    LorentzVector applyJER(int seed, LorentzVector jet_p4, float rho, 
+                           std::vector<LorentzVector> gen_jet_p4s)
+    {
+        /* FIXME: GenJet_* branches missing in current skim
+        random_num.SetSeed(seed);
+        jer_unc->setJetEta(jet_p4.eta());
+        jer_unc->setJetPt(jet_p4.pt());
+        jer_unc->setRho(rho);
+        jer_unc->applyJER(jet_p4, jer_var, gen_jet_p4s, random_num); 
+        */
+        return jet_p4;
+    };
+};
+
+struct LeptonSFs : NanoSFsUL
+{
+    virtual double getElecSF(double pt, double eta) { return 1.; };
+    virtual double getElecErrUp(double pt, double eta) { return 0.; };
+    virtual double getElecErrDn(double pt, double eta) { return 0.; };
+
+    virtual double getMuonSF(double pt, double eta) { return 1.; };
+    virtual double getMuonErrUp(double pt, double eta) { return 0.; };
+    virtual double getMuonErrDn(double pt, double eta) { return 0.; };
+};
+
+struct LeptonSFsTTH : LeptonSFs
+{
+    SFHist* el_reco;
+    SFHist* el_iso_loose;
+    SFHist* el_tth_tight;
+    SFHist* mu_pog_loose;
+    SFHist* mu_iso_loose;
+    SFHist* mu_tth_tight;
+
+    TauIDSFTool* tau_vs_jet;
+    TauIDSFTool* tau_vs_mu;
+    TauIDSFTool* tau_vs_el;
+
+    LeptonSFsTTH() { /* Do nothing */ };
+
+    void init(TString file_name, bool taus = false)
+    {
+        NanoSFsUL::init(file_name);
 
         // Init ttH lepton ID scale factors
         // NOTE: ttH uses VVVLoose tau ID, but sfs only available up to VVLoose
@@ -287,27 +362,84 @@ struct NanoScaleFactorsUL
         }
     };
 
-    LorentzVector applyJEC(LorentzVector jet_p4)
+    double getElecSF(double pt, double eta)
     {
-        if (abs(jec_var) != 2) { return jet_p4; }
-        jec_unc->setJetEta(jet_p4.eta());
-        jec_unc->setJetPt(jet_p4.pt());
-        float jec_err = fabs(jec_unc->getUncertainty(jec_var == 2))*jec_var/2;
-        return jet_p4*(1. + jec_err);
+        double sf = 1.;
+        eta = fabs(std::max(std::min(eta, 2.4999), -2.4999));
+        sf *= el_reco->getSF(eta, pt);      // event --> reco
+        sf *= el_iso_loose->getSF(eta, pt); // reco --> loose ttH ID
+        sf *= el_tth_tight->getSF(eta, pt); // loose ttH ID --> tight ttH ID
+        return sf;
     };
 
-    LorentzVector applyJER(int seed, LorentzVector jet_p4, float rho, 
-                           std::vector<LorentzVector> gen_jet_p4s)
+    double getElecErrUp(double pt, double eta)
     {
-        /* FIXME: GenJet_* branches missing in current skim
-        random_num.SetSeed(seed);
-        jer_unc->setJetEta(jet_p4.eta());
-        jer_unc->setJetPt(jet_p4.pt());
-        jer_unc->setRho(rho);
-        jer_unc->applyJER(jet_p4, jer_var, gen_jet_p4s, random_num); 
-        */
-        return jet_p4;
+        double err_up = 0.;
+        eta = fabs(std::max(std::min(eta, 2.4999), -2.4999));
+        err_up += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
+        err_up += std::pow(el_iso_loose->getErr(eta, pt), 2); // reco --> loose ttH ID
+        err_up += std::pow(el_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
+        return std::sqrt(err_up);
     };
+
+    double getElecErrDn(double pt, double eta)
+    {
+        double err_dn = 0.;
+        eta = fabs(std::max(std::min(eta, 2.4999), -2.4999));
+        err_dn += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
+        err_dn += std::pow(el_iso_loose->getErr(eta, pt), 2); // reco --> loose ttH ID
+        err_dn += std::pow(el_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
+        return std::sqrt(err_dn);
+    };
+
+    double getMuonSF(double pt, double eta)
+    {
+        double sf = 1.;
+        eta = fabs(eta);
+        sf *= mu_pog_loose->getSF(eta, pt); // event --> loose POG ID
+        sf *= mu_iso_loose->getSF(eta, pt); // loose POG ID --> loose ttH ID
+        sf *= mu_tth_tight->getSF(eta, pt); // loose ttH ID --> tight ttH ID
+        return sf;
+    };
+
+    double getMuonErrUp(double pt, double eta)
+    {
+        double err_up = 0.;
+        eta = fabs(eta);
+        err_up += std::pow(mu_pog_loose->getErr(eta, pt), 2); // event --> loose POG ID
+        err_up += std::pow(mu_iso_loose->getErr(eta, pt), 2); // loose POG ID --> loose ttH ID
+        err_up += std::pow(mu_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
+        return std::sqrt(err_up);
+    };
+
+    double getMuonErrDn(double pt, double eta)
+    {
+        double err_dn = 0.;
+        eta = fabs(eta);
+        err_dn += std::pow(mu_pog_loose->getErr(eta, pt), 2); // event --> loose POG ID
+        err_dn += std::pow(mu_iso_loose->getErr(eta, pt), 2); // loose POG ID --> loose ttH ID
+        err_dn += std::pow(mu_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
+        return std::sqrt(err_dn);
+    };
+};
+
+struct LeptonSFsPKU : LeptonSFs
+{
+    LeptonSFsPKU() { /* Do nothing */ };
+
+    void init(TString file_name, bool taus = false)
+    {
+        NanoSFsUL::init(file_name);
+        // FIXME
+    };
+
+    double getElecSF(double pt, double eta) { return 1.; };
+    double getElecErrUp(double pt, double eta) { return 0.; };
+    double getElecErrDn(double pt, double eta) { return 0.; };
+
+    double getMuonSF(double pt, double eta) { return 1.; };
+    double getMuonErrUp(double pt, double eta) { return 0.; };
+    double getMuonErrDn(double pt, double eta) { return 0.; };
 };
 
 #endif
