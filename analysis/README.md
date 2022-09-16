@@ -1,4 +1,7 @@
 # Instructions
+0. Ask a maintainer for the necessary files:
+    - Lepton scale factors
+    - Golden JSONs
 1. Install RAPIDO
 ```
 git clone https://github.com/jkguiang/rapido
