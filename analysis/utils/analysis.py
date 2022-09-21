@@ -432,7 +432,7 @@ class Validation(PandasAnalysis):
         return data_error, mc_error
 
     def plot_data_vs_mc(self, column, bins, selection="", x_label="", logy=False, 
-                        transf=lambda x: x, norm=False, stacked=False, cms_errors=False):
+                        transf=lambda x: x, norm=False, stacked=False):
 
         fig = plt.figure(figsize=(6.4*1.5, 4.8*1.25*1.5))
         gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.1)
@@ -481,11 +481,10 @@ class Validation(PandasAnalysis):
 
         # Get ratio
         ratio = numer/denom
-        if cms_errors:
-            # Set ratio errors to data relative stat error; this makes no sense, but is LHC common practice
-            numer_counts = numer.counts
-            numer_counts[numer_counts == 0] = 1e-12
-            ratio._errors = numer.errors/numer_counts
+        # Set ratio errors to data relative stat error times the ratio
+        numer_counts = numer.counts
+        numer_counts[numer_counts == 0] = 1e-12
+        ratio._errors = (numer.errors/numer_counts)*ratio.counts
 
         # Plot stacked bkg hists
         if bkg_hists:
@@ -497,53 +496,37 @@ class Validation(PandasAnalysis):
         numer.plot(ax=hist_axes, errors=True)
         ratio.plot(ax=ratio_axes, errors=True, color="k")
 
-        if cms_errors:
-            # Plot MC relative stat error on unity; this makes no sense, but is LHC common practice
-            denom_counts = denom.counts
-            denom_counts[denom_counts == 0] = 1e-12
-            err_points = np.repeat(denom.edges, 2)[1:-1]
-            err_high = np.repeat(1 + denom.errors/denom_counts, 2)
-            err_low = np.repeat(1 - denom.errors/denom_counts, 2)
-            ratio_axes.fill_between(
-                err_points, err_high, err_low, 
-                step="mid", 
-                hatch="///////", 
-                facecolor="none",
-                edgecolor=(0.85, 0.85, 0.85), 
-                linewidth=0.0, 
-                linestyle="-",
-                zorder=2
-            )
-            # Plot dummy MC relative stat error on histogram so it appears in legend
-            hist_axes.fill_between(
-                err_points*0, err_high*0, err_low*0, 
-                step="mid", 
-                hatch="///////", 
-                facecolor="none",
-                edgecolor=(0.85, 0.85, 0.85), 
-                linewidth=0.0, 
-                linestyle="-",
-                zorder=2,
-                label="MC uncertainty"
-            )
-        else:
-            # Plot MC stat error on histogram
-            denom_counts = denom.counts
-            denom_counts[denom_counts == 0] = 1e-12
-            err_points = np.repeat(denom.edges, 2)[1:-1]
-            err_high = np.repeat(denom_counts + denom.errors, 2)
-            err_low = np.repeat(denom_counts - denom.errors, 2)
-            hist_axes.fill_between(
-                err_points, err_high, err_low, 
-                step="mid", 
-                hatch="///////", 
-                facecolor="none",
-                edgecolor=(0.85, 0.85, 0.85), 
-                linewidth=0.0, 
-                linestyle="-",
-                zorder=2,
-                label="MC uncertainty"
-            )
+        # Plot MC relative stat error on unity; this makes no sense, but is LHC common practice
+        denom_counts = denom.counts
+        denom_counts[denom_counts == 0] = 1e-12
+        err_points = np.repeat(denom.edges, 2)[1:-1]
+        err_high = np.repeat(1 + denom.errors/denom_counts, 2)
+        err_low = np.repeat(1 - denom.errors/denom_counts, 2)
+        ratio_axes.fill_between(
+            err_points, err_high, err_low, 
+            step="mid", 
+            hatch="///////", 
+            facecolor="none",
+            edgecolor=(0.85, 0.85, 0.85), 
+            linewidth=0.0, 
+            linestyle="-",
+            zorder=2
+        )
+        # Plot MC error on histogram
+        err_high = np.repeat(denom_counts + denom.errors, 2)
+        err_low = np.repeat(denom_counts - denom.errors, 2)
+        hist_axes.fill_between(
+            err_points, err_high, err_low, 
+            step="mid", 
+            hatch="///////", 
+            facecolor="none",
+            edgecolor=(0.85, 0.85, 0.85), 
+            linewidth=0.0, 
+            linestyle="-",
+            zorder=2,
+            # label=u"MC unc. [stat \u2295 syst]" # TODO: uncomment this when you (a) have syst errors and (b) can add them here
+            label=u"MC unc. [stat]"
+        )
 
         ratio_axes.axhline(y=1, color="k", linestyle="--", alpha=0.75, linewidth=0.75)
         ratio_axes.legend().remove()
