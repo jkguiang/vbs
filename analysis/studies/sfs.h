@@ -1,20 +1,15 @@
-#ifndef SCALEFACTORS_H
-#define SCALEFACTORS_H
+#ifndef SFS_H
+#define SFS_H
 
+// VBS
+#include "tools/TauIDSFTool.h"
 // ROOT
 #include "TString.h"
 #include "TH1.h"
-#include "TRandom3.h"
 // NanoCORE
 #include "Nano.h"
-#include "Config.h"
-#include "Tools/goodrun.h"
-#include "Tools/btagsf/BTagCalibrationStandalone.h"
-#include "Tools/btagsf/BTagCalibrationStandalone_v2.h"
-#include "Tools/jetcorr/JetCorrectionUncertainty.h"
-#include "Tools/jetcorr/JetResolutionUncertainty.h"
-// Other
-#include "tools/TauIDSFTool.h"
+// CMSSW
+#include "correction.h"
 
 struct SFHist
 {
@@ -120,88 +115,6 @@ struct NanoSFsUL
         {
             year = -1;
         }
-    };
-};
-
-struct JetEnergySFs : NanoSFsUL
-{
-
-    JetCorrectionUncertainty* jec_unc;
-    JetResolutionUncertainty* jer_unc;
-    // Note: jec_var == 1 means the nominal value is applied, 
-    //       +/-2 means a variation is applied, 
-    //       anything else means JECs are not applied.
-    int jec_var;
-    // Note: jer_var == 1 means the nominal value is applied, 
-    //       +/-2 means a variation is applied, 
-    //       anything else means JERs are not applied.
-    int jer_var;
-    TRandom3 random_num;
-
-    JetEnergySFs(std::string variation)
-    {
-        if (variation == "jec_up") 
-        {
-            jec_var = 2;
-            jer_var = 1;
-        }
-        else if (variation == "jec_dn") 
-        { 
-            jec_var = -2;
-            jer_var = 1;
-        }
-        else if (variation == "jer_up") 
-        { 
-            jec_var = 1;
-            jer_var = 2;
-        }
-        else if (variation == "jer_dn") 
-        { 
-            jec_var = 1;
-            jer_var = -2;
-        }
-        random_num = TRandom3(12345);
-    };
-
-    void init(TString file_name)
-    {
-        NanoSFsUL::init(file_name);
-        if (year == -1) { return; }
-
-        // Init Jet Energy Correction (JEC) uncertainty scale factors
-        // NOTE: must download them first!
-        jec_unc = new JetCorrectionUncertainty(
-            "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jecEraMC+"/"+gconf.jecEraMC+"_Uncertainty_AK4PFchs.txt"
-        );
-
-        // Init Jet Energy Resolution (JER) uncertainty scale factors
-        // NOTE: must download them first!
-        jer_unc = new JetResolutionUncertainty(
-            "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jerEra+"/"+gconf.jerEra+"_PtResolution_AK4PFchs.txt",
-            "NanoTools/NanoCORE/Tools/jetcorr/data/"+gconf.jerEra+"/"+gconf.jerEra+"_SF_AK4PFchs.txt"
-        );
-    };
-
-    LorentzVector applyJEC(LorentzVector jet_p4)
-    {
-        if (abs(jec_var) != 2) { return jet_p4; }
-        jec_unc->setJetEta(jet_p4.eta());
-        jec_unc->setJetPt(jet_p4.pt());
-        float jec_err = fabs(jec_unc->getUncertainty(jec_var == 2))*jec_var/2;
-        return jet_p4*(1. + jec_err);
-    };
-
-    LorentzVector applyJER(int seed, LorentzVector jet_p4, float rho, 
-                           std::vector<LorentzVector> gen_jet_p4s)
-    {
-        /* FIXME: GenJet_* branches missing in current skim
-        random_num.SetSeed(seed);
-        jer_unc->setJetEta(jet_p4.eta());
-        jer_unc->setJetPt(jet_p4.pt());
-        jer_unc->setRho(rho);
-        jer_unc->applyJER(jet_p4, jer_var, gen_jet_p4s, random_num); 
-        */
-        return jet_p4;
     };
 };
 
@@ -365,7 +278,7 @@ struct LeptonSFsTTH : LeptonSFs
     double getElecSF(double pt, double eta)
     {
         double sf = 1.;
-        eta = fabs(std::max(std::min(eta, 2.4999), -2.4999));
+        eta = std::max(fabs(eta), 2.4999);  // clip eta at < 2.5; take abs
         sf *= el_reco->getSF(eta, pt);      // event --> reco
         sf *= el_iso_loose->getSF(eta, pt); // reco --> loose ttH ID
         sf *= el_tth_tight->getSF(eta, pt); // loose ttH ID --> tight ttH ID
@@ -375,7 +288,7 @@ struct LeptonSFsTTH : LeptonSFs
     double getElecErrUp(double pt, double eta)
     {
         double err_up = 0.;
-        eta = fabs(std::max(std::min(eta, 2.4999), -2.4999));
+        eta = std::max(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
         err_up += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
         err_up += std::pow(el_iso_loose->getErr(eta, pt), 2); // reco --> loose ttH ID
         err_up += std::pow(el_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
@@ -385,7 +298,7 @@ struct LeptonSFsTTH : LeptonSFs
     double getElecErrDn(double pt, double eta)
     {
         double err_dn = 0.;
-        eta = fabs(std::max(std::min(eta, 2.4999), -2.4999));
+        eta = std::max(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
         err_dn += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
         err_dn += std::pow(el_iso_loose->getErr(eta, pt), 2); // reco --> loose ttH ID
         err_dn += std::pow(el_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
@@ -425,21 +338,113 @@ struct LeptonSFsTTH : LeptonSFs
 
 struct LeptonSFsPKU : LeptonSFs
 {
+    correction::Correction::Ref lep_sfs;
+
     LeptonSFsPKU() { /* Do nothing */ };
 
     void init(TString file_name, bool taus = false)
     {
         NanoSFsUL::init(file_name);
-        // FIXME
+
+        /* FIXME: not able to read JSON for some reason...
+        std::cout << "HELLO THERE" << std::endl;
+        // std::unique_ptr<correction::CorrectionSet> cset;
+        std::string json_path = "/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/EGM";
+        switch (campaign)
+        {
+        case (RunIISummer20UL16APV):
+            json_path += "/2016preVFP_UL/electron.json.gz";
+            break;
+        case (RunIISummer20UL16):
+            json_path += "/2016postVFP_UL/electron.json.gz";
+            break;
+        case (RunIISummer20UL17):
+            json_path += "/2017_UL/electron.json.gz";
+            break;
+        case (RunIISummer20UL18):
+            json_path += "/2018_UL/electron.json.gz";
+            std::cout << "DEBUG " << json_path << std::endl;
+            break;
+        };
+        auto cset = correction::CorrectionSet::from_file(json_path);
+        std::cout << "I'M OK" << std::endl;
+        */
     };
 
-    double getElecSF(double pt, double eta) { return 1.; };
-    double getElecErrUp(double pt, double eta) { return 0.; };
-    double getElecErrDn(double pt, double eta) { return 0.; };
+    double getElecSF(double pt, double eta) { return 1.; };    // FIXME
+    double getElecErrUp(double pt, double eta) { return 0.; }; // FIXME
+    double getElecErrDn(double pt, double eta) { return 0.; }; // FIXME
 
-    double getMuonSF(double pt, double eta) { return 1.; };
-    double getMuonErrUp(double pt, double eta) { return 0.; };
-    double getMuonErrDn(double pt, double eta) { return 0.; };
+    double getMuonSF(double pt, double eta) { return 1.; };    // FIXME
+    double getMuonErrUp(double pt, double eta) { return 0.; }; // FIXME
+    double getMuonErrDn(double pt, double eta) { return 0.; }; // FIXME
+};
+
+struct BTagSFs : NanoSFsUL
+{
+private:
+    double get(std::string variation, std::string working_point, int flavor, double pt, double eta) 
+    { 
+        eta = fabs(eta);
+        switch (flavor)
+        {
+        case 0:
+            return sfs_light->evaluate({variation, working_point, flavor, eta, pt});
+            break;
+        case 4:
+        case 5:
+            return sfs_bc->evaluate({variation, working_point, flavor, eta, pt});
+            break;
+        default:
+            throw std::runtime_error("BTagSFs::getBTagSF - invalid hadron flavor (0, 4, 5 allowed)");
+            break;
+        }
+    };
+public:
+    correction::Correction::Ref sfs_bc;
+    correction::Correction::Ref sfs_light;
+
+    BTagSFs() { /* Do nothing */ };
+
+    void init(TString file_name)
+    {
+        NanoSFsUL::init(file_name);
+
+        std::cout << "HELLO THERE" << std::endl;
+        std::unique_ptr<correction::CorrectionSet> cset;
+        std::string json_base = "/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/BTV";
+        switch (campaign)
+        {
+        case (RunIISummer20UL16APV):
+            cset = correction::CorrectionSet::from_file(json_base+"/2016preVFP_UL/btagging.json.gz");
+            break;
+        case (RunIISummer20UL16):
+            cset = correction::CorrectionSet::from_file(json_base+"/2016postVFP_UL/btagging.json.gz");
+            break;
+        case (RunIISummer20UL17):
+            cset = correction::CorrectionSet::from_file(json_base+"/2017_UL/btagging.json.gz");
+            break;
+        case (RunIISummer20UL18):
+            std::cout << "DEBUG " << json_base+"/2018_UL/btagging.json.gz" << std::endl;
+            cset = correction::CorrectionSet::from_file(json_base+"/2018_UL/btagging.json.gz");
+            break;
+        }
+        sfs_bc = cset->at("deepJet_incl");
+        sfs_light = cset->at("deepJet_comb");
+    };
+
+    double getSF(std::string wp, int flavor, double pt, double eta) 
+    { 
+        return get("central", wp, flavor, pt, eta); 
+    };
+    double getSFUp(std::string wp, int flavor, double pt, double eta)
+    { 
+        return get("up_correlated", wp, flavor, pt, eta); 
+    };
+    double getSFDn(std::string wp, int flavor, double pt, double eta)
+    { 
+        return get("down_correlated", wp, flavor, pt, eta); 
+    };
 };
 
 #endif

@@ -3,22 +3,18 @@
 
 // RAPIDO
 #include "arbol.h"
-#include "looper.h"
 #include "cutflow.h"
 #include "utilities.h"
 // VBS
 #include "core.h"
 
-// DEBUG
-#include "MCTools.h"
-
 namespace VBSWH
 {
 
-class PassesEventFilters : public Core::DressedCut
+class PassesEventFilters : public Core::AnalysisCut
 {
 public:
-    PassesEventFilters(std::string name, Core::Analysis& analysis) : Core::DressedCut(name, analysis) 
+    PassesEventFilters(std::string name, Core::Analysis& analysis) : Core::AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
@@ -40,10 +36,10 @@ public:
     };
 };
 
-class Passes1LepTriggers : public Core::DressedCut
+class Passes1LepTriggers : public Core::AnalysisCut
 {
 public:
-    Passes1LepTriggers(std::string name, Core::Analysis& analysis) : Core::DressedCut(name, analysis) 
+    Passes1LepTriggers(std::string name, Core::Analysis& analysis) : Core::AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
@@ -134,13 +130,13 @@ public:
     };
 };
 
-class SelectHbbFatJet : public Core::DressedCut
+class SelectHbbFatJet : public Core::AnalysisCut
 {
 public:
     bool use_md;
 
     SelectHbbFatJet(std::string name, Core::Analysis& analysis, bool md = false) 
-    : Core::DressedCut(name, analysis) 
+    : Core::AnalysisCut(name, analysis) 
     {
         use_md = md;
     };
@@ -187,15 +183,6 @@ public:
                 }
             }
         }
-        /* Uncomment this block for debugging
-        if (n_hbbjet_genbquarks > 1)
-        {
-            std::cout << "------------------ START ------------------" << std::endl;
-            dumpGenParticleInfos({});
-            std::cout << "\n FOUND " << n_hbbjet_genbquarks << " MATCHES" << std::endl;
-            std::cout << "------------------ END ------------------" << std::endl;
-        }
-        */
 
         // Store the fatjet
         globals.setVal<LorentzVector>("hbbjet_p4", best_hbbjet_p4);
@@ -218,16 +205,16 @@ class SelectJetsNoHbbOverlap : public Core::SelectJets
 public:
     LorentzVector hbbjet_p4;
 
-    SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis, JetEnergySFs* jet_sfs) 
-    : Core::SelectJets(name, analysis, jet_sfs) 
+    SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis, JetEnergyScales* jes, BTagSFs* btag_sfs) 
+    : Core::SelectJets(name, analysis, jes, btag_sfs) 
     {
         // Do nothing
     };
 
     void loadOverlapVars()
     {
-        good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
-        good_lep_jet_idxs = globals.getVal<Integers>("good_lep_jet_idxs");
+        veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
+        veto_lep_jet_idxs = globals.getVal<Integers>("veto_lep_jet_idxs");
         hbbjet_p4 = globals.getVal<LorentzVector>("hbbjet_p4");
     };
 
@@ -242,10 +229,10 @@ public:
     };
 };
 
-class Has1Lep : public Core::DressedCut
+class Has1Lep : public Core::AnalysisCut
 {
 public:
-    Has1Lep(std::string name, Core::Analysis& analysis) : Core::DressedCut(name, analysis) 
+    Has1Lep(std::string name, Core::Analysis& analysis) : Core::AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
@@ -272,42 +259,39 @@ public:
 
     virtual bool evaluate()
     {
-        LorentzVectors good_lep_p4s = globals.getVal<LorentzVectors>("good_lep_p4s");
-        Integers good_lep_pdgIDs = globals.getVal<Integers>("good_lep_pdgIDs");
-        Integers good_lep_idxs = globals.getVal<Integers>("good_lep_idxs");
-        int n_veto_leps = 0;
+        LorentzVectors veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
+        Integers veto_lep_pdgIDs = globals.getVal<Integers>("veto_lep_pdgIDs");
+        Integers veto_lep_idxs = globals.getVal<Integers>("veto_lep_idxs");
         int n_tight_leps = 0;
         int tight_lep_idx = -999;
-        for (unsigned int good_lep_i = 0; good_lep_i < good_lep_p4s.size(); ++good_lep_i)
+        for (unsigned int veto_lep_i = 0; veto_lep_i < veto_lep_p4s.size(); ++veto_lep_i)
         {
             // Count loose and tight leptons
-            unsigned int lep_i = good_lep_idxs.at(good_lep_i);
-            int lep_pdgID = good_lep_pdgIDs.at(good_lep_i);
+            unsigned int lep_i = veto_lep_idxs.at(veto_lep_i);
+            int lep_pdgID = veto_lep_pdgIDs.at(veto_lep_i);
             if (abs(lep_pdgID) == 11)
             {
-                if (passesVetoElecID(lep_i)) { n_veto_leps++; }
                 if (passesTightElecID(lep_i)) 
                 {
                     n_tight_leps++;
-                    tight_lep_idx = good_lep_i;
+                    tight_lep_idx = veto_lep_i;
                 }
             }
             else if (abs(lep_pdgID) == 13)
             {
-                if (passesVetoMuonID(lep_i)) { n_veto_leps++; }
                 if (passesTightMuonID(lep_i)) 
                 {
                     n_tight_leps++;
-                    tight_lep_idx = good_lep_i;
+                    tight_lep_idx = veto_lep_i;
                 }
             }
         }
         // Require 1 and only 1 lepton (no additional >= veto leptons)
-        if (n_tight_leps != 1 || n_veto_leps != 1) { return false; }
-        LorentzVector lep_p4 = good_lep_p4s.at(tight_lep_idx);
+        if (n_tight_leps != 1 || veto_lep_idxs.size() != 1) { return false; }
+        LorentzVector lep_p4 = veto_lep_p4s.at(tight_lep_idx);
         globals.setVal<LorentzVector>("lep_p4", lep_p4);
 
-        arbol.setLeaf<int>("lep_pdgID", good_lep_pdgIDs.at(tight_lep_idx));
+        arbol.setLeaf<int>("lep_pdgID", veto_lep_pdgIDs.at(tight_lep_idx));
         arbol.setLeaf<double>("lep_pt", lep_p4.pt());
         arbol.setLeaf<double>("lep_eta", lep_p4.eta());
         arbol.setLeaf<double>("lep_phi", lep_p4.phi());
@@ -332,70 +316,29 @@ public:
 
     bool passesVetoElecID(int elec_i)
     {
-        if (nt.Electron_pt().at(elec_i) <= 10) { return false; }
-        if (nt.Electron_cutBased().at(elec_i) < 1) { return false; }
-        return true;
+        return PKU::passesElecID(elec_i, PKU::IDveto);
     };
 
     bool passesTightElecID(int elec_i)
     {
-        /* Peking U. Tight ID
-           tight_electrons = events.Electron[
-               (events.Electron.pt > 35) 
-               & (events.Electron.cutBased >= 3) 
-               & (events.Electron.eta + events.Electron.deltaEtaSC < 2.5) 
-               & (((abs(events.Electron.dz) < 0.1) & (abs(events.Electron.dxy) < 0.05) 
-                   & (events.Electron.eta + events.Electron.deltaEtaSC < 1.479)) 
-                  | ((abs(events.Electron.dz) < 0.2) & (abs(events.Electron.dxy) < 0.1) 
-                       & (events.Electron.eta + events.Electron.deltaEtaSC > 1.479)))
-           ]
-        */
-        if (nt.Electron_pt().at(elec_i) <= 35) { return false; }
-        if (nt.Electron_cutBased().at(elec_i) < 3) { return false; }
-        if (nt.Electron_eta().at(elec_i) + nt.Electron_deltaEtaSC().at(elec_i) >= 2.5) { return false; }
-        if (nt.Electron_eta().at(elec_i) + nt.Electron_deltaEtaSC().at(elec_i) >= 1.479)
-        {
-            if (fabs(nt.Electron_dz().at(elec_i)) >= 0.2) { return false; }
-            if (fabs(nt.Electron_dxy().at(elec_i)) >= 0.1) { return false; }
-        }
-        else
-        {
-            if (fabs(nt.Electron_dz().at(elec_i)) >= 0.1) { return false; }
-            if (fabs(nt.Electron_dxy().at(elec_i)) >= 0.05) { return false; }
-        }
-        return true;
+        return PKU::passesElecID(elec_i, PKU::IDtight);
     };
 
     bool passesVetoMuonID(int muon_i)
     {
-        if (!nt.Muon_tightId().at(muon_i)) { return false; }
-        if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.4) { return false; }
-        if (nt.Muon_pt().at(muon_i) <= 10) { return false; }
-        return true;
+        return PKU::passesMuonID(muon_i, PKU::IDveto);
     };
 
     bool passesTightMuonID(int muon_i)
     {
-        /* Peking U. Tight ID
-           tight_muons = events.Muon[
-               events.Muon.tightId 
-               & (events.Muon.pfRelIso04_all < 0.15) 
-               & (events.Muon.pt > 26) 
-               & (abs(events.Muon.eta) < 2.4)
-           ]
-        */
-        if (!nt.Muon_tightId().at(muon_i)) { return false; }
-        if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.15) { return false; }
-        if (nt.Muon_pt().at(muon_i) <= 26) { return false; }
-        if (fabs(nt.Muon_eta().at(muon_i)) >= 2.4) { return false; }
-        return true;
+        return PKU::passesMuonID(muon_i, PKU::IDtight);
     };
 };
 
-class SaveBJetVeto : public Core::DressedCut
+class SaveBJetVeto : public Core::AnalysisCut
 {
 public:
-    SaveBJetVeto(std::string name, Core::Analysis& analysis) : DressedCut(name, analysis) 
+    SaveBJetVeto(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
@@ -418,9 +361,10 @@ public:
 
 struct Analysis : Core::Analysis
 {
-    JetEnergySFs* jet_sfs;
-    // LeptonSFsTTH* lep_sfs;
+    JetEnergyScales* jes;
     LeptonSFsPKU* lep_sfs;
+    BTagSFs* btag_sfs;
+    // LeptonSFsTTH* lep_sfs;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
@@ -459,9 +403,10 @@ struct Analysis : Core::Analysis
     virtual void initCutflow()
     {
         // Initialize scale factors
-        jet_sfs = new JetEnergySFs(cli.variation);
-        // lep_sfs = new LeptonSFsTTH();
+        jes = new JetEnergyScales(cli.variation);
         lep_sfs = new LeptonSFsPKU();
+        // lep_sfs = new LeptonSFsTTH();
+        btag_sfs = new BTagSFs();
 
         // Bookkeeping
         Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this);
@@ -472,13 +417,13 @@ struct Analysis : Core::Analysis
         cutflow.insert(bookkeeping, event_filters, Right);
 
         // Lepton selection
-        // Cut* select_leps = new Core::SelectLeptons("SelectLeptons", *this, lep_sfs);
         Cut* select_leps = new Core::SelectLeptonsPKU("SelectLeptons", *this, lep_sfs);
+        // Cut* select_leps = new Core::SelectLeptons("SelectLeptons", *this, lep_sfs);
         cutflow.insert(event_filters, select_leps, Right);
 
         // == 1 lepton selection
-        // Cut* has_1lep = new Has1Lep("Has1TightLep", *this);
         Cut* has_1lep = new Has1LepPKU("Has1TightLep", *this);
+        // Cut* has_1lep = new Has1Lep("Has1TightLep", *this);
         cutflow.insert(select_leps, has_1lep, Right);
 
         // Lepton has pT > 40
@@ -506,7 +451,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(geq1fatjet, select_hbbjet, Right);
 
         // Jet selection
-        Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", *this, jet_sfs);
+        Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", *this, jes, btag_sfs);
         cutflow.insert(select_hbbjet, select_jets, Right);
 
         // Global AK4 b-veto
@@ -573,7 +518,7 @@ struct Analysis : Core::Analysis
     {
         Core::Analysis::init();
         TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        jet_sfs->init(file_name);
+        jes->init();
         lep_sfs->init(file_name);
     };
 };
