@@ -1,5 +1,6 @@
 #include "../core.h"
-#include "../scalefactors.h"
+#include "../sfs.h"
+#include "../jes.h"
 #include "../vbswh.h"
 // RAPIDO
 #include "arbol.h"
@@ -32,6 +33,22 @@ int main(int argc, char** argv)
     VBSWH::Analysis analysis = VBSWH::Analysis(arbol, nt, cli, cutflow);
     analysis.initBranches();
     analysis.initCutflow();
+
+    Cut* fix_ewk_samples = new LambdaCut(
+        "FixEWKSamples",
+        [&]()
+        {
+            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            if (file_name.Contains("EWKW") || file_name.Contains("EWKZ"))
+            {
+                int parton1_pdgID = nt.LHEPart_pdgId().at(0);
+                int parton2_pdgID = nt.LHEPart_pdgId().at(1);
+                if (abs(parton1_pdgID) == 5 || abs(parton2_pdgID) == 5) { return false; }
+            }
+            return true;
+        }
+    );
+    cutflow.insert("Bookkeeping", fix_ewk_samples, Right);
 
     // Run looper
     tqdm bar;
