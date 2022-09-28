@@ -24,9 +24,15 @@ int main(int argc, char** argv)
 
     // Initialize Arbol
     Arbol arbol = Arbol(cli);
+    arbol.newBranch<int>("lhe_parton1_pdgID", -999);
+    arbol.newBranch<int>("lhe_parton2_pdgID", -999);
+    arbol.newBranch<int>("lhe_lep_pdgID", -999);
     arbol.newBranch<int>("lhe_ld_q_pdgID", -999);
     arbol.newBranch<int>("lhe_tr_q_pdgID", -999);
-    arbol.newBranch<int>("lhe_lep_pdgID", -999);
+    arbol.newBranch<double>("lhe_ld_q_pt", -999);
+    arbol.newBranch<double>("lhe_tr_q_pt", -999);
+    arbol.newBranch<double>("lhe_ld_q_eta", -999);
+    arbol.newBranch<double>("lhe_tr_q_eta", -999);
     arbol.newBranch<double>("lhe_M_qq", -999);
     arbol.newBranch<double>("lhe_deta_qq", -999);
     arbol.newBranch<double>("lhe_M_lnu", -999);
@@ -71,6 +77,8 @@ int main(int argc, char** argv)
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             if (file_name.Contains("EWKW") || file_name.Contains("EWKZ") || file_name.Contains("WWTo"))
             {
+                arbol.setLeaf<int>("lhe_parton1_pdgID", nt.LHEPart_pdgId().at(0));
+                arbol.setLeaf<int>("lhe_parton2_pdgID", nt.LHEPart_pdgId().at(1));
                 LorentzVector q1_p4 = nt.LHEPart_p4().at(4);
                 LorentzVector q2_p4 = nt.LHEPart_p4().at(5);
                 arbol.setLeaf<double>("lhe_M_qq", (q1_p4 + q2_p4).M());
@@ -79,11 +87,19 @@ int main(int argc, char** argv)
                 {
                     arbol.setLeaf<int>("lhe_ld_q_pdgID", nt.LHEPart_pdgId().at(4));
                     arbol.setLeaf<int>("lhe_tr_q_pdgID", nt.LHEPart_pdgId().at(5));
+                    arbol.setLeaf<double>("lhe_ld_q_pt", nt.LHEPart_pt().at(4));
+                    arbol.setLeaf<double>("lhe_tr_q_pt", nt.LHEPart_pt().at(5));
+                    arbol.setLeaf<double>("lhe_ld_q_eta", nt.LHEPart_eta().at(4));
+                    arbol.setLeaf<double>("lhe_tr_q_eta", nt.LHEPart_eta().at(5));
                 }
                 else
                 {
                     arbol.setLeaf<int>("lhe_ld_q_pdgID", nt.LHEPart_pdgId().at(5));
                     arbol.setLeaf<int>("lhe_tr_q_pdgID", nt.LHEPart_pdgId().at(4));
+                    arbol.setLeaf<double>("lhe_ld_q_pt", nt.LHEPart_pt().at(5));
+                    arbol.setLeaf<double>("lhe_tr_q_pt", nt.LHEPart_pt().at(4));
+                    arbol.setLeaf<double>("lhe_ld_q_eta", nt.LHEPart_eta().at(5));
+                    arbol.setLeaf<double>("lhe_tr_q_eta", nt.LHEPart_eta().at(4));
                 }
                 if (file_name.Contains("To1L1Nu") || file_name.Contains("ToLNu"))
                 {
@@ -110,6 +126,8 @@ int main(int argc, char** argv)
                 LorentzVector gen_lep_p4;
                 Integers gen_W_q;
                 Integers gen_vbs_q;
+                int n_primordial_W = 0;
+                int n_primordial_q = 0;
                 for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); ++gen_i)
                 {
                     unsigned int gen_mother_i = nt.GenPart_genPartIdxMother().at(gen_i);
@@ -117,6 +135,7 @@ int main(int argc, char** argv)
                     int gen_pdgID = nt.GenPart_pdgId().at(gen_i);
                     int gen_status = nt.GenPart_status().at(gen_i);
                     int gen_mother_pdgID = nt.GenPart_pdgId().at(gen_mother_i);
+                    int gen_mother_status = nt.GenPart_status().at(gen_mother_i);
                     LorentzVector gen_p4 = nt.GenPart_p4().at(gen_i);
                     switch (abs(gen_pdgID))
                     {
@@ -126,14 +145,18 @@ int main(int argc, char** argv)
                     case 4:
                     case 5:
                     case 6:
+                        if (gen_mother_i == 0)
+                        {
+                            n_primordial_q += 1;
+                        }
                         if (gen_status == 23)
                         {
-                            if (abs(gen_mother_pdgID) == 24)
+                            if (abs(gen_mother_pdgID) == 24 && gen_mother_status == 62)
                             {
                                 // Found q or q' from a W
                                 gen_W_q.push_back(gen_i);
                             }
-                            else if (gen_mother_i == 0 || gen_mother_i == 1)
+                            else if (gen_mother_i == 0)
                             {
                                 // Found a VBS quark
                                 gen_vbs_q.push_back(gen_i);
@@ -151,6 +174,11 @@ int main(int argc, char** argv)
                             gen_lep_pdgID = gen_pdgID;
                         }
                         break;
+                    case 24:
+                        if (gen_mother_i == 0)
+                        {
+                            n_primordial_W += 1;
+                        }
                     default:
                         continue;
                         break;
@@ -159,7 +187,7 @@ int main(int argc, char** argv)
                 LorentzVector q1_p4, q2_p4;
                 int q1_idx = 0;
                 int q2_idx = 0;
-                if (gen_vbs_q.size() == 2)
+                if (n_primordial_W == 1 && n_primordial_q == 2 && gen_vbs_q.size() == 2)
                 {
                     arbol.setLeaf<bool>("gen_is_VBSW", true);
                     arbol.setLeaf<bool>("gen_is_WW", false);

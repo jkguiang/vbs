@@ -87,23 +87,39 @@ int main(int argc, char** argv)
     Cut* select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("SelectVBSJetsMaxE", analysis);
     cutflow.insert(select_jets, select_vbsjets_maxE, Right);
 
-    // Global AK4 b-veto
-    Cut* ak4bveto = new LambdaCut(
-        "SaveAk4GlobalBVeto", 
+    // Basic VBS jet requirements
+    Cut* vbsjets_presel = new LambdaCut(
+        "MjjGt500_detajjGt3", 
         [&]()
         {
-            for (auto& btag : cutflow.globals.getVal<Doubles>("good_jet_btags"))
-            {
-                if (btag > gconf.WP_DeepFlav_medium) 
-                { 
-                    return false;
-                    break;
-                }
-            }
-            return true;
+            return arbol.getLeaf<double>("M_jj") > 500 && fabs(arbol.getLeaf<double>("deta_jj")) > 3;
         }
     );
-    cutflow.insert(select_vbsjets_maxE, ak4bveto, Right);
+    cutflow.insert(select_vbsjets_maxE, vbsjets_presel, Right);
+
+    Cut* xbb_presel = new LambdaCut(
+        "XbbGt0p3", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.3; }
+    );
+    cutflow.insert(vbsjets_presel, xbb_presel, Right);
+
+    // Save AK4 b-veto
+    Cut* save_ak4bveto = new SaveBJetVeto("SaveAk4GlobalBVeto", analysis);
+    cutflow.insert(xbb_presel, save_ak4bveto, Right);
+
+    // Apply AK4 b-veto
+    Cut* apply_ak4bveto = new LambdaCut(
+        "ApplyAk4GlobalBVeto", [&]() { return arbol.getLeaf<bool>("passes_bveto"); }
+    );
+    cutflow.insert(save_ak4bveto, apply_ak4bveto, Right);
+        
+    Cut* SR1_vbs_cuts = new LambdaCut(
+        "MjjGt600_detajjGt4", 
+        [&]() 
+        { 
+            return arbol.getLeaf<double>("M_jj") > 600 && fabs(arbol.getLeaf<double>("deta_jj")) > 4;
+        }
+    );
+    cutflow.insert(apply_ak4bveto, SR1_vbs_cuts, Right);
 
     Cut* trim_incl_wjets = new LambdaCut(
         "TrimInclWJetsHT",
@@ -146,7 +162,7 @@ int main(int argc, char** argv)
     hists.push_back(new TH1D("LT", "LT", 5000, 0, 5000));
     TH1D* n_jets_hist = new TH1D("n_jets_pt30", "n_jets_pt30", 20, 0, 20);
     // Book hists
-    for (auto cut : { select_vbsjets_maxE, ak4bveto })
+    for (auto cut : { select_vbsjets_maxE, vbsjets_presel, apply_ak4bveto, SR1_vbs_cuts })
     {
         for (auto hist : hists)
         {
