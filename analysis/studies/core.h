@@ -8,6 +8,7 @@
 #include "hepcli.h"
 #include "utilities.h"          // Utilities::Variables
 // VBS
+#include "pku.h"                // PKU::IDLevel, PKU::passesElecID, PKU::passesMuonID
 #include "sfs.h"                // LeptonSFs, BTagSFs
 #include "jes.h"                // JetEnergyScales
 // ROOT
@@ -24,73 +25,6 @@ typedef std::vector<LorentzVector> LorentzVectors;
 typedef std::vector<double> Doubles;
 typedef std::vector<int> Integers;
 typedef std::vector<unsigned int> Indices;
-
-namespace PKU
-{
-
-enum IDLevel 
-{
-    IDveto = 0,
-    IDtight = 1
-};
-
-bool passesElecID(unsigned int elec_i, IDLevel id_level)
-{
-    /* Peking U. Tight ID
-       tight_electrons = events.Electron[
-           (events.Electron.pt > 35) 
-           & (events.Electron.cutBased >= 3) 
-           & (events.Electron.eta + events.Electron.deltaEtaSC < 2.5) 
-           & (((abs(events.Electron.dz) < 0.1) & (abs(events.Electron.dxy) < 0.05) 
-               & (events.Electron.eta + events.Electron.deltaEtaSC < 1.479)) 
-              | ((abs(events.Electron.dz) < 0.2) & (abs(events.Electron.dxy) < 0.1) 
-                   & (events.Electron.eta + events.Electron.deltaEtaSC > 1.479)))
-       ]
-    */
-    if (nt.Electron_pt().at(elec_i) <= 10) { return false; }
-    if (nt.Electron_cutBased().at(elec_i) < 1) { return false; }
-    if (id_level == IDtight)
-    {
-        if (nt.Electron_pt().at(elec_i) <= 35) { return false; }
-        if (nt.Electron_cutBased().at(elec_i) < 3) { return false; }
-        if (nt.Electron_eta().at(elec_i) + nt.Electron_deltaEtaSC().at(elec_i) >= 2.5) { return false; }
-        if (nt.Electron_eta().at(elec_i) + nt.Electron_deltaEtaSC().at(elec_i) >= 1.479)
-        {
-            if (fabs(nt.Electron_dz().at(elec_i)) >= 0.2) { return false; }
-            if (fabs(nt.Electron_dxy().at(elec_i)) >= 0.1) { return false; }
-        }
-        else
-        {
-            if (fabs(nt.Electron_dz().at(elec_i)) >= 0.1) { return false; }
-            if (fabs(nt.Electron_dxy().at(elec_i)) >= 0.05) { return false; }
-        }
-    }
-    return true;
-};
-
-bool passesMuonID(unsigned int muon_i, IDLevel id_level)
-{
-    /* Peking U. Tight ID
-       tight_muons = events.Muon[
-           events.Muon.tightId 
-           & (events.Muon.pfRelIso04_all < 0.15) 
-           & (events.Muon.pt > 26) 
-           & (abs(events.Muon.eta) < 2.4)
-       ]
-    */
-    if (!nt.Muon_tightId().at(muon_i)) { return false; }
-    if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.4) { return false; }
-    if (nt.Muon_pt().at(muon_i) <= 10) { return false; }
-    if (id_level == IDtight)
-    {
-        if (nt.Muon_pfRelIso04_all().at(muon_i) >= 0.15) { return false; }
-        if (nt.Muon_pt().at(muon_i) <= 26) { return false; }
-        if (fabs(nt.Muon_eta().at(muon_i)) >= 2.4) { return false; }
-    }
-    return true;
-};
-
-};
 
 namespace Core
 {
@@ -153,7 +87,6 @@ struct Analysis
         // Jet globals
         cutflow.globals.newVar<LorentzVectors>("good_jet_p4s", {});
         cutflow.globals.newVar<Integers>("good_jet_idxs", {});
-        cutflow.globals.newVar<Doubles>("good_jet_btags", {});
         // Fat jet (AK8) globals
         cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
         cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
@@ -270,12 +203,12 @@ public:
 class SelectLeptons : public AnalysisCut
 {
 public:
-    LeptonSFs* sfs;
+    LeptonSFs* lep_sfs;
 
     SelectLeptons(std::string name, Analysis& analysis, LeptonSFs* lep_sfs) 
     : AnalysisCut(name, analysis)
     {
-        sfs = lep_sfs;
+        this->lep_sfs = lep_sfs;
     };
 
     virtual bool passesVetoElecID(int elec_i)
@@ -290,16 +223,15 @@ public:
 
     bool evaluate()
     {
-        // Lepton ID sf
-        double lep_sf = 1.;
-        // Percent errors (up/down) on sf
-        double err_up = 0.;
-        double err_dn = 0.;
-
         LorentzVectors veto_lep_p4s;
         Integers veto_lep_pdgIDs;
         Integers veto_lep_idxs;
         Integers veto_lep_jet_idxs;
+        // Lepton ID sf
+        double lep_sf = arbol.getLeaf<double>("lep_sf");
+        // Percent errors (up/down) on sf
+        double err_up = arbol.getLeaf<double>("lep_sf_up")/lep_sf - 1;
+        double err_dn = 1 - arbol.getLeaf<double>("lep_sf_dn")/lep_sf;
         // Loop over electrons
         for (unsigned int i = 0; i < nt.nElectron(); ++i)
         {
@@ -310,10 +242,10 @@ public:
             veto_lep_pdgIDs.push_back(-nt.Electron_charge().at(i)*11);
             veto_lep_idxs.push_back(i);
             veto_lep_jet_idxs.push_back(nt.Electron_jetIdx().at(i));
-            if (nt.isData()) { continue; }
-            lep_sf *= sfs->getElecSF(el_p4.pt(), el_p4.eta());
-            err_up += std::pow(sfs->getElecErrUp(el_p4.pt(), el_p4.eta()), 2);
-            err_dn += std::pow(sfs->getElecErrDn(el_p4.pt(), el_p4.eta()), 2);
+            if (nt.isData() || lep_sfs == nullptr) { continue; }
+            lep_sf *= lep_sfs->getElecSF(el_p4.pt(), el_p4.eta());
+            err_up += std::pow(lep_sfs->getElecErrUp(el_p4.pt(), el_p4.eta()), 2);
+            err_dn += std::pow(lep_sfs->getElecErrDn(el_p4.pt(), el_p4.eta()), 2);
         }
         // Loop over muons
         for (unsigned int i = 0; i < nt.nMuon(); ++i)
@@ -325,10 +257,10 @@ public:
             veto_lep_pdgIDs.push_back(-nt.Muon_charge().at(i)*13);
             veto_lep_idxs.push_back(i);
             veto_lep_jet_idxs.push_back(nt.Muon_jetIdx().at(i));
-            if (nt.isData()) { continue; }
-            lep_sf *= sfs->getMuonSF(mu_p4.pt(), mu_p4.eta());
-            err_up += std::pow(sfs->getMuonErrUp(mu_p4.pt(), mu_p4.eta()), 2);
-            err_dn += std::pow(sfs->getMuonErrDn(mu_p4.pt(), mu_p4.eta()), 2);
+            if (nt.isData() || lep_sfs == nullptr) { continue; }
+            lep_sf *= lep_sfs->getMuonSF(mu_p4.pt(), mu_p4.eta());
+            err_up += std::pow(lep_sfs->getMuonErrUp(mu_p4.pt(), mu_p4.eta()), 2);
+            err_dn += std::pow(lep_sfs->getMuonErrDn(mu_p4.pt(), mu_p4.eta()), 2);
         }
 
         globals.setVal<LorentzVectors>("veto_lep_p4s", veto_lep_p4s);
@@ -337,7 +269,7 @@ public:
         globals.setVal<Integers>("veto_lep_jet_idxs", veto_lep_jet_idxs);
 
         // Store lepton sf and its up/down variations
-        if (!nt.isData())
+        if (!nt.isData() && lep_sfs != nullptr)
         {
             // Finish error computation
             err_up = std::sqrt(err_up);
@@ -359,7 +291,7 @@ public:
 class SelectLeptonsPKU : public SelectLeptons
 {
 public:
-    SelectLeptonsPKU(std::string name, Analysis& analysis, LeptonSFsPKU* lep_sfs) 
+    SelectLeptonsPKU(std::string name, Analysis& analysis, LeptonSFsPKU* lep_sfs = nullptr) 
     : Core::SelectLeptons(name, analysis, lep_sfs) 
     {
         // Do nothing
@@ -384,7 +316,7 @@ public:
     LorentzVectors veto_lep_p4s;
     Integers veto_lep_jet_idxs;
 
-    SelectJets(std::string name, Analysis& analysis, JetEnergyScales* jes, BTagSFs* btag_sfs) 
+    SelectJets(std::string name, Analysis& analysis, JetEnergyScales* jes = nullptr, BTagSFs* btag_sfs = nullptr) 
     : AnalysisCut(name, analysis)
     {
         this->jes = jes;
@@ -443,71 +375,68 @@ public:
         double btag_sf_up = 1.;
         double btag_sf_dn = 1.;
         double ht = 0.;
-        Doubles good_jet_btags;
         LorentzVectors good_jet_p4s;
         Integers good_jet_idxs;
-        /* FIXME: see FIXME below
         int jer_seed = (
             1 + (nt.run() << 20) 
             + (nt.luminosityBlock() << 10) 
             + nt.event() 
             + (nt.nJet() > 0 ? nt.Jet_eta().at(0)/0.01 : 0)
         );
-        */
         for (unsigned int jet_i = 0; jet_i < nt.nJet(); ++jet_i)
         {
             // Read jet p4
             LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
             // Apply JECs/JERs
-            jet_p4 = jes->applyJEC(jet_p4);
-            /* FIXME: missing fixedGridRhoFastjetAll branch in skim
-            jet_p4 = jes->applyJER(
-                jer_seed, 
-                jet_p4, 
-                nt.fixedGridRhoFastjetAll(), 
-                nt.GenJet_p4()
-            );
-            */
+            if (jes != nullptr)
+            {
+                jet_p4 = jes->applyJEC(jet_p4);
+                jet_p4 = jes->applyJER(
+                    jer_seed, 
+                    jet_p4, 
+                    nt.fixedGridRhoFastjetAll(), 
+                    nt.GenJet_p4()
+                );
+            }
             if (!isGoodJet(jet_i, jet_p4)) { continue; }
             if (isOverlap(jet_i, jet_p4)) { continue; }
             // Perform b-tagging (for b-veto); only possible for pt > 20 GeV and |eta| < 2.4
-            bool is_btagged_loose = false;
-            bool is_btagged_medium = false;
-            bool is_btagged_tight = false;
-            double deepflav_btag = nt.Jet_btagDeepFlavB().at(jet_i);
             if (fabs(jet_p4.eta()) < 2.4) 
             {
                 // Check DeepJet vs. working points in NanoCORE global config (gconf)
-                is_btagged_loose = deepflav_btag > gconf.WP_DeepFlav_loose;
-                is_btagged_medium = deepflav_btag > gconf.WP_DeepFlav_medium;
-                is_btagged_tight = deepflav_btag > gconf.WP_DeepFlav_tight;
-            }
-            // Count b-tags and save jet info
-            if (is_btagged_tight) 
-            {
-                good_jet_btags.push_back(deepflav_btag);
-                n_tight_b_jets++;
-            }
-            else if (is_btagged_medium)
-            {
-                good_jet_btags.push_back(deepflav_btag);
-                if (!nt.isData())
+                double deepflav_btag = nt.Jet_btagDeepFlavB().at(jet_i);
+                if (deepflav_btag > gconf.WP_DeepFlav_tight) 
                 {
-                    int flavor = nt.Jet_hadronFlavour().at(jet_i);
-                    btag_sf *= btag_sfs->getSF("M", flavor, jet_p4.pt(), jet_p4.eta());
-                    btag_sf_up *= btag_sfs->getSFUp("M", flavor, jet_p4.pt(), jet_p4.eta());
-                    btag_sf_dn *= btag_sfs->getSFDn("M", flavor, jet_p4.pt(), jet_p4.eta());
+                    n_tight_b_jets++;
                 }
-                n_medium_b_jets++;
-            }
-            else if (is_btagged_loose)
-            {
-                good_jet_btags.push_back(deepflav_btag);
-                n_loose_b_jets++;
-            }
-            else
-            {
-                good_jet_btags.push_back(-999.);
+                if (deepflav_btag > gconf.WP_DeepFlav_medium)
+                {
+                    n_medium_b_jets++;
+                }
+                else
+                {
+                    if (!nt.isData() && btag_sfs != nullptr)
+                    {
+                        int flavor = nt.Jet_hadronFlavour().at(jet_i);
+                        double jet_pt = std::max(std::min(double(jet_p4.pt()), 299.99), 30.);
+                        double jet_abseta = fabs(jet_p4.eta());
+                        double sf = btag_sfs->getSF(flavor, jet_pt, jet_abseta);
+                        double sf_up = btag_sfs->getSFUp(flavor, jet_pt, jet_abseta);
+                        double sf_dn = btag_sfs->getSFDn(flavor, jet_pt, jet_abseta);
+                        double eff = btag_sfs->getEff(flavor, jet_pt, jet_abseta);
+                        // if (eff == 1)
+                        // {
+                        //     std::cout << nt.event() << ", " << deepflav_btag << ", " << gconf.WP_DeepFlav_medium << ", " << flavor << ", " << jet_pt << ", " << jet_abseta << std::endl;
+                        // }
+                        btag_sf *= (1 - sf*eff)/(1 - eff);
+                        btag_sf_up *= (1 - sf_up*eff)/(1 - eff);
+                        btag_sf_dn *= (1 - sf_dn*eff)/(1 - eff);
+                    }
+                }
+                if (deepflav_btag > gconf.WP_DeepFlav_loose)
+                {
+                    n_loose_b_jets++;
+                }
             }
             // Save additional jet info
             n_jets++;
@@ -516,7 +445,6 @@ public:
             good_jet_idxs.push_back(jet_i);
         }
 
-        globals.setVal<Doubles>("good_jet_btags", good_jet_btags);
         globals.setVal<LorentzVectors>("good_jet_p4s", good_jet_p4s);
         globals.setVal<Integers>("good_jet_idxs", good_jet_idxs);
 
@@ -525,7 +453,7 @@ public:
         arbol.setLeaf<int>("n_medium_b_jets", n_medium_b_jets);
         arbol.setLeaf<int>("n_tight_b_jets", n_tight_b_jets);
         arbol.setLeaf<int>("n_jets", n_jets);
-        if (!nt.isData())
+        if (!nt.isData() && btag_sfs != nullptr)
         {
             arbol.setLeaf<double>("btag_sf", btag_sf);
             arbol.setLeaf<double>("btag_sf_up", btag_sf_up);
@@ -539,6 +467,11 @@ public:
         }
 
         return true;
+    };
+
+    double weight()
+    {
+        return arbol.getLeaf<double>("btag_sf");
     };
 };
 
