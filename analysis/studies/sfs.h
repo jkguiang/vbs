@@ -2,6 +2,7 @@
 #define SFS_H
 
 // VBS
+#include "pku.h"
 #include "tools/TauIDSFTool.h"
 // ROOT
 #include "TString.h"
@@ -98,8 +99,14 @@ struct NanoSFsUL
         if (file_name.Contains("RunIISummer20UL16"))
         {
             year = 2016;
-            if (file_name.Contains("16APV")) { campaign = RunIISummer20UL16APV; }
-            else { campaign = RunIISummer20UL16; }
+            if (file_name.Contains("NanoAODAPV") || file_name.Contains("UL16APV")) 
+            { 
+                campaign = RunIISummer20UL16APV; 
+            }
+            else 
+            { 
+                campaign = RunIISummer20UL16; 
+            }
         }
         else if (file_name.Contains("RunIISummer20UL17"))
         {
@@ -278,7 +285,7 @@ struct LeptonSFsTTH : LeptonSFs
     double getElecSF(double pt, double eta)
     {
         double sf = 1.;
-        eta = std::max(fabs(eta), 2.4999);  // clip eta at < 2.5; take abs
+        eta = std::min(fabs(eta), 2.4999);  // clip eta at < 2.5; take abs
         sf *= el_reco->getSF(eta, pt);      // event --> reco
         sf *= el_iso_loose->getSF(eta, pt); // reco --> loose ttH ID
         sf *= el_tth_tight->getSF(eta, pt); // loose ttH ID --> tight ttH ID
@@ -288,7 +295,7 @@ struct LeptonSFsTTH : LeptonSFs
     double getElecErrUp(double pt, double eta)
     {
         double err_up = 0.;
-        eta = std::max(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
+        eta = std::min(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
         err_up += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
         err_up += std::pow(el_iso_loose->getErr(eta, pt), 2); // reco --> loose ttH ID
         err_up += std::pow(el_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
@@ -298,7 +305,7 @@ struct LeptonSFsTTH : LeptonSFs
     double getElecErrDn(double pt, double eta)
     {
         double err_dn = 0.;
-        eta = std::max(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
+        eta = std::min(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
         err_dn += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
         err_dn += std::pow(el_iso_loose->getErr(eta, pt), 2); // reco --> loose ttH ID
         err_dn += std::pow(el_tth_tight->getErr(eta, pt), 2); // loose ttH ID --> tight ttH ID
@@ -338,46 +345,119 @@ struct LeptonSFsTTH : LeptonSFs
 
 struct LeptonSFsPKU : LeptonSFs
 {
-    correction::Correction::Ref lep_sfs;
+private:
+    double getEGM(std::string variation, double pt, double eta) 
+    { 
+        pt = std::max(pt, 10.);
+        if (id_level == PKU::IDveto) 
+        { 
+            return elec_sfs->evaluate({year_str, variation, "Veto", eta, pt});
+        }
+        else if (id_level == PKU::IDtight) 
+        { 
+            return elec_sfs->evaluate({year_str, variation, "Tight", eta, pt});
+        }
+        else
+        {
+            return 1.;
+        }
+    };
 
-    LeptonSFsPKU() { /* Do nothing */ };
+    double getMUO(std::string variation, double pt, double eta) 
+    { 
+        eta = std::min(fabs(eta), 2.3999);
+        double id_val = muon_id_sfs->evaluate({year_str+"_UL", eta, pt, variation});
+        double iso_val = muon_iso_sfs->evaluate({year_str+"_UL", eta, pt, variation});
+        if (variation == "sf")
+        {
+            return id_val*iso_val;
+        }
+        else if (variation == "systup" || variation == "systdown")
+        {
+            return std::sqrt(std::pow(id_val, 2) + std::pow(iso_val, 2));
+        }
+        else
+        {
+            return 1.;
+        }
+    };
+public:
+    correction::Correction::Ref elec_sfs;
+    correction::Correction::Ref muon_id_sfs;
+    correction::Correction::Ref muon_iso_sfs;
+    std::string year_str;
+    PKU::IDLevel id_level;
+
+    LeptonSFsPKU(PKU::IDLevel id_level) { this->id_level = id_level; };
 
     void init(TString file_name, bool taus = false)
     {
         NanoSFsUL::init(file_name);
 
-        /* FIXME: not able to read JSON for some reason...
-        std::cout << "HELLO THERE" << std::endl;
-        // std::unique_ptr<correction::CorrectionSet> cset;
-        std::string json_path = "/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/EGM";
+        // Note: the gzipped JSONs in cvmfs can only be read by correctionlib v2.1.x
+        std::string elec_json_path = "data/pog_jsons/EGM";
+        std::string muon_json_path = "data/pog_jsons/MUO";
         switch (campaign)
         {
         case (RunIISummer20UL16APV):
-            json_path += "/2016preVFP_UL/electron.json.gz";
+            elec_json_path += "/2016preVFP_UL/electron.json";
+            muon_json_path += "/2016preVFP_UL/muon_Z.json";
+            year_str = "2016preVFP";
             break;
         case (RunIISummer20UL16):
-            json_path += "/2016postVFP_UL/electron.json.gz";
+            elec_json_path += "/2016postVFP_UL/electron.json";
+            muon_json_path += "/2016postVFP_UL/muon_Z.json";
+            year_str = "2016postVFP";
             break;
         case (RunIISummer20UL17):
-            json_path += "/2017_UL/electron.json.gz";
+            elec_json_path += "/2017_UL/electron.json";
+            muon_json_path += "/2017_UL/muon_Z.json";
+            year_str = "2017";
             break;
         case (RunIISummer20UL18):
-            json_path += "/2018_UL/electron.json.gz";
-            std::cout << "DEBUG " << json_path << std::endl;
+            elec_json_path += "/2018_UL/electron.json";
+            muon_json_path += "/2018_UL/muon_Z.json";
+            year_str = "2018";
             break;
         };
-        auto cset = correction::CorrectionSet::from_file(json_path);
-        std::cout << "I'M OK" << std::endl;
-        */
+        auto elec_cset = correction::CorrectionSet::from_file(elec_json_path);
+        auto muon_cset = correction::CorrectionSet::from_file(muon_json_path);
+        elec_sfs = elec_cset->at("UL-Electron-ID-SF");
+        // Note: we only use the tight Muon POG ID in both the PKU veto and tight muon IDs
+        //       currently, this may change in the future
+        muon_id_sfs = muon_cset->at("NUM_TightID_DEN_TrackerMuons");
+        muon_iso_sfs = muon_cset->at("NUM_TightRelIso_DEN_TightIDandIPCut");
     };
 
-    double getElecSF(double pt, double eta) { return 1.; };    // FIXME
-    double getElecErrUp(double pt, double eta) { return 0.; }; // FIXME
-    double getElecErrDn(double pt, double eta) { return 0.; }; // FIXME
+    double getElecSF(double pt, double eta) 
+    { 
+        return getEGM("sf", pt, eta); 
+    };
 
-    double getMuonSF(double pt, double eta) { return 1.; };    // FIXME
-    double getMuonErrUp(double pt, double eta) { return 0.; }; // FIXME
-    double getMuonErrDn(double pt, double eta) { return 0.; }; // FIXME
+    double getElecErrUp(double pt, double eta) 
+    { 
+        return getEGM("sfup", pt, eta); 
+    };
+
+    double getElecErrDn(double pt, double eta) 
+    { 
+        return getEGM("sfdown", pt, eta); 
+    };
+
+    double getMuonSF(double pt, double eta) 
+    { 
+        return getMUO("sf", pt, eta); 
+    };
+
+    double getMuonErrUp(double pt, double eta) 
+    { 
+        return getMUO("systup", pt, eta); 
+    };
+
+    double getMuonErrDn(double pt, double eta) 
+    { 
+        return getMUO("systdown", pt, eta); 
+    };
 };
 
 struct BTagSFs : NanoSFsUL
@@ -401,49 +481,102 @@ private:
         }
     };
 public:
+    SFHist* eff_b;
+    SFHist* eff_c;
+    SFHist* eff_light;
     correction::Correction::Ref sfs_bc;
     correction::Correction::Ref sfs_light;
+    std::string name;
+    std::string wp;
 
-    BTagSFs() { /* Do nothing */ };
+    BTagSFs(std::string name, std::string wp) 
+    { 
+        this->name = name;
+        this->wp = wp;
+    };
 
     void init(TString file_name)
     {
         NanoSFsUL::init(file_name);
 
-        std::cout << "HELLO THERE" << std::endl;
-        std::unique_ptr<correction::CorrectionSet> cset;
-        std::string json_base = "/cvmfs/cms.cern.ch/rsync/cms-nanoAOD/jsonpog-integration/POG/BTV";
+        // Note: the gzipped JSONs in cvmfs can only be read by correctionlib v2.1.x
+        std::string json_path = "data/pog_jsons/BTV";
+        std::string root_path = "studies/btageff/output_vbswh";
         switch (campaign)
         {
         case (RunIISummer20UL16APV):
-            cset = correction::CorrectionSet::from_file(json_base+"/2016preVFP_UL/btagging.json.gz");
+            json_path += "/2016preVFP_UL/btagging.json";
+            root_path += "/2016preVFP/"+name+".root";
             break;
         case (RunIISummer20UL16):
-            cset = correction::CorrectionSet::from_file(json_base+"/2016postVFP_UL/btagging.json.gz");
+            json_path += "/2016postVFP_UL/btagging.json";
+            root_path += "/2016postVFP/"+name+".root";
             break;
         case (RunIISummer20UL17):
-            cset = correction::CorrectionSet::from_file(json_base+"/2017_UL/btagging.json.gz");
+            json_path += "/2017_UL/btagging.json";
+            root_path += "/2017/"+name+".root";
             break;
         case (RunIISummer20UL18):
-            std::cout << "DEBUG " << json_base+"/2018_UL/btagging.json.gz" << std::endl;
-            cset = correction::CorrectionSet::from_file(json_base+"/2018_UL/btagging.json.gz");
+            json_path += "/2018_UL/btagging.json";
+            root_path += "/2018/"+name+".root";
             break;
+        };
+        auto cset = correction::CorrectionSet::from_file(json_path);
+        sfs_bc = cset->at("deepJet_comb");
+        sfs_light = cset->at("deepJet_incl");
+
+        if (wp == "L")
+        {
+            eff_b = new SFHist(root_path, "deepjet_eff_b_loose");
+            eff_c = new SFHist(root_path, "deepjet_eff_c_loose");
+            eff_light = new SFHist(root_path, "deepjet_eff_light_loose");
         }
-        sfs_bc = cset->at("deepJet_incl");
-        sfs_light = cset->at("deepJet_comb");
+        else if (wp == "M")
+        {
+            eff_b = new SFHist(root_path, "deepjet_eff_b_medium");
+            eff_c = new SFHist(root_path, "deepjet_eff_c_medium");
+            eff_light = new SFHist(root_path, "deepjet_eff_light_medium");
+        }
+        else if (wp == "T")
+        {
+            eff_b = new SFHist(root_path, "deepjet_eff_b_tight");
+            eff_c = new SFHist(root_path, "deepjet_eff_c_tight");
+            eff_light = new SFHist(root_path, "deepjet_eff_light_tight");
+        }
     };
 
-    double getSF(std::string wp, int flavor, double pt, double eta) 
+    double getSF(int flavor, double pt, double eta) 
     { 
         return get("central", wp, flavor, pt, eta); 
     };
-    double getSFUp(std::string wp, int flavor, double pt, double eta)
+
+    double getSFUp(int flavor, double pt, double eta)
     { 
         return get("up_correlated", wp, flavor, pt, eta); 
     };
-    double getSFDn(std::string wp, int flavor, double pt, double eta)
+
+    double getSFDn(int flavor, double pt, double eta)
     { 
         return get("down_correlated", wp, flavor, pt, eta); 
+    };
+
+    double getEff(int flavor, double pt, double eta) 
+    { 
+        switch (flavor)
+        {
+        case 0:
+            return eff_light->getSF(pt, eta);
+            break;
+        case 4:
+            return eff_c->getSF(pt, eta);
+            break;
+        case 5:
+            return eff_b->getSF(pt, eta);
+            break;
+        default:
+            return 1.;
+            break;
+        }
     };
 };
 
