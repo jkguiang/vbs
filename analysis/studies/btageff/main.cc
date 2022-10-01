@@ -97,7 +97,7 @@ int main(int argc, char** argv)
             nt.Init(ttree); 
             gconf.GetConfigs(nt.year());
             TString file_name = ttree->GetCurrentFile()->GetName();
-            gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
+            gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("NanoAODAPV") || file_name.Contains("UL16APV"));
             jes->init();
         },
         [&](int entry) 

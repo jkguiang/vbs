@@ -48,7 +48,7 @@ struct Skimmer
         gconf.GetConfigs(nt.year());
 
         TString file_name = ttree->GetCurrentFile()->GetName();
-        gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
+        gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("NanoAODAPV") || file_name.Contains("UL16APV"));
     };
 };
 
@@ -136,7 +136,7 @@ struct Analysis
         gconf.GetConfigs(nt.year());
 
         TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("16APV"));
+        gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("NanoAODAPV") || file_name.Contains("UL16APV"));
 
         if (nt.isData())
         {
