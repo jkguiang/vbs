@@ -1,6 +1,8 @@
 #ifndef SFS_H
 #define SFS_H
 
+// STL
+#include <filesystem>
 // VBS
 #include "pku.h"
 #include "tools/TauIDSFTool.h"
@@ -14,13 +16,33 @@
 
 struct SFHist
 {
+private:
+    TString input_file;
+
+    void assertHist()
+    {
+        if (hist == nullptr)
+        {
+            throw std::runtime_error("SFHist - "+input_file+" not found");
+        }
+    }
+public:
     TFile* tfile;
     TH1* hist;
     
     SFHist(TString input_root_file, TString hist_name)
     {
-        tfile = new TFile(input_root_file);
-        hist = (TH1*) tfile->Get(hist_name);
+        if (!std::filesystem::exists(input_root_file.Data()))
+        {
+            tfile = nullptr;
+            hist = nullptr;
+            input_file = input_root_file;
+        }
+        else
+        {
+            tfile = new TFile(input_root_file);
+            hist = (TH1*) tfile->Get(hist_name);
+        }
     };
     
     double clip (double val, double val_max)
@@ -30,12 +52,14 @@ struct SFHist
 
     double getSF(double x) 
     { 
+        assertHist();
         double x_max = hist->GetXaxis()->GetXmax();
         x = clip(x, x_max);
         return hist->GetBinContent(hist->FindBin(x)); 
     };
     double getSF(double x, double y) 
     { 
+        assertHist();
         double x_max = hist->GetXaxis()->GetXmax();
         x = clip(x, x_max);
         double y_max = hist->GetYaxis()->GetXmax();
@@ -44,6 +68,7 @@ struct SFHist
     };
     double getSF(double x, double y, double z) 
     { 
+        assertHist();
         double x_max = hist->GetXaxis()->GetXmax();
         x = clip(x, x_max);
         double y_max = hist->GetYaxis()->GetXmax();
@@ -55,12 +80,14 @@ struct SFHist
 
     double getErr(double x) 
     { 
+        assertHist();
         double x_max = hist->GetXaxis()->GetXmax();
         x = clip(x, x_max);
         return hist->GetBinError(hist->FindBin(x)); 
     };
     double getErr(double x, double y) 
     { 
+        assertHist();
         double x_max = hist->GetXaxis()->GetXmax();
         x = clip(x, x_max);
         double y_max = hist->GetYaxis()->GetXmax();
@@ -69,6 +96,7 @@ struct SFHist
     };
     double getErr(double x, double y, double z) 
     { 
+        assertHist();
         double x_max = hist->GetXaxis()->GetXmax();
         x = clip(x, x_max);
         double y_max = hist->GetYaxis()->GetXmax();
@@ -120,9 +148,19 @@ struct NanoSFsUL
         }
         else
         {
-            year = -1;
+            year = -1; // Note: data files will land here!
         }
     };
+
+    void assertYear()
+    {
+        if (year == -1)
+        {
+            throw std::runtime_error(
+                "NanoSFsUL::assertYear - no scale factors loaded; campaign not in file name or file not found"
+            );
+        }
+    }
 };
 
 struct LeptonSFs : NanoSFsUL
@@ -279,11 +317,15 @@ struct LeptonSFsTTH : LeptonSFs
             tau_vs_mu = new TauIDSFTool("2018ReReco", "DeepTau2017v2p1VSmu", "Loose", false, false); // FIXME: needs to be updated
             tau_vs_el = new TauIDSFTool("UL2018", "DeepTau2017v2p1VSe", "VVLoose", false, false);
             break;
+        default:
+            return;
+            break;
         }
     };
 
     double getElecSF(double pt, double eta)
     {
+        NanoSFsUL::assertYear();
         double sf = 1.;
         eta = std::min(fabs(eta), 2.4999);  // clip eta at < 2.5; take abs
         sf *= el_reco->getSF(eta, pt);      // event --> reco
@@ -294,6 +336,7 @@ struct LeptonSFsTTH : LeptonSFs
 
     double getElecErrUp(double pt, double eta)
     {
+        NanoSFsUL::assertYear();
         double err_up = 0.;
         eta = std::min(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
         err_up += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
@@ -304,6 +347,7 @@ struct LeptonSFsTTH : LeptonSFs
 
     double getElecErrDn(double pt, double eta)
     {
+        NanoSFsUL::assertYear();
         double err_dn = 0.;
         eta = std::min(fabs(eta), 2.4999);                    // clip eta at < 2.5; take abs
         err_dn += std::pow(el_reco->getErr(eta, pt), 2);      // event --> reco
@@ -314,6 +358,7 @@ struct LeptonSFsTTH : LeptonSFs
 
     double getMuonSF(double pt, double eta)
     {
+        NanoSFsUL::assertYear();
         double sf = 1.;
         eta = fabs(eta);
         sf *= mu_pog_loose->getSF(eta, pt); // event --> loose POG ID
@@ -324,6 +369,7 @@ struct LeptonSFsTTH : LeptonSFs
 
     double getMuonErrUp(double pt, double eta)
     {
+        NanoSFsUL::assertYear();
         double err_up = 0.;
         eta = fabs(eta);
         err_up += std::pow(mu_pog_loose->getErr(eta, pt), 2); // event --> loose POG ID
@@ -334,6 +380,7 @@ struct LeptonSFsTTH : LeptonSFs
 
     double getMuonErrDn(double pt, double eta)
     {
+        NanoSFsUL::assertYear();
         double err_dn = 0.;
         eta = fabs(eta);
         err_dn += std::pow(mu_pog_loose->getErr(eta, pt), 2); // event --> loose POG ID
@@ -348,6 +395,7 @@ struct LeptonSFsPKU : LeptonSFs
 private:
     double getEGM(std::string variation, double pt, double eta) 
     { 
+        NanoSFsUL::assertYear();
         pt = std::max(pt, 10.);
         if (id_level == PKU::IDveto) 
         { 
@@ -365,6 +413,7 @@ private:
 
     double getMUO(std::string variation, double pt, double eta) 
     { 
+        NanoSFsUL::assertYear();
         eta = std::min(fabs(eta), 2.3999);
         double id_val = muon_id_sfs->evaluate({year_str+"_UL", eta, pt, variation});
         double iso_val = muon_iso_sfs->evaluate({year_str+"_UL", eta, pt, variation});
@@ -419,6 +468,9 @@ public:
             muon_json_path += "/2018_UL/muon_Z.json";
             year_str = "2018";
             break;
+        default:
+            return;
+            break;
         };
         auto elec_cset = correction::CorrectionSet::from_file(elec_json_path);
         auto muon_cset = correction::CorrectionSet::from_file(muon_json_path);
@@ -465,6 +517,7 @@ struct BTagSFs : NanoSFsUL
 private:
     double get(std::string variation, std::string working_point, int flavor, double pt, double eta) 
     { 
+        NanoSFsUL::assertYear();
         eta = fabs(eta);
         switch (flavor)
         {
@@ -520,6 +573,9 @@ public:
             json_path += "/2018_UL/btagging.json";
             root_path += "/2018/"+name+".root";
             break;
+        default:
+            return;
+            break;
         };
         auto cset = correction::CorrectionSet::from_file(json_path);
         sfs_bc = cset->at("deepJet_comb");
@@ -562,6 +618,7 @@ public:
 
     double getEff(int flavor, double pt, double eta) 
     { 
+        NanoSFsUL::assertYear();
         switch (flavor)
         {
         case 0:
