@@ -391,12 +391,15 @@ public:
             if (jes != nullptr)
             {
                 jet_p4 = jes->applyJEC(jet_p4);
-                jet_p4 = jes->applyJER(
-                    jer_seed, 
-                    jet_p4, 
-                    nt.fixedGridRhoFastjetAll(), 
-                    nt.GenJet_p4()
-                );
+                if (!nt.isData())
+                {
+                    jet_p4 = jes->applyJER(
+                        jer_seed, 
+                        jet_p4, 
+                        nt.fixedGridRhoFastjetAll(), 
+                        nt.GenJet_p4()
+                    );
+                }
             }
             if (!isGoodJet(jet_i, jet_p4)) { continue; }
             if (isOverlap(jet_i, jet_p4)) { continue; }
