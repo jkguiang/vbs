@@ -532,9 +532,9 @@ class Validation(PandasAnalysis):
         ratio_axes.legend().remove()
 
         if stacked:
-            hist_axes.legend(fontsize=14)
+            hist_axes.legend(fontsize=12)
         else:
-            hist_axes.legend(fontsize=16)
+            hist_axes.legend(fontsize=14)
         if not logy:
             hist_axes.xaxis.set_minor_locator(AutoMinorLocator())
             hist_axes.yaxis.set_minor_locator(AutoMinorLocator())
@@ -552,7 +552,7 @@ class Validation(PandasAnalysis):
             ratio_axes.yaxis.set_minor_locator(AutoMinorLocator())
         ratio_axes.set_xlabel(x_label, size=18)
         ratio_axes.set_ylabel("data/MC", size=18)
-        ratio_axes.set_ylim([0.5, 2.0])
+        ratio_axes.set_ylim([0, 2])
 
         if self.plots_dir:
             plot_file = f"{self.plots_dir}/{column}_data_vs_mc.png"
