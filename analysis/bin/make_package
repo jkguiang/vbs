@@ -11,6 +11,7 @@ if [[ "$STUDY" != "" && -d studies/$STUDY ]]; then
     make study=$STUDY
     # TODO add a check that make ran successfully
 
+    mkdir -p packages
     mkdir -p workdir
     cp setup.sh workdir
 
