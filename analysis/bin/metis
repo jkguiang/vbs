@@ -77,7 +77,7 @@ else:
     CMSSW_VERSION = "CMSSW_12_2_0"
     SCRAM_ARCH = "slc7_amd64_gcc900"
 
-PACKAGE = "{}.tar.gz".format(args.study)
+PACKAGE = "packages/{}.tar.gz".format(args.study)
 if not os.path.isfile(PACKAGE):
     print("ERROR: {} does not exist! Run bin/make_package first".format(PACKAGE))
     exit()

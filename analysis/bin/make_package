@@ -33,7 +33,7 @@ if [[ "$STUDY" != "" && -d studies/$STUDY ]]; then
     mkdir -p workdir/bin
     cp bin/$STUDY workdir/bin/$STUDY
 
-    tar -zcvf $STUDY.tar.gz workdir
+    tar -zcvf packages/$STUDY.tar.gz workdir
 
     rm -rf workdir
 fi
