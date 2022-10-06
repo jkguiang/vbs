@@ -32,10 +32,12 @@ class Job:
 class Orchestrator:
     def __init__(self, executable, input_files, n_workers=8):
         self.executable = executable
-        self.input_files = input_files
+        self.input_files = sorted(
+            input_files, 
+            key=lambda f: os.stat(f).st_size, 
+            reverse=True
+        )
         self.n_workers = n_workers
-
-        self.input_files.sort(key=lambda f: os.stat(f).st_size, reverse=True)
 
     def run(self):
         # Prepare jobs
@@ -59,10 +61,18 @@ class Orchestrator:
                     pbar.update(1)
 
         # Check for errors
+        n_errors = 0
         for stderr_file in stderr_files:
             if os.stat(stderr_file).st_size > 0:
                 job_name = stderr_file.split("/")[-1].replace(".err", "")
                 logging.error(f"{job_name} failed; check logs: {stderr_file}")
+                n_errors += 1
+
+        # Alert user of errors
+        if n_errors > 0:
+            logfile = logging.getLoggerClass().root.handlers[0].baseFilename
+            n_jobs = f"{n_errors} job{'s' if n_errors > 1 else ''}"
+            print(f"WARNING: {n_jobs} did not run successfully; check {logfile}")
 
     def _get_job(self, input_file):
         raise NotImplementedError
