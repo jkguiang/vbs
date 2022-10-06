@@ -2,6 +2,7 @@
 #include "../sfs.h"
 #include "../jes.h"
 #include "../vbswh.h"
+#include "cuts.h"
 // RAPIDO
 #include "arbol.h"
 #include "hepcli.h"
@@ -34,20 +35,7 @@ int main(int argc, char** argv)
     analysis.initBranches();
     analysis.initCutflow();
 
-    Cut* fix_ewk_samples = new LambdaCut(
-        "FixEWKSamples",
-        [&]()
-        {
-            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-            if (file_name.Contains("EWKW") || file_name.Contains("EWKZ"))
-            {
-                int parton1_pdgID = nt.LHEPart_pdgId().at(0);
-                int parton2_pdgID = nt.LHEPart_pdgId().at(1);
-                if (abs(parton1_pdgID) == 5 || abs(parton2_pdgID) == 5) { return false; }
-            }
-            return true;
-        }
-    );
+    Cut* fix_ewk_samples = new FixEWKSamples("FixEWKSamples", analysis);
     cutflow.insert("Bookkeeping", fix_ewk_samples, Right);
 
     // Run looper
@@ -68,7 +56,15 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.run("SelectVBSJetsMaxE");
+                bool passed = false;
+                if (cli.variation == "nominal")
+                {
+                    passed = cutflow.run("SetLeaves");
+                }
+                else
+                {
+                    passed = cutflow.run("ApplyAk4GlobalBVeto");
+                }
                 if (passed) { arbol.fill(); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
