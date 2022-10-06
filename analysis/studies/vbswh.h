@@ -194,7 +194,6 @@ public:
         arbol.setLeaf<double>("hbbjet_phi", best_hbbjet_p4.phi());
         arbol.setLeaf<double>("hbbjet_mass", globals.getVal<Doubles>("good_fatjet_masses").at(best_hbbjet_i));
         arbol.setLeaf<double>("hbbjet_msoftdrop", globals.getVal<Doubles>("good_fatjet_msoftdrops").at(best_hbbjet_i));
-        arbol.setLeaf<double>("ST", (arbol.getLeaf<double>("LT") + best_hbbjet_p4.pt()));
 
         return true;
     };
@@ -300,7 +299,6 @@ public:
         arbol.setLeaf<double>("lep_pt", lep_p4.pt());
         arbol.setLeaf<double>("lep_eta", lep_p4.eta());
         arbol.setLeaf<double>("lep_phi", lep_p4.phi());
-        arbol.setLeaf<double>("LT", (lep_p4.pt() + arbol.getLeaf<double>("MET")));
 
         // Store lepton sf and its up/down variations
         if (!nt.isData() && lep_sfs != nullptr)
@@ -347,10 +345,10 @@ public:
     };
 };
 
-class SaveBJetVeto : public Core::AnalysisCut
+class SetLeaves : public Core::AnalysisCut
 {
 public:
-    SaveBJetVeto(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
+    SetLeaves(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
@@ -358,6 +356,12 @@ public:
     bool evaluate()
     {
         arbol.setLeaf<bool>("passes_bveto", arbol.getLeaf<int>("n_medium_b_jets") == 0);
+        arbol.setLeaf<double>("LT", arbol.getLeaf<double>("lep_pt") + arbol.getLeaf<double>("MET"));
+        arbol.setLeaf<double>("ST", arbol.getLeaf<double>("LT") + arbol.getLeaf<double>("hbbjet_pt"));
+        arbol.setLeaf<double>("LT_up", arbol.getLeaf<double>("lep_pt") + arbol.getLeaf<double>("MET_up"));
+        arbol.setLeaf<double>("ST_up", arbol.getLeaf<double>("LT_up") + arbol.getLeaf<double>("hbbjet_pt"));
+        arbol.setLeaf<double>("LT_dn", arbol.getLeaf<double>("lep_pt") + arbol.getLeaf<double>("MET_dn"));
+        arbol.setLeaf<double>("ST_dn", arbol.getLeaf<double>("LT_dn") + arbol.getLeaf<double>("hbbjet_pt"));
         return true;
     };
 };
@@ -367,7 +371,6 @@ struct Analysis : Core::Analysis
     JetEnergyScales* jes;
     LeptonSFsPKU* lep_sfs;
     BTagSFs* btag_sfs;
-    // LeptonSFsTTH* lep_sfs;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
@@ -390,6 +393,8 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("lep_eta", -999);
         arbol.newBranch<double>("lep_phi", -999);
         arbol.newBranch<double>("LT", -999);
+        arbol.newBranch<double>("LT_up", -999);
+        arbol.newBranch<double>("LT_dn", -999);
         // Hbb jet branches
         arbol.newBranch<int>("n_hbbjet_genbquarks", -999);
         arbol.newBranch<double>("hbbjet_score", -999);
@@ -400,6 +405,8 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("hbbjet_msoftdrop", -999);
         // Other branches
         arbol.newBranch<double>("ST", -999);
+        arbol.newBranch<double>("ST_up", -999);
+        arbol.newBranch<double>("ST_dn", -999);
         arbol.newBranch<bool>("passes_bveto", false);
     };
 
@@ -408,7 +415,6 @@ struct Analysis : Core::Analysis
         // Initialize scale factors
         jes = new JetEnergyScales(cli.variation);
         lep_sfs = new LeptonSFsPKU(PKU::IDtight);
-        // lep_sfs = new LeptonSFsTTH();
         btag_sfs = new BTagSFs(cli.output_name, "M");
 
         // Bookkeeping
@@ -421,13 +427,10 @@ struct Analysis : Core::Analysis
 
         // Lepton selection
         Cut* select_leps = new Core::SelectLeptonsPKU("SelectLeptons", *this);
-        // Cut* select_leps = new Core::SelectLeptons("SelectLeptons", *this, lep_sfs);
         cutflow.insert(event_filters, select_leps, Right);
 
         // == 1 lepton selection
-        // Cut* has_1lep = new Has1LepPKU("Has1TightLep", *this);
         Cut* has_1lep = new Has1LepPKU("Has1TightLep", *this, lep_sfs);
-        // Cut* has_1lep = new Has1Lep("Has1TightLep", *this);
         cutflow.insert(select_leps, has_1lep, Right);
 
         // Lepton has pT > 40
@@ -458,13 +461,13 @@ struct Analysis : Core::Analysis
         Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", *this, jes, btag_sfs);
         cutflow.insert(select_hbbjet, select_jets, Right);
 
-        // Global AK4 b-veto
-        Cut* save_ak4bveto = new SaveBJetVeto("SaveAk4GlobalBVeto", *this);
-        cutflow.insert(select_jets, save_ak4bveto, Right);
-
         // VBS jet selection
         Cut* select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("SelectVBSJetsMaxE", *this);
-        cutflow.insert(save_ak4bveto, select_vbsjets_maxE, Right);
+        cutflow.insert(select_jets, select_vbsjets_maxE, Right);
+
+        // Set various leaves
+        Cut* set_leaves = new SetLeaves("SetLeaves", *this);
+        cutflow.insert(select_vbsjets_maxE, set_leaves, Right);
 
         // Basic VBS jet requirements
         Cut* vbsjets_presel = new LambdaCut(
@@ -474,7 +477,7 @@ struct Analysis : Core::Analysis
                 return arbol.getLeaf<double>("M_jj") > 500 && fabs(arbol.getLeaf<double>("deta_jj")) > 3;
             }
         );
-        cutflow.insert(select_vbsjets_maxE, vbsjets_presel, Right);
+        cutflow.insert(set_leaves, vbsjets_presel, Right);
 
         Cut* xbb_presel = new LambdaCut(
             "XbbGt0p3", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.3; }

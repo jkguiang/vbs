@@ -129,6 +129,8 @@ struct Analysis
         arbol.newBranch<double>("xsec_sf", -999);
         arbol.newBranch<int>("event", -999);
         arbol.newBranch<double>("MET", -999);
+        arbol.newBranch<double>("MET_up", -999);
+        arbol.newBranch<double>("MET_dn", -999);
     };
 
     virtual void init()
@@ -190,7 +192,6 @@ public:
     {
         arbol.setLeaf<double>("xsec_sf", (nt.isData()) ? 1. : cli.scale_factor*nt.genWeight());
         arbol.setLeaf<int>("event", nt.event());
-        arbol.setLeaf<double>("MET", nt.MET_pt());
         return (nt.isData()) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
     };
 
@@ -383,14 +384,17 @@ public:
             + nt.event() 
             + (nt.nJet() > 0 ? nt.Jet_eta().at(0)/0.01 : 0)
         );
+        double met_x = nt.MET_pt()*std::cos(nt.MET_phi());
+        double met_y = nt.MET_pt()*std::sin(nt.MET_phi());
         for (unsigned int jet_i = 0; jet_i < nt.nJet(); ++jet_i)
         {
-            // Read jet p4
             LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
+            // Subtract uncorrected jet pt
+            met_x -= jet_p4.px();
+            met_y -= jet_p4.py();
             // Apply JECs/JERs
             if (jes != nullptr)
             {
-                jet_p4 = jes->applyJEC(jet_p4);
                 if (!nt.isData())
                 {
                     jet_p4 = jes->applyJER(
@@ -400,7 +404,12 @@ public:
                         nt.GenJet_p4()
                     );
                 }
+                jet_p4 = jes->applyJEC(jet_p4);
             }
+            // Add corrected jet pt
+            met_x += jet_p4.px();
+            met_y += jet_p4.py();
+            // Select good jets
             if (!isGoodJet(jet_i, jet_p4)) { continue; }
             if (isOverlap(jet_i, jet_p4)) { continue; }
             // Perform b-tagging (for b-veto); only possible for pt > 20 GeV and |eta| < 2.4
@@ -421,16 +430,12 @@ public:
                     if (!nt.isData() && btag_sfs != nullptr)
                     {
                         int flavor = nt.Jet_hadronFlavour().at(jet_i);
-                        double jet_pt = std::max(std::min(double(jet_p4.pt()), 299.99), 30.);
+                        double jet_pt = jet_p4.pt();
                         double jet_abseta = fabs(jet_p4.eta());
                         double sf = btag_sfs->getSF(flavor, jet_pt, jet_abseta);
                         double sf_up = btag_sfs->getSFUp(flavor, jet_pt, jet_abseta);
                         double sf_dn = btag_sfs->getSFDn(flavor, jet_pt, jet_abseta);
                         double eff = btag_sfs->getEff(flavor, jet_pt, jet_abseta);
-                        // if (eff == 1)
-                        // {
-                        //     std::cout << nt.event() << ", " << deepflav_btag << ", " << gconf.WP_DeepFlav_medium << ", " << flavor << ", " << jet_pt << ", " << jet_abseta << std::endl;
-                        // }
                         btag_sf *= (1 - sf*eff)/(1 - eff);
                         btag_sf_up *= (1 - sf_up*eff)/(1 - eff);
                         btag_sf_dn *= (1 - sf_dn*eff)/(1 - eff);
@@ -447,6 +452,18 @@ public:
             good_jet_p4s.push_back(jet_p4);
             good_jet_idxs.push_back(jet_i);
         }
+        double met = std::sqrt(std::pow(met_x, 2) + std::pow(met_y, 2));
+        double met_up = std::sqrt(
+            std::pow(met_x + nt.MET_MetUnclustEnUpDeltaX(), 2)
+            + std::pow(met_y + nt.MET_MetUnclustEnUpDeltaY(), 2)
+        );
+        double met_dn = std::sqrt(
+            std::pow(met_x - nt.MET_MetUnclustEnUpDeltaX(), 2)
+            + std::pow(met_y - nt.MET_MetUnclustEnUpDeltaY(), 2)
+        );
+        arbol.setLeaf<double>("MET", met);
+        arbol.setLeaf<double>("MET_up", met_up);
+        arbol.setLeaf<double>("MET_dn", met_dn);
 
         globals.setVal<LorentzVectors>("good_jet_p4s", good_jet_p4s);
         globals.setVal<Integers>("good_jet_idxs", good_jet_idxs);
