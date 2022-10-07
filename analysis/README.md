@@ -1,23 +1,29 @@
 # Instructions
-0. Ask a maintainer for the necessary files:
-    - Lepton scale factors
-    - Golden JSONs
-1. Install RAPIDO
+1. Install [RAPIDO](https://github.com/jkguiang/rapido)
 ```
 git clone https://github.com/jkguiang/rapido
 cd rapido
 make -j6
 cd -
 ````
-2. Install NanoTools
+2. Install [NanoTools](https://github.com/cmstas/NanoTools)
 ```
 git clone https://github.com/cmstas/NanoTools
 cd NanoTools/NanoCORE
 make -j12
 cd -
 ````
-3. Run `source setup.sh`
-4. Write source code to `studies/{STUDY}`
+3. Retrieve the following files:
+    - Scale factors:
+        - Run `data/pog_jsons/get_jsons.sh` if `cvmfs` is available
+        - If using the PKU lepton ID: included above
+        - If using the ttH lepton ID: ask maintainer
+    - JECs/JERs:
+        - Run `NanoTools/NanoCORE/Tools/jetcorr/data/download_jecs.sh`
+        - Run `NanoTools/NanoCORE/Tools/jetcorr/data/download_jers.sh`
+    - Golden JSONs
+4. Run `source setup.sh`
+5. Write source code to `studies/{STUDY}`
 
 ## Running over one file
 1. Compile your study
@@ -98,13 +104,16 @@ optional arguments:
 ```
 
 ## Running on the cluster
-0. Install [Metis](https://github.com/aminnj/ProjectMetis)
-1. Set up Metis (and make sure `tqdm` is installed; it should be in CMSSW 11.X.x)
+1. Install [Metis](https://github.com/aminnj/ProjectMetis)
+```
+git clone https://github.com/aminnj/ProjectMetis /path/to/ProjectMetis
+```
+2. Set up Metis (and make sure `tqdm` is installed; it should be in CMSSW 11.X.x)
 ```
 source /path/to/ProjectMetis/setup.sh
 ```
-2. Use `bin/make_package STUDY` to collect a given study into a tarball
-3. Use `bin/metis` to submit jobs to the cluster
+3. Use `bin/make_package STUDY` to collect a given study into a tarball
+4. Use `bin/metis` to submit jobs to the cluster
 ```
 usage: metis [-h] [-y] [--debug] [--python2] --samples SAMPLES --tag TAG
              [--filter FILTER] [--xrootd_protocol XROOTD_PROTOCOL]
