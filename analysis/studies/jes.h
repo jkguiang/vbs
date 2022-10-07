@@ -81,14 +81,13 @@ struct JetEnergyScales
         return jet_p4*(1. + jec_err);
     };
 
-    LorentzVector applyJER(int seed, LorentzVector jet_p4, float rho, 
-                           std::vector<LorentzVector> gen_jet_p4s)
+    LorentzVector applyJER(int seed, LorentzVector jet_p4, float rho, std::vector<LorentzVector> gen_jet_p4s)
     {
         random_num.SetSeed(seed);
         jer_unc->setJetEta(jet_p4.eta());
         jer_unc->setJetPt(jet_p4.pt());
         jer_unc->setRho(rho);
-        jer_unc->applyJER(jet_p4, jer_var, gen_jet_p4s, random_num); 
+        jer_unc->applyJER(jet_p4, jer_var, gen_jet_p4s, random_num);
         return jet_p4;
     };
 };
