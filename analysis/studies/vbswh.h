@@ -371,6 +371,7 @@ struct Analysis : Core::Analysis
     JetEnergyScales* jes;
     LeptonSFsPKU* lep_sfs;
     BTagSFs* btag_sfs;
+    PileUpSFs* pu_sfs;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
@@ -416,9 +417,10 @@ struct Analysis : Core::Analysis
         jes = new JetEnergyScales(cli.variation);
         lep_sfs = new LeptonSFsPKU(PKU::IDtight);
         btag_sfs = new BTagSFs(cli.output_name, "M");
+        pu_sfs = new PileUpSFs();
 
         // Bookkeeping
-        Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this);
+        Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this, pu_sfs);
         cutflow.setRoot(bookkeeping);
 
         // Event filters
@@ -532,6 +534,7 @@ struct Analysis : Core::Analysis
         jes->init();
         lep_sfs->init(file_name);
         btag_sfs->init(file_name);
+        pu_sfs->init(file_name);
     };
 };
 

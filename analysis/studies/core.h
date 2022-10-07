@@ -127,6 +127,9 @@ struct Analysis
         arbol.newBranch<double>("dR_jj", -999);
         // Other branches
         arbol.newBranch<double>("xsec_sf", -999);
+        arbol.newBranch<double>("pu_sf", -999);
+        arbol.newBranch<double>("pu_sf_up", -999);
+        arbol.newBranch<double>("pu_sf_dn", -999);
         arbol.newBranch<int>("event", -999);
         arbol.newBranch<double>("MET", -999);
         arbol.newBranch<double>("MET_up", -999);
@@ -196,21 +199,30 @@ public:
 class Bookkeeping : public AnalysisCut
 {
 public:
-    Bookkeeping(std::string name, Analysis& analysis) : AnalysisCut(name, analysis) 
+    PileUpSFs* pu_sfs;
+
+    Bookkeeping(std::string name, Analysis& analysis, PileUpSFs* pu_sfs = nullptr) 
+    : AnalysisCut(name, analysis) 
     {
-        // Do nothing
+        this->pu_sfs = pu_sfs;
     };
 
     bool evaluate()
     {
         arbol.setLeaf<double>("xsec_sf", (nt.isData()) ? 1. : cli.scale_factor*nt.genWeight());
-        arbol.setLeaf<int>("event", nt.event());
+        if (pu_sfs != nullptr)
+        {
+            arbol.setLeaf<double>("pu_sf", (nt.isData()) ? 1. : pu_sfs->getSF(nt.Pileup_nTrueInt()));
+            arbol.setLeaf<double>("pu_sf_up", (nt.isData()) ? 1. : pu_sfs->getSFUp(nt.Pileup_nTrueInt()));
+            arbol.setLeaf<double>("pu_sf_dn", (nt.isData()) ? 1. : pu_sfs->getSFDn(nt.Pileup_nTrueInt()));
+            arbol.setLeaf<int>("event", nt.event());
+        }
         return (nt.isData()) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
     };
 
     double weight()
     {
-        return (nt.isData()) ? 1. : cli.scale_factor*nt.genWeight();
+        return (nt.isData()) ? 1. : arbol.getLeaf<double>("xsec_sf")*arbol.getLeaf<double>("pu_sf");
     };
 };
 
