@@ -5,6 +5,7 @@ import pandas as pd
 from matplotlib import pyplot as plt
 from matplotlib import gridspec
 from matplotlib.ticker import AutoMinorLocator
+from tqdm import tqdm
 import yahist
 
 from utils.cutflow import Cut, Cutflow, CutflowCollection
@@ -21,7 +22,7 @@ class PandasAnalysis:
         dfs = []
         # Load signal
         if sig_root_files:
-            for root_file in sig_root_files:
+            for root_file in tqdm(sig_root_files, desc="Loading sig babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 with uproot.open(root_file) as f:
                     df = f.get(ttree_name).arrays(library="pd")
@@ -32,7 +33,7 @@ class PandasAnalysis:
         # Load background
         bkg_names = []
         if bkg_root_files:
-            for root_file in bkg_root_files:
+            for root_file in tqdm(bkg_root_files, desc="Loading bkg babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 bkg_names.append(name)
                 with uproot.open(root_file) as f:
@@ -43,7 +44,7 @@ class PandasAnalysis:
                     dfs.append(df)
         # Load data
         if data_root_files:
-            for root_file in data_root_files:
+            for root_file in tqdm(data_root_files, desc="Loading data babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 with uproot.open(root_file) as f:
                     df = f.get(ttree_name).arrays(library="pd")
@@ -123,10 +124,11 @@ class PandasAnalysis:
         for name in self.df[self.df.is_data | self.df.is_signal].name.unique():
             self.cutflows["TotalBkg"] -= self.cutflows[name]
 
-        self.cutflows.write_csv(
-            f"{self.plots_dir}/cutflow.csv",
-            cutflow.terminal_cut_names[-1]
-        )
+        if self.plots_dir:
+            self.cutflows.write_csv(
+                f"{self.plots_dir}/cutflow.csv",
+                cutflow.terminal_cut_names[-1]
+            )
 
     def print_cutflow(self):
         print("\n".join(self.cutflows.get_csv(self.cutflows.terminal_cut_names[-1])))
