@@ -515,7 +515,7 @@ public:
 struct BTagSFs : NanoSFsUL
 {
 private:
-    double get(std::string variation, std::string working_point, int flavor, double pt, double eta) 
+    double get(std::string variation, int flavor, double pt, double eta) 
     { 
         NanoSFsUL::assertYear();
         eta = fabs(eta);
@@ -540,12 +540,12 @@ public:
     correction::Correction::Ref sfs_bc;
     correction::Correction::Ref sfs_light;
     std::string name;
-    std::string wp;
+    std::string working_point;
 
-    BTagSFs(std::string name, std::string wp) 
+    BTagSFs(std::string name, std::string working_point) 
     { 
         this->name = name;
-        this->wp = wp;
+        this->working_point = working_point;
     };
 
     void init(TString file_name)
@@ -581,19 +581,19 @@ public:
         sfs_bc = cset->at("deepJet_comb");
         sfs_light = cset->at("deepJet_incl");
 
-        if (wp == "L")
+        if (working_point == "L")
         {
             eff_b = new SFHist(root_path, "deepjet_eff_b_loose");
             eff_c = new SFHist(root_path, "deepjet_eff_c_loose");
             eff_light = new SFHist(root_path, "deepjet_eff_light_loose");
         }
-        else if (wp == "M")
+        else if (working_point == "M")
         {
             eff_b = new SFHist(root_path, "deepjet_eff_b_medium");
             eff_c = new SFHist(root_path, "deepjet_eff_c_medium");
             eff_light = new SFHist(root_path, "deepjet_eff_light_medium");
         }
-        else if (wp == "T")
+        else if (working_point == "T")
         {
             eff_b = new SFHist(root_path, "deepjet_eff_b_tight");
             eff_c = new SFHist(root_path, "deepjet_eff_c_tight");
@@ -603,17 +603,17 @@ public:
 
     double getSF(int flavor, double pt, double eta) 
     { 
-        return get("central", wp, flavor, pt, eta); 
+        return get("central", flavor, pt, eta); 
     };
 
     double getSFUp(int flavor, double pt, double eta)
     { 
-        return get("up_correlated", wp, flavor, pt, eta); 
+        return get("up_correlated", flavor, pt, eta); 
     };
 
     double getSFDn(int flavor, double pt, double eta)
     { 
-        return get("down_correlated", wp, flavor, pt, eta); 
+        return get("down_correlated", flavor, pt, eta); 
     };
 
     double getEff(int flavor, double pt, double eta) 
