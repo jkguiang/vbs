@@ -74,21 +74,20 @@ class VBSOrchestrator(Orchestrator):
             year = file_info["year"]
             n_events = file_info["n_events"]
             sf = file_info["xsec_sf"]
-            logging.info(f"{file_info['output_name']} ({year}) sf = ({xsec})*1000*({lumi})/{n_events} = {sf}")
-            if "WminusH_HToBB_WToLNu_M-125" in file_info["output_name"]:
-                sf *= 137.64/lumi # TODO: delete this when 2018 sample is not longer missing
             if "WJetsToLNu_HT-" in file_info["output_name"]:
                 with open("data/wjets_ht-binned_xsecs.json", "r") as f_in:
                     wjets_xsecs = json.load(f_in)
-                sf *= wjets_xsecs[year][file_info["output_name"]]
+                    xsec = wjets_xsecs[year][file_info["output_name"]]
+                sf *= xsec
             cmd.append(f"--scale_factor={Decimal.from_float(sf)}")
+            logging.info(f"{file_info['output_name']} ({year}) sf = ({xsec})*1000*({lumi})/{n_events} = {sf}")
         cmd.append(input_file)
         return cmd
 
 if __name__ == "__main__":
     # Check that the PWD is correct
     vbs_pwd = os.getenv("VBSPWD")
-    if vbs_pwd == "":
+    if not vbs_pwd:
         print(f"ERROR: `source setup.sh` must be run first")
         exit()
     elif os.getcwd() != vbs_pwd:
@@ -113,7 +112,7 @@ if __name__ == "__main__":
         help="Unique tag for output"
     )
     cli.add_argument(
-        "--var", type=str, default="",
+        "--var", type=str, default="nominal",
         help="Type of variation (e.g. 'up', 'down', 'nominal', ...)"
     )
     cli.add_argument(
@@ -152,19 +151,19 @@ if __name__ == "__main__":
     samples = []
     for skim in skims:
         if skim == f"sig_{args.skim}":
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/*.root") # Also picks up RunIISummer20UL16APV
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/merged.root") # Also picks up RunIISummer20UL16APV
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/merged.root")
         elif skim == f"data_{args.skim}":
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2018*NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2018*NanoAODv9*/merged.root")
         else:
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged.root")
     if not samples:
         print("No samples found in these directories:")
         print("\n".join([f"{ceph_dir}/{skim}" for skim in skims]))
