@@ -397,17 +397,41 @@ private:
     { 
         NanoSFsUL::assertYear();
         pt = std::max(pt, 10.);
-        if (id_level == PKU::IDveto) 
-        { 
-            return elec_sfs->evaluate({year_str, variation, "Veto", eta, pt});
+
+        std::string working_point;
+        switch (id_level)
+        {
+        case (PKU::IDveto):
+            working_point = "Veto";
+            break;
+        case (PKU::IDtight):
+            working_point = "Tight";
+            break;
+        default:
+            return 1.;
+            break;
         }
-        else if (id_level == PKU::IDtight) 
-        { 
-            return elec_sfs->evaluate({year_str, variation, "Tight", eta, pt});
+
+        double sf = elec_sfs->evaluate({year_str, variation, working_point, eta, pt});
+        if (variation == "sf")
+        {
+            return sf;
         }
         else
         {
-            return 1.;
+            double central_sf = elec_sfs->evaluate({year_str, "sf", working_point, eta, pt});
+            if (variation == "sfup")
+            {
+                return (sf - central_sf)/central_sf;
+            }
+            else if (variation == "sfdown")
+            {
+                return (central_sf - sf)/central_sf;
+            }
+            else
+            {
+                return 1.;
+            }
         }
     };
 
@@ -415,25 +439,59 @@ private:
     { 
         NanoSFsUL::assertYear();
         eta = std::min(fabs(eta), 2.3999);
-        double id_val = muon_id_sfs->evaluate({year_str+"_UL", eta, pt, variation});
-        double iso_val = muon_iso_sfs->evaluate({year_str+"_UL", eta, pt, variation});
+
+        correction::Correction::Ref id_sfs;
+        correction::Correction::Ref iso_sfs;
+        switch (id_level)
+        {
+        case (PKU::IDveto):
+            id_sfs = muon_tight_id_sfs;
+            iso_sfs = muon_loose_iso_sfs;
+            break;
+        case (PKU::IDtight):
+            id_sfs = muon_tight_id_sfs;
+            iso_sfs = muon_tight_iso_sfs;
+            break;
+        default:
+            return 1.;
+            break;
+        }
+
+        double id_sf = id_sfs->evaluate({year_str+"_UL", eta, pt, variation});
+        double iso_sf = iso_sfs->evaluate({year_str+"_UL", eta, pt, variation});
         if (variation == "sf")
         {
-            return id_val*iso_val;
-        }
-        else if (variation == "systup" || variation == "systdown")
-        {
-            return std::sqrt(std::pow(id_val, 2) + std::pow(iso_val, 2));
+            return id_sf*iso_sf;
         }
         else
         {
-            return 1.;
+            double central_id_sf = id_sfs->evaluate({year_str+"_UL", eta, pt, "sf"});
+            double central_iso_sf = iso_sfs->evaluate({year_str+"_UL", eta, pt, "sf"});
+            if (variation == "systup")
+            {
+                return std::sqrt(
+                    std::pow((id_sf - central_id_sf)/central_id_sf, 2) 
+                    + std::pow((iso_sf - central_iso_sf)/central_iso_sf, 2)
+                );
+            }
+            else if (variation == "systdown")
+            {
+                return std::sqrt(
+                    std::pow((central_id_sf - id_sf)/central_id_sf, 2) 
+                    + std::pow((central_iso_sf - iso_sf)/central_iso_sf, 2)
+                );
+            }
+            else
+            {
+                return 1.;
+            }
         }
     };
 public:
     correction::Correction::Ref elec_sfs;
-    correction::Correction::Ref muon_id_sfs;
-    correction::Correction::Ref muon_iso_sfs;
+    correction::Correction::Ref muon_tight_id_sfs;
+    correction::Correction::Ref muon_tight_iso_sfs;
+    correction::Correction::Ref muon_loose_iso_sfs;
     std::string year_str;
     PKU::IDLevel id_level;
 
@@ -477,8 +535,9 @@ public:
         elec_sfs = elec_cset->at("UL-Electron-ID-SF");
         // Note: we only use the tight Muon POG ID in both the PKU veto and tight muon IDs
         //       currently, this may change in the future
-        muon_id_sfs = muon_cset->at("NUM_TightID_DEN_TrackerMuons");
-        muon_iso_sfs = muon_cset->at("NUM_TightRelIso_DEN_TightIDandIPCut");
+        muon_tight_id_sfs = muon_cset->at("NUM_TightID_DEN_TrackerMuons");
+        muon_tight_iso_sfs = muon_cset->at("NUM_TightRelIso_DEN_TightIDandIPCut");
+        muon_loose_iso_sfs = muon_cset->at("NUM_LooseRelIso_DEN_TightIDandIPCut");
     };
 
     double getElecSF(double pt, double eta) 
@@ -634,6 +693,70 @@ public:
             return 1.;
             break;
         }
+    };
+};
+
+struct PileUpSFs : NanoSFsUL
+{
+private:
+    double get(std::string variation, float n_true_interactions) 
+    { 
+        NanoSFsUL::assertYear();
+        n_true_interactions = std::min(n_true_interactions, 98.f);
+
+        return sfs->evaluate({n_true_interactions, variation});
+    };
+public:
+    correction::Correction::Ref sfs;
+
+    PileUpSFs() { /* Do nothing */ };
+
+    void init(TString file_name)
+    {
+        NanoSFsUL::init(file_name);
+
+        // Note: the gzipped JSONs in cvmfs can only be read by correctionlib v2.1.x
+        std::string json_path = "data/pog_jsons/LUM";
+        std::string sfs_name;
+        switch (campaign)
+        {
+        case (RunIISummer20UL16APV):
+            json_path += "/2016preVFP_UL/puWeights.json";
+            sfs_name = "Collisions16_UltraLegacy_goldenJSON";
+            break;
+        case (RunIISummer20UL16):
+            json_path += "/2016postVFP_UL/puWeights.json";
+            sfs_name = "Collisions16_UltraLegacy_goldenJSON";
+            break;
+        case (RunIISummer20UL17):
+            json_path += "/2017_UL/puWeights.json";
+            sfs_name = "Collisions17_UltraLegacy_goldenJSON";
+            break;
+        case (RunIISummer20UL18):
+            json_path += "/2018_UL/puWeights.json";
+            sfs_name = "Collisions18_UltraLegacy_goldenJSON";
+            break;
+        default:
+            return;
+            break;
+        };
+        auto cset = correction::CorrectionSet::from_file(json_path);
+        sfs = cset->at(sfs_name);
+    };
+
+    double getSF(float n_true_interactions) 
+    { 
+        return get("nominal", n_true_interactions); 
+    };
+
+    double getSFUp(float n_true_interactions) 
+    { 
+        return get("up", n_true_interactions); 
+    };
+
+    double getSFDn(float n_true_interactions) 
+    { 
+        return get("down", n_true_interactions); 
     };
 };
 
