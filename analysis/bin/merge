@@ -40,10 +40,16 @@ BKG_SAMPLE_MAP = {
         "2018": ["WJets*"],
     },
     "Bosons": {
-        "2016preVFP": ["SSWW", "WW*", "WZ*", "ZZ*"],
-        "2016postVFP": ["SSWW", "WW*", "WZ*", "ZZ*"],
-        "2017": ["SSWW", "WW*", "WZ*", "ZZ*"],
-        "2018": ["SSWW", "WW*", "WZ*", "ZZ*"],
+        "2016preVFP": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+        "2016postVFP": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+        "2017": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+        "2018": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+    },
+    "EWKWLep": {
+        "2016preVFP": ["EWKW*WToLNu*"],
+        "2016postVFP": ["EWKW*WToLNu*"],
+        "2017": ["EWKW*WToLNu*"],
+        "2018": ["EWKW*WToLNu*"],
     },
     "VH": {
         "2016preVFP": ["*HToBB*", "VHToNonbb_M125"],
@@ -91,7 +97,7 @@ def merge(output_dir, sample_map, n_hadders=8):
                         merged_cutflows[group_name] += Cutflow.from_file(cflow_file)
                     else:
                         merged_cutflows[group_name] = Cutflow.from_file(cflow_file)
-                root_files = glob.glob(f"{output_dir}/{year}/{sample_name}.root")
+                root_files = glob.glob(f"{output_dir}/{year}/{sample_name}*.root")
                 for root_file in root_files:
                     root_files_to_merge.append(root_file)
                     groups[year].append(root_file.split("/")[-1].replace(".root", ""))
@@ -150,16 +156,17 @@ if __name__ == "__main__":
     cutflows["TotalBkg"] = cutflows.sum()
     # Get Cutflow objects for signal samples
     cutflows += merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
-    cutflows.reorder(["VH", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
+    cutflows.reorder(["VH", "EWKWLep", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
 
-    # Write mermaid
+    # Write .cflow files
     for group_name, cutflow in cutflows.items():
-        cutflow.write_mermaid(f"{output_dir}/Run2/{group_name}_cutflow.mmd")
+        cutflow.write_cflow(f"{output_dir}/Run2/{group_name}_cutflow.cflow")
     # Write CSV
     cutflows.rename({
-        "Bosons": "VV/VVV/VBSWZ", "TTX": 
-        "TTbar+X", "WJets": "W+Jets", 
-        "VBSWH_mkW": "VBSWH (kW < 0)"
+        "EWKWLep": "EWK W", 
+        "TTX": "TTbar+X", 
+        "WJets": "W+Jets", 
+        "VBSWH_mkW": "VBSWH"
     })
     for terminal_cut_name in args.terminals if args.terminals else cutflows.terminal_cut_names:
         cutflows.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.csv", terminal_cut_name)
