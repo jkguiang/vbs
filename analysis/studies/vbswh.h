@@ -345,10 +345,10 @@ public:
     };
 };
 
-class SetLeaves : public Core::AnalysisCut
+class SaveVariables : public Core::AnalysisCut
 {
 public:
-    SetLeaves(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
+    SaveVariables(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
@@ -465,9 +465,13 @@ struct Analysis : Core::Analysis
         Cut* select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("SelectVBSJetsMaxE", *this);
         cutflow.insert(select_jets, select_vbsjets_maxE, Right);
 
-        // Set various leaves
-        Cut* set_leaves = new SetLeaves("SetLeaves", *this);
-        cutflow.insert(select_vbsjets_maxE, set_leaves, Right);
+        // Save LHE mu_R and mu_F scale weights
+        Cut* save_lhe = new Core::SaveLHEScaleWeights("SaveLHEScaleWeights", *this);
+        cutflow.insert(select_vbsjets_maxE, save_lhe, Right);
+
+        // Save analysis variables
+        Cut* save_vars = new SaveVariables("SaveVariables", *this);
+        cutflow.insert(save_lhe, save_vars, Right);
 
         // Basic VBS jet requirements
         Cut* vbsjets_presel = new LambdaCut(
@@ -477,7 +481,7 @@ struct Analysis : Core::Analysis
                 return arbol.getLeaf<double>("M_jj") > 500 && fabs(arbol.getLeaf<double>("deta_jj")) > 3;
             }
         );
-        cutflow.insert(set_leaves, vbsjets_presel, Right);
+        cutflow.insert(save_vars, vbsjets_presel, Right);
 
         Cut* xbb_presel = new LambdaCut(
             "XbbGt0p3", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.3; }
