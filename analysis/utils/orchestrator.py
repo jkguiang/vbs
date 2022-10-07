@@ -71,9 +71,11 @@ class Orchestrator:
                     job = self.submitted_futures[future]
                     stderr_file = job.stderr_file
                     if os.stat(stderr_file).st_size > 0:
+                        n_errors += 1
                         job_name = stderr_file.split("/")[-1].replace(".err", "")
                         logging.error(f"{job_name} failed; check logs: {stderr_file}")
-                        n_errors += 1
+                        pbar.set_description(f"Executing jobs ({n_errors} errors)")
+                        pbar.refresh()
                     # Update progress bar
                     pbar.update(1)
 
