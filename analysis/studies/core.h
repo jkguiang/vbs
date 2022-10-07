@@ -140,6 +140,10 @@ struct Analysis
         arbol.newBranch<float>("lhe_muF0p5_muR2p0", -999);
         arbol.newBranch<float>("lhe_muF1p0_muR2p0", -999);
         arbol.newBranch<float>("lhe_muF2p0_muR2p0", -999);
+        arbol.newBranch<float>("ps_isr2p0_fsr1p0", -999);
+        arbol.newBranch<float>("ps_isr1p0_fsr2p0", -999);
+        arbol.newBranch<float>("ps_isr0p5_fsr1p0", -999);
+        arbol.newBranch<float>("ps_isr1p0_fsr0p5", -999);
     };
 
     virtual void init()
@@ -680,17 +684,17 @@ public:
     };
 };
 
-class SaveLHEScaleWeights : public AnalysisCut
+class SaveSystWeights : public AnalysisCut
 {
 public:
-    SaveLHEScaleWeights(std::string name, Analysis& analysis) : AnalysisCut(name, analysis) 
+    SaveSystWeights(std::string name, Analysis& analysis) : AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
 
     bool evaluate()
     {
-        /* From Events->GetListOfBranches()->ls("LHEScaleWeight"):
+        /* From Events->GetListOfBranches()->ls("LHEScaleWeight*"):
            OBJ: TBranch   LHEScaleWeight  LHE scale variation weights (w_var / w_nominal); 
             [0] is MUF="0.5" MUR="0.5"; 
             [1] is MUF="1.0" MUR="0.5"; 
@@ -702,7 +706,7 @@ public:
             [7] is MUF="1.0" MUR="2.0"; 
             [8] is MUF="2.0" MUR="2.0"
         */
-        if (nt.isData() || !cli.is_signal) { return true; }
+        if (nt.isData()) { return true; }
         if (nt.nLHEScaleWeight() == 9)
         {
             std::vector<float> scale_weights = nt.LHEScaleWeight();
@@ -728,6 +732,28 @@ public:
             arbol.setLeaf<float>("lhe_muF0p5_muR2p0", 1.);
             arbol.setLeaf<float>("lhe_muF1p0_muR2p0", 1.);
             arbol.setLeaf<float>("lhe_muF2p0_muR2p0", 1.);
+        }
+        /* From Events->GetListOfBranches()->ls("PSWeight*"):
+           OBJ: TBranch   PSWeight    PS weights (w_var / w_nominal);   
+            [0] is ISR=2 FSR=1; 
+            [1] is ISR=1 FSR=2;
+            [2] is ISR=0.5 FSR=1; 
+            [3] is ISR=1 FSR=0.5;
+        */
+        if (nt.nPSWeight() == 4)
+        {
+            std::vector<float> ps_weights = nt.PSWeight();
+            arbol.setLeaf<float>("ps_isr2p0_fsr1p0", ps_weights.at(0)); // ISR=2 FSR=1
+            arbol.setLeaf<float>("ps_isr1p0_fsr2p0", ps_weights.at(1)); // ISR=1 FSR=2
+            arbol.setLeaf<float>("ps_isr0p5_fsr1p0", ps_weights.at(2)); // ISR=0.5 FSR=1
+            arbol.setLeaf<float>("ps_isr1p0_fsr0p5", ps_weights.at(3)); // ISR=1 FSR=0.5
+        }
+        else
+        {
+            arbol.setLeaf<float>("ps_isr2p0_fsr1p0", 1.);
+            arbol.setLeaf<float>("ps_isr1p0_fsr2p0", 1.);
+            arbol.setLeaf<float>("ps_isr0p5_fsr1p0", 1.);
+            arbol.setLeaf<float>("ps_isr1p0_fsr0p5", 1.);
         }
         return true;
     };
