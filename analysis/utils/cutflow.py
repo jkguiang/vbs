@@ -239,6 +239,19 @@ class Cutflow:
                 content += "\n"
 
         return content
+    
+    def get_cflow(self, cut, content=""):
+        content += f"{cut.name},"
+        content += f"{cut.n_pass},{cut.n_pass_weighted},"
+        content += f"{cut.n_fail},{cut.n_fail_weighted},"
+        content += f"{cut.parent.name}," if cut.parent else "null,"
+        content += f"{cut.left.name}," if cut.left else "null,"
+        content += f"{cut.right.name}\n" if cut.right else "null\n"
+        if cut.left:
+            content = self.get_cflow(cut.left, content=content)
+        if cut.right:
+            content = self.get_cflow(cut.right, content=content)
+        return content
 
     def write_mermaid(self, output_mmd, orientation="TD"):
         with open(output_mmd, "w") as f_out:
@@ -251,6 +264,10 @@ class Cutflow:
         with open(output_csv, "w") as f_out:
             f_out.write(self.get_csv(terminal_cut))
             f_out.write("\n")
+
+    def write_cflow(self, output_cflow):
+        with open(output_cflow, "w") as f_out:
+            f_out.write(self.get_cflow(self.root_cut()))
 
     @staticmethod
     def from_network(cuts, cut_network):
