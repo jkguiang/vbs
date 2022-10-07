@@ -466,7 +466,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(select_jets, select_vbsjets_maxE, Right);
 
         // Save LHE mu_R and mu_F scale weights
-        Cut* save_lhe = new Core::SaveLHEScaleWeights("SaveLHEScaleWeights", *this);
+        Cut* save_lhe = new Core::SaveSystWeights("SaveSystWeights", *this);
         cutflow.insert(select_vbsjets_maxE, save_lhe, Right);
 
         // Save analysis variables
