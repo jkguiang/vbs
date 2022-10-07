@@ -131,6 +131,15 @@ struct Analysis
         arbol.newBranch<double>("MET", -999);
         arbol.newBranch<double>("MET_up", -999);
         arbol.newBranch<double>("MET_dn", -999);
+        arbol.newBranch<float>("lhe_muF0p5_muR0p5", -999);
+        arbol.newBranch<float>("lhe_muF1p0_muR0p5", -999);
+        arbol.newBranch<float>("lhe_muF2p0_muR0p5", -999);
+        arbol.newBranch<float>("lhe_muF0p5_muR1p0", -999);
+        arbol.newBranch<float>("lhe_muF1p0_muR1p0", -999);
+        arbol.newBranch<float>("lhe_muF2p0_muR1p0", -999);
+        arbol.newBranch<float>("lhe_muF0p5_muR2p0", -999);
+        arbol.newBranch<float>("lhe_muF1p0_muR2p0", -999);
+        arbol.newBranch<float>("lhe_muF2p0_muR2p0", -999);
     };
 
     virtual void init()
@@ -667,6 +676,59 @@ public:
         arbol.setLeaf<double>("abs_deta_jj", fabs(ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta()));
         arbol.setLeaf<double>("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbsjet_p4, tr_vbsjet_p4));
 
+        return true;
+    };
+};
+
+class SaveLHEScaleWeights : public AnalysisCut
+{
+public:
+    SaveLHEScaleWeights(std::string name, Analysis& analysis) : AnalysisCut(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    bool evaluate()
+    {
+        /* From Events->GetListOfBranches()->ls("LHEScaleWeight"):
+           OBJ: TBranch   LHEScaleWeight  LHE scale variation weights (w_var / w_nominal); 
+            [0] is MUF="0.5" MUR="0.5"; 
+            [1] is MUF="1.0" MUR="0.5"; 
+            [2] is MUF="2.0" MUR="0.5"; 
+            [3] is MUF="0.5" MUR="1.0"; 
+            [4] is MUF="1.0" MUR="1.0"; 
+            [5] is MUF="2.0" MUR="1.0"; 
+            [6] is MUF="0.5" MUR="2.0"; 
+            [7] is MUF="1.0" MUR="2.0"; 
+            [8] is MUF="2.0" MUR="2.0"
+        */
+        if (nt.isData() || !cli.is_signal) { return true; }
+        if (nt.nLHEScaleWeight() == 9)
+        {
+            std::vector<float> scale_weights = nt.LHEScaleWeight();
+            arbol.setLeaf<float>("lhe_muF0p5_muR0p5", scale_weights.at(0)); // MUF=0.5 MUR=0.5
+            arbol.setLeaf<float>("lhe_muF1p0_muR0p5", scale_weights.at(1)); // MUF=1.0 MUR=0.5
+            arbol.setLeaf<float>("lhe_muF2p0_muR0p5", scale_weights.at(2)); // MUF=2.0 MUR=0.5
+            arbol.setLeaf<float>("lhe_muF0p5_muR1p0", scale_weights.at(3)); // MUF=0.5 MUR=1.0
+            arbol.setLeaf<float>("lhe_muF1p0_muR1p0", scale_weights.at(4)); // MUF=1.0 MUR=1.0
+            arbol.setLeaf<float>("lhe_muF2p0_muR1p0", scale_weights.at(5)); // MUF=2.0 MUR=1.0
+            arbol.setLeaf<float>("lhe_muF0p5_muR2p0", scale_weights.at(6)); // MUF=0.5 MUR=2.0
+            arbol.setLeaf<float>("lhe_muF1p0_muR2p0", scale_weights.at(7)); // MUF=1.0 MUR=2.0
+            arbol.setLeaf<float>("lhe_muF2p0_muR2p0", scale_weights.at(8)); // MUF=2.0 MUR=2.0
+        }
+        else
+        {
+            // A handful of events are missing these, so we just set to 1
+            arbol.setLeaf<float>("lhe_muF0p5_muR0p5", 1.);
+            arbol.setLeaf<float>("lhe_muF1p0_muR0p5", 1.);
+            arbol.setLeaf<float>("lhe_muF2p0_muR0p5", 1.);
+            arbol.setLeaf<float>("lhe_muF0p5_muR1p0", 1.);
+            arbol.setLeaf<float>("lhe_muF1p0_muR1p0", 1.);
+            arbol.setLeaf<float>("lhe_muF2p0_muR1p0", 1.);
+            arbol.setLeaf<float>("lhe_muF0p5_muR2p0", 1.);
+            arbol.setLeaf<float>("lhe_muF1p0_muR2p0", 1.);
+            arbol.setLeaf<float>("lhe_muF2p0_muR2p0", 1.);
+        }
         return true;
     };
 };
