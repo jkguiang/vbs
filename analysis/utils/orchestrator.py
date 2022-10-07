@@ -53,22 +53,22 @@ class Orchestrator:
                     pbar.update(1)
 
         # Execute jobs
+        n_errors = 0
         with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
             with concurrent.futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
                 futures = {executor.submit(run_job, job.unpack()): job for job in jobs}
                 for future in concurrent.futures.as_completed(futures):
-                    job = futures[future]
+                    # Update progress bar
                     pbar.update(1)
+                    # Check for errors
+                    job = futures[future]
+                    stderr_file = job.stderr_file
+                    if os.stat(stderr_file).st_size > 0:
+                        job_name = stderr_file.split("/")[-1].replace(".err", "")
+                        logging.error(f"{job_name} failed; check logs: {stderr_file}")
+                        n_errors += 1
 
-        # Check for errors
-        n_errors = 0
-        for stderr_file in stderr_files:
-            if os.stat(stderr_file).st_size > 0:
-                job_name = stderr_file.split("/")[-1].replace(".err", "")
-                logging.error(f"{job_name} failed; check logs: {stderr_file}")
-                n_errors += 1
-
-        # Alert user of errors
+        # Print warning about errors thrown if any
         if n_errors > 0:
             logfile = logging.getLoggerClass().root.handlers[0].baseFilename
             n_jobs = f"{n_errors} job{'s' if n_errors > 1 else ''}"
