@@ -66,9 +66,7 @@ class Orchestrator:
                 self.submitted_futures = {
                     executor.submit(run_job, job.unpack()): job for job in jobs
                 }
-                for future in futures.as_completed(submitted_futures):
-                    # Update progress bar
-                    pbar.update(1)
+                for future in futures.as_completed(self.submitted_futures):
                     # Check for errors
                     job = self.submitted_futures[future]
                     stderr_file = job.stderr_file
@@ -76,6 +74,8 @@ class Orchestrator:
                         job_name = stderr_file.split("/")[-1].replace(".err", "")
                         logging.error(f"{job_name} failed; check logs: {stderr_file}")
                         n_errors += 1
+                    # Update progress bar
+                    pbar.update(1)
 
         # Print warning about errors thrown if any
         if n_errors > 0:
