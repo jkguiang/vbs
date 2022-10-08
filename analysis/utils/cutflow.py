@@ -1,3 +1,5 @@
+import math
+
 class Cut:
     def __init__(self, name, parent=None, left=None, right=None, 
                  n_pass=0, n_pass_weighted=0., n_fail=0, n_fail_weighted=0.):
@@ -9,6 +11,19 @@ class Cut:
         self.parent = parent
         self.left = left
         self.right = right
+
+    def __do_operation(self, other_cut, operator):
+        if self != other_cut:
+            raise ValueError("can only operate on equivalent cuts")
+        else:
+            new_cut = Cut(
+                self.name,
+                n_pass=operator(self.n_pass, other_cut.n_pass),
+                n_pass_weighted=operator(self.n_pass_weighted, other_cut.n_pass_weighted),
+                n_fail=operator(self.n_fail, other_cut.n_fail),
+                n_fail_weighted=operator(self.n_fail_weighted, other_cut.n_fail_weighted)
+            )
+            return new_cut
 
     def __eq__(self, other_cut):
         if self.parent:
@@ -28,30 +43,30 @@ class Cut:
         return same_name and same_lineage
 
     def __add__(self, other_cut):
-        if self == other_cut:
-            cut_sum = Cut(
-                self.name,
-                n_pass=(self.n_pass + other_cut.n_pass),
-                n_pass_weighted=(self.n_pass_weighted + other_cut.n_pass_weighted),
-                n_fail=(self.n_fail + other_cut.n_fail),
-                n_fail_weighted=(self.n_fail_weighted + other_cut.n_fail_weighted),
-            )
-            return cut_sum
-        else:
-            raise ValueError("can only add equivalent cuts")
+        return self.__do_operation(other_cut, lambda n, other_n: n + other_n)
 
     def __sub__(self, other_cut):
-        if self == other_cut:
-            cut_diff = Cut(
-                self.name,
-                n_pass=(self.n_pass - other_cut.n_pass),
-                n_pass_weighted=(self.n_pass_weighted - other_cut.n_pass_weighted),
-                n_fail=(self.n_fail - other_cut.n_fail),
-                n_fail_weighted=(self.n_fail_weighted - other_cut.n_fail_weighted),
-            )
-            return cut_diff
-        else:
-            raise ValueError("can only add equivalent cuts")
+        return self.__do_operation(other_cut, lambda n, other_n: n - other_n)
+
+    def __mul__(self, other_cut):
+        return self.__do_operation(other_cut, lambda n, other_n: n*other_n)
+
+    def __truediv__(self, other_cut):
+        return self.__do_operation(
+            other_cut, 
+            lambda n, other_n: n/other_n if other_n != 0 else 0 if n == 0 else math.inf
+        )
+
+    def __floordiv__(self, other_cut):
+        return self.__do_operation(
+            other_cut, 
+            lambda n, other_n: n//other_n if other_n != 0 else 0 if n == 0 else math.inf
+        )
+
+    def print(self):
+        print(f"{self.name}")
+        print(f"pass: {self.n_pass} (raw) {self.n_pass_weighted:0.2f} (wgt)")
+        print(f"fail: {self.n_fail} (raw) {self.n_fail_weighted:0.2f} (wgt)")
 
     def ancestry(self):
         next_parent = self.parent
@@ -68,6 +83,20 @@ class Cutflow:
         self.__root_cut_name = None
         self.__terminal_cut_names = []
 
+    def __do_operation(self, other_cutflow, operator):
+        if len(self) == 0:
+            return other_cutflow
+        elif len(other_cutflow) == 0:
+            return self
+        elif self != other_cutflow:
+            raise ValueError("can only operate on equivalent cutflows")
+        else:
+            new_cuts = {}
+            for name, cut in self.items():
+                other_cut = other_cutflow[name]
+                new_cuts[name] = operator(cut, other_cut)
+            return Cutflow.from_network(new_cuts, self.get_cut_network())
+
     def __len__(self):
         return len(self.__cuts)
 
@@ -78,32 +107,19 @@ class Cutflow:
         return self.get_cut_network() == other_cutflow.get_cut_network()
 
     def __add__(self, other_cutflow):
-        if len(self) == 0:
-            return other_cutflow
-        elif len(other_cutflow) == 0:
-            return self
-        elif self != other_cutflow:
-            raise ValueError("can only add equivalent cutflows")
-        else:
-            summed_cuts = {}
-            for name, cut in self.items():
-                other_cut = other_cutflow[name]
-                summed_cuts[name] = cut + other_cut
-            return Cutflow.from_network(summed_cuts, self.get_cut_network())
+        return self.__do_operation(other_cutflow, lambda cut, other_cut: cut + other_cut)
 
     def __sub__(self, other_cutflow):
-        if len(self) == 0:
-            return other_cutflow
-        elif len(other_cutflow) == 0:
-            return self
-        elif self != other_cutflow:
-            raise ValueError("can only add equivalent cutflows")
-        else:
-            diffed_cuts = {}
-            for name, cut in self.items():
-                other_cut = other_cutflow[name]
-                diffed_cuts[name] = cut - other_cut
-            return Cutflow.from_network(diffed_cuts, self.get_cut_network())
+        return self.__do_operation(other_cutflow, lambda cut, other_cut: cut - other_cut)
+
+    def __mul__(self, other_cutflow):
+        return self.__do_operation(other_cutflow, lambda cut, other_cut: cut*other_cut)
+
+    def __floordiv__(self, other_cutflow):
+        return self.__do_operation(other_cutflow, lambda cut, other_cut: cut//other_cut)
+
+    def __truediv__(self, other_cutflow):
+        return self.__do_operation(other_cutflow, lambda cut, other_cut: cut/other_cut)
 
     def __recursive_find_terminals(self, cut_name):
         cut = self.__cuts[cut_name]
