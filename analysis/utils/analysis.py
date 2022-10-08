@@ -160,6 +160,14 @@ class PandasAnalysis:
             self.df = self.df[self.df.eval(selection)].copy()
             self.__update_cutflows(selection)
 
+    def sample_df(self, name, selection=None):
+        if not selection:
+            return self.df[self.df.name == name]
+        else:
+            if selection and type(selection) == str:
+                selection = self.df.eval(selection)
+            return self.df[(self.df.name == name) & selection]
+
     def sig_df(self, selection=None):
         if not selection:
             return self.df[~self.df.is_data & self.df.is_signal]
