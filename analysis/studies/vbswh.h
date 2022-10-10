@@ -372,6 +372,7 @@ struct Analysis : Core::Analysis
     LeptonSFsPKU* lep_sfs;
     BTagSFs* btag_sfs;
     PileUpSFs* pu_sfs;
+    bool all_corrections;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
@@ -380,6 +381,12 @@ struct Analysis : Core::Analysis
         cutflow.globals.newVar<LorentzVector>("lep_p4");
         // Hbb jet globals
         cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
+        // Scale factors
+        jes = nullptr;
+        lep_sfs = nullptr;
+        btag_sfs = nullptr;
+        pu_sfs = nullptr;
+        all_corrections = false;
     };
 
     virtual void initBranches()
@@ -411,14 +418,17 @@ struct Analysis : Core::Analysis
         arbol.newBranch<bool>("passes_bveto", false);
     };
 
-    virtual void initCutflow()
+    virtual void initCorrections()
     {
-        // Initialize scale factors
         jes = new JetEnergyScales(cli.variation);
         lep_sfs = new LeptonSFsPKU(PKU::IDtight);
         btag_sfs = new BTagSFs(cli.output_name, "M");
         pu_sfs = new PileUpSFs();
+        all_corrections = true;
+    };
 
+    virtual void initCutflow()
+    {
         // Bookkeeping
         Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this, pu_sfs);
         cutflow.setRoot(bookkeeping);
@@ -527,14 +537,17 @@ struct Analysis : Core::Analysis
         cutflow.insert(SR1_hbb_cut, SR2, Right);
     };
 
-    void init()
+    virtual void init()
     {
         Core::Analysis::init();
-        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        jes->init();
-        lep_sfs->init(file_name);
-        btag_sfs->init(file_name);
-        pu_sfs->init(file_name);
+        if (all_corrections)
+        {
+            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            jes->init();
+            lep_sfs->init(file_name);
+            btag_sfs->init(file_name);
+            pu_sfs->init(file_name);
+        }
     };
 };
 

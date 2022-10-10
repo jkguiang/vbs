@@ -41,6 +41,7 @@ int main(int argc, char** argv)
     // Pack above into VBSWH struct
     VBSWH::Analysis analysis = VBSWH::Analysis(arbol, nt, cli, cutflow);
     analysis.initBranches();
+    analysis.initCorrections();
     analysis.initCutflow();
 
     Cut* fix_ewk_samples = new FixEWKSamples("FixEWKSamples", analysis);

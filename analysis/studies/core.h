@@ -77,8 +77,6 @@ struct Analysis
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : arbol(arbol_ref), nt(nt_ref), cli(cli_ref), cutflow(cutflow_ref)
     {
-        gconf.nanoAOD_ver = 9;
-
         // Lepton globals
         cutflow.globals.newVar<LorentzVectors>("veto_lep_p4s", {});
         cutflow.globals.newVar<Integers>("veto_lep_pdgIDs", {});
@@ -151,31 +149,48 @@ struct Analysis
 
     virtual void init()
     {
+        // Global config
+        gconf.nanoAOD_ver = 9;
         gconf.GetConfigs(nt.year());
-
         TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("NanoAODAPV") || file_name.Contains("UL16APV"));
+        gconf.isAPV = (
+            file_name.Contains("HIPM_UL2016") 
+            || file_name.Contains("NanoAODAPV") 
+            || file_name.Contains("UL16APV")
+        );
 
+        // Golden JSON
         if (nt.isData())
         {
-            if (nt.year() == 2016)
+            switch (nt.year())
             {
+            case 2016:
                 if (gconf.isAPV)
                 {
-                    set_goodrun_file("data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt");
+                    set_goodrun_file(
+                        "data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt"
+                    );
                 }
                 else
                 {
-                    set_goodrun_file("data/golden_jsons/Cert_271036-325175_13TeV_Combined161718_JSON_snt.txt");
+                    set_goodrun_file(
+                        "data/golden_jsons/Cert_271036-325175_13TeV_Combined161718_JSON_snt.txt"
+                    );
                 }
-            }
-            else if (nt.year() == 2017)
-            {
-                set_goodrun_file("data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_snt.txt");
-            }
-            else if (nt.year() == 2018)
-            {
-                set_goodrun_file("data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_snt.txt");
+                break;
+            case 2017:
+                set_goodrun_file(
+                    "data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_snt.txt"
+                );
+                break;
+            case 2018:
+                set_goodrun_file(
+                    "data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_snt.txt"
+                );
+                break;
+            default:
+                throw std::runtime_error("Core::Analysis - invalid year or none set");
+                break;
             }
         }
     };
