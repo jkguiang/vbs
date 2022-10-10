@@ -441,7 +441,7 @@ class Validation(PandasAnalysis):
         mc_error = self.bkg_error(selection=selection, raw=raw)
         return data_error, mc_error
 
-    def plot_data_vs_mc(self, column, bins, selection="", x_label="", logy=False, 
+    def plot_data_vs_mc(self, column, bins, blinded_range=None, selection="", x_label="", logy=False, 
                         transf=lambda x: x, norm=False, stacked=False):
 
         fig = plt.figure(figsize=(6.4*1.5, 4.8*1.25*1.5))
@@ -538,11 +538,35 @@ class Validation(PandasAnalysis):
             label=u"MC unc. [stat]"
         )
 
+        if blinded_range:
+            blind_low, blind_high = blinded_range
+            hist_axes.hist(
+                [], 
+                facecolor="darkgrey", 
+                edgecolor="k", 
+                hatch="//////",
+                label="Blinded"
+            )
+            hist_axes.axvspan(
+                blind_low, blind_high, 
+                facecolor="darkgrey", 
+                edgecolor="k", 
+                hatch="//////", 
+                zorder=99
+            )
+            ratio_axes.axvspan(
+                blind_low, blind_high, 
+                facecolor="darkgrey", 
+                edgecolor="k", 
+                hatch="//////", 
+                zorder=99
+            )
+
         ratio_axes.axhline(y=1, color="k", linestyle="--", alpha=0.75, linewidth=0.75)
         ratio_axes.legend().remove()
 
         if stacked:
-            hist_axes.legend(fontsize=12)
+            hist_axes.legend()
         else:
             hist_axes.legend(fontsize=14)
         if not logy:
