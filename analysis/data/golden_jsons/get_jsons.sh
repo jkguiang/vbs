@@ -18,3 +18,8 @@ if [[ "$username" == "" ]]; then
 fi
 
 scp $username@lxplus.cern.ch:\{$scp_jsons\} .
+
+# Run silly SNT script
+for json in $jsons; do
+    python2 ../../NanoTools/NanoCORE/Tools/jsontojson.py --filename=$(basename $json)
+done
