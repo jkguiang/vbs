@@ -128,6 +128,9 @@ struct Analysis
         arbol.newBranch<double>("pu_sf", -999);
         arbol.newBranch<double>("pu_sf_up", -999);
         arbol.newBranch<double>("pu_sf_dn", -999);
+        arbol.newBranch<double>("prefire_sf", -999);
+        arbol.newBranch<double>("prefire_sf_up", -999);
+        arbol.newBranch<double>("prefire_sf_dn", -999);
         arbol.newBranch<int>("event", -999);
         arbol.newBranch<double>("MET", -999);
         arbol.newBranch<double>("MET_up", -999);
@@ -165,27 +168,18 @@ struct Analysis
             switch (nt.year())
             {
             case 2016:
-                if (gconf.isAPV)
-                {
-                    set_goodrun_file(
-                        "data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt"
-                    );
-                }
-                else
-                {
-                    set_goodrun_file(
-                        "data/golden_jsons/Cert_271036-325175_13TeV_Combined161718_JSON_snt.txt"
-                    );
-                }
+                set_goodrun_file(
+                    "data/golden_jsons/Cert_271036-284044_13TeV_Legacy2016_Collisions16_JSON_formatted.txt"
+                );
                 break;
             case 2017:
                 set_goodrun_file(
-                    "data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_snt.txt"
+                    "data/golden_jsons/Cert_294927-306462_13TeV_UL2017_Collisions17_GoldenJSON_formatted.txt"
                 );
                 break;
             case 2018:
                 set_goodrun_file(
-                    "data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_snt.txt"
+                    "data/golden_jsons/Cert_314472-325175_13TeV_Legacy2018_Collisions18_JSON_formatted.txt"
                 );
                 break;
             default:
@@ -224,32 +218,49 @@ public:
 
     bool evaluate()
     {
+        arbol.setLeaf<int>("event", nt.event());
         arbol.setLeaf<double>("xsec_sf", (nt.isData()) ? 1. : cli.scale_factor*nt.genWeight());
-        if (pu_sfs != nullptr)
+        arbol.setLeaf<double>("prefire_sf", (nt.isData()) ? 1. : nt.L1PreFiringWeight_Nom());
+        arbol.setLeaf<double>("prefire_sf_up", (nt.isData()) ? 1. : nt.L1PreFiringWeight_Up());
+        arbol.setLeaf<double>("prefire_sf_dn", (nt.isData()) ? 1. : nt.L1PreFiringWeight_Dn());
+        if (!nt.isData() && pu_sfs != nullptr)
         {
-            arbol.setLeaf<double>("pu_sf", (nt.isData()) ? 1. : pu_sfs->getSF(nt.Pileup_nTrueInt()));
-            arbol.setLeaf<double>("pu_sf_up", (nt.isData()) ? 1. : pu_sfs->getSFUp(nt.Pileup_nTrueInt()));
-            arbol.setLeaf<double>("pu_sf_dn", (nt.isData()) ? 1. : pu_sfs->getSFDn(nt.Pileup_nTrueInt()));
-            arbol.setLeaf<int>("event", nt.event());
+            arbol.setLeaf<double>("pu_sf", pu_sfs->getSF(nt.Pileup_nTrueInt()));
+            arbol.setLeaf<double>("pu_sf_up", pu_sfs->getSFUp(nt.Pileup_nTrueInt()));
+            arbol.setLeaf<double>("pu_sf_dn", pu_sfs->getSFDn(nt.Pileup_nTrueInt()));
+        }
+        else
+        {
+            arbol.setLeaf<double>("pu_sf", 1.);
+            arbol.setLeaf<double>("pu_sf_up", 1.);
+            arbol.setLeaf<double>("pu_sf_dn", 1.);
         }
         return (nt.isData()) ? goodrun(nt.run(), nt.luminosityBlock()) : true;
     };
 
     double weight()
     {
-        return (nt.isData()) ? 1. : arbol.getLeaf<double>("xsec_sf")*arbol.getLeaf<double>("pu_sf");
+        if (nt.isData()) 
+        {
+            return 1.;
+        }
+        else
+        {
+            return (
+                arbol.getLeaf<double>("xsec_sf")
+                *arbol.getLeaf<double>("pu_sf")
+                *arbol.getLeaf<double>("prefire_sf")
+            );
+        }
     };
 };
 
 class SelectLeptons : public AnalysisCut
 {
 public:
-    LeptonSFs* lep_sfs;
-
-    SelectLeptons(std::string name, Analysis& analysis, LeptonSFs* lep_sfs) 
-    : AnalysisCut(name, analysis)
+    SelectLeptons(std::string name, Analysis& analysis) : AnalysisCut(name, analysis)
     {
-        this->lep_sfs = lep_sfs;
+        // Do nothing
     };
 
     virtual bool passesVetoElecID(int elec_i)
@@ -268,11 +279,6 @@ public:
         Integers veto_lep_pdgIDs;
         Integers veto_lep_idxs;
         Integers veto_lep_jet_idxs;
-        // Lepton ID sf
-        double lep_sf = arbol.getLeaf<double>("lep_sf");
-        // Percent errors (up/down) on sf
-        double err_up = arbol.getLeaf<double>("lep_sf_up")/lep_sf - 1;
-        double err_dn = 1 - arbol.getLeaf<double>("lep_sf_dn")/lep_sf;
         // Loop over electrons
         for (unsigned int i = 0; i < nt.nElectron(); ++i)
         {
@@ -283,10 +289,6 @@ public:
             veto_lep_pdgIDs.push_back(-nt.Electron_charge().at(i)*11);
             veto_lep_idxs.push_back(i);
             veto_lep_jet_idxs.push_back(nt.Electron_jetIdx().at(i));
-            if (nt.isData() || lep_sfs == nullptr) { continue; }
-            lep_sf *= lep_sfs->getElecSF(el_p4.pt(), el_p4.eta());
-            err_up += std::pow(lep_sfs->getElecErrUp(el_p4.pt(), el_p4.eta()), 2);
-            err_dn += std::pow(lep_sfs->getElecErrDn(el_p4.pt(), el_p4.eta()), 2);
         }
         // Loop over muons
         for (unsigned int i = 0; i < nt.nMuon(); ++i)
@@ -298,10 +300,6 @@ public:
             veto_lep_pdgIDs.push_back(-nt.Muon_charge().at(i)*13);
             veto_lep_idxs.push_back(i);
             veto_lep_jet_idxs.push_back(nt.Muon_jetIdx().at(i));
-            if (nt.isData() || lep_sfs == nullptr) { continue; }
-            lep_sf *= lep_sfs->getMuonSF(mu_p4.pt(), mu_p4.eta());
-            err_up += std::pow(lep_sfs->getMuonErrUp(mu_p4.pt(), mu_p4.eta()), 2);
-            err_dn += std::pow(lep_sfs->getMuonErrDn(mu_p4.pt(), mu_p4.eta()), 2);
         }
 
         globals.setVal<LorentzVectors>("veto_lep_p4s", veto_lep_p4s);
@@ -309,22 +307,6 @@ public:
         globals.setVal<Integers>("veto_lep_idxs", veto_lep_idxs);
         globals.setVal<Integers>("veto_lep_jet_idxs", veto_lep_jet_idxs);
 
-        // Store lepton sf and its up/down variations
-        if (!nt.isData() && lep_sfs != nullptr)
-        {
-            // Finish error computation
-            err_up = std::sqrt(err_up);
-            err_dn = std::sqrt(err_dn);
-            arbol.setLeaf<double>("lep_sf", lep_sf);
-            arbol.setLeaf<double>("lep_sf_up", lep_sf + err_up*lep_sf);
-            arbol.setLeaf<double>("lep_sf_dn", lep_sf - err_dn*lep_sf);
-        }
-        else
-        {
-            arbol.setLeaf<double>("lep_sf", 1.);
-            arbol.setLeaf<double>("lep_sf_up", 1.);
-            arbol.setLeaf<double>("lep_sf_dn", 1.);
-        }
         return true;
     };
 };
@@ -332,8 +314,8 @@ public:
 class SelectLeptonsPKU : public SelectLeptons
 {
 public:
-    SelectLeptonsPKU(std::string name, Analysis& analysis, LeptonSFsPKU* lep_sfs = nullptr) 
-    : Core::SelectLeptons(name, analysis, lep_sfs) 
+    SelectLeptonsPKU(std::string name, Analysis& analysis) 
+    : Core::SelectLeptons(name, analysis) 
     {
         // Do nothing
     };
