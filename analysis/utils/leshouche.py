@@ -55,6 +55,12 @@ class LesHouche:
             3-momentum of the decaying particle, specified in the lab frame
     """
     def __init__(self, lhe_file):
+        major, minor, patch = uproot.__version__.split(".")
+        if int(major) < 4 or int(minor) < 2:
+            raise Exception(
+                f"uproot version 4.2.x or higher required; {uproot.__version__} installed"
+            )
+
         self.lhe_file = lhe_file
         self.xml_root = None
         self.xml_context = None
@@ -140,7 +146,7 @@ def lhe_to_root(lhe_file, basket_nbytes=100000):
             particle_branches = [key for key, typ in lhe.event_schema["particles"]]
             events = {}
             events_nbytes = 0
-            for event in tqdm.tqdm(lhe.events):
+            for event in tqdm.tqdm(lhe.events, desc="Parsing LHE events"):
                 if not events:
                     events = {branch: [] for branch in event}
                 # Update events buffer
@@ -177,7 +183,3 @@ def __lhe_to_uproot_events(events, jagged_branches=[]):
         else:
             events[branch] = np.array(leaves)
     return events
-
-if __name__ == "__main__":
-    lhe_to_root("/ceph/cms/store/user/jguiang/VBSVVHSignalGeneration/lhe/VBSWWH_Inclusive_4f_LO_10k.lhe")
-    input()
