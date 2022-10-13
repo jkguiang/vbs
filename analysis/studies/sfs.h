@@ -393,7 +393,7 @@ struct LeptonSFsTTH : LeptonSFs
 struct LeptonSFsPKU : LeptonSFs
 {
 private:
-    double getEGM(std::string variation, double pt, double eta) 
+    double getEGM(std::string variation, double pt, double eta, std::string wp = "") 
     { 
         NanoSFsUL::assertYear();
         pt = std::max(pt, 10.);
@@ -411,6 +411,8 @@ private:
             return 1.;
             break;
         }
+
+        if (wp != "") { working_point = wp; }
 
         double sf = elec_sfs->evaluate({year_str, variation, working_point, eta, pt});
         if (variation == "sf")
@@ -435,51 +437,40 @@ private:
         }
     };
 
-    double getMUO(std::string variation, double pt, double eta) 
+    double getMUO(std::string variation, double pt, double eta, bool iso = false) 
     { 
         NanoSFsUL::assertYear();
         eta = std::min(fabs(eta), 2.3999);
 
-        correction::Correction::Ref id_sfs;
-        correction::Correction::Ref iso_sfs;
+        correction::Correction::Ref muon_sfs;
         switch (id_level)
         {
         case (PKU::IDveto):
-            id_sfs = muon_tight_id_sfs;
-            iso_sfs = muon_loose_iso_sfs;
+            muon_sfs = (iso) ? muon_loose_iso_sfs : muon_tight_id_sfs;
             break;
         case (PKU::IDtight):
-            id_sfs = muon_tight_id_sfs;
-            iso_sfs = muon_tight_iso_sfs;
+            muon_sfs = (iso) ? muon_tight_iso_sfs : muon_tight_id_sfs;
             break;
         default:
             return 1.;
             break;
         }
 
-        double id_sf = id_sfs->evaluate({year_str+"_UL", eta, pt, variation});
-        double iso_sf = iso_sfs->evaluate({year_str+"_UL", eta, pt, variation});
+        double sf = muon_sfs->evaluate({year_str+"_UL", eta, pt, variation});
         if (variation == "sf")
         {
-            return id_sf*iso_sf;
+            return sf;
         }
         else
         {
-            double central_id_sf = id_sfs->evaluate({year_str+"_UL", eta, pt, "sf"});
-            double central_iso_sf = iso_sfs->evaluate({year_str+"_UL", eta, pt, "sf"});
+            double central_sf = muon_sfs->evaluate({year_str+"_UL", eta, pt, "sf"});
             if (variation == "systup")
             {
-                return std::sqrt(
-                    std::pow((id_sf - central_id_sf)/central_id_sf, 2) 
-                    + std::pow((iso_sf - central_iso_sf)/central_iso_sf, 2)
-                );
+                return (sf - central_sf)/central_sf;
             }
             else if (variation == "systdown")
             {
-                return std::sqrt(
-                    std::pow((central_id_sf - id_sf)/central_id_sf, 2) 
-                    + std::pow((central_iso_sf - iso_sf)/central_iso_sf, 2)
-                );
+                return (central_sf - sf)/central_sf;
             }
             else
             {
@@ -555,6 +546,21 @@ public:
         return getEGM("sfdown", pt, eta); 
     };
 
+    double getElecRecoSF(double pt, double eta) 
+    { 
+        return getEGM("sf", pt, eta, "RecoAbove20"); 
+    };
+
+    double getElecRecoErrUp(double pt, double eta) 
+    { 
+        return getEGM("sfup", pt, eta, "RecoAbove20"); 
+    };
+
+    double getElecRecoErrDn(double pt, double eta) 
+    { 
+        return getEGM("sfdown", pt, eta, "RecoAbove20"); 
+    };
+
     double getMuonSF(double pt, double eta) 
     { 
         return getMUO("sf", pt, eta); 
@@ -568,6 +574,21 @@ public:
     double getMuonErrDn(double pt, double eta) 
     { 
         return getMUO("systdown", pt, eta); 
+    };
+
+    double getMuonIsoSF(double pt, double eta) 
+    { 
+        return getMUO("sf", pt, eta, true); 
+    };
+
+    double getMuonIsoErrUp(double pt, double eta) 
+    { 
+        return getMUO("systup", pt, eta, true); 
+    };
+
+    double getMuonIsoErrDn(double pt, double eta) 
+    { 
+        return getMUO("systdown", pt, eta, true); 
     };
 };
 
@@ -758,6 +779,81 @@ public:
     { 
         return get("down", n_true_interactions); 
     };
+};
+
+struct HLT1LepSFs : LeptonSFs
+{
+private:
+    double getMUO(std::string variation, double pt, double eta) 
+    { 
+        NanoSFsUL::assertYear();
+        eta = std::min(fabs(eta), 2.3999);
+        pt = std::max(pt, 26.);
+
+        return muon_sfs->evaluate({year_str+"_UL", eta, pt, variation});
+    };
+public:
+    SFHist* elec_sfs;
+    correction::Correction::Ref muon_sfs;
+    std::string year_str;
+
+    HLT1LepSFs() { /* Do nothing */ };
+
+    void init(TString file_name)
+    {
+        NanoSFsUL::init(file_name);
+
+        // Note: the gzipped JSONs in cvmfs can only be read by correctionlib v2.1.x
+        std::string json_path = "data/pog_jsons/MUO";
+        std::string root_path = "data/hlt_sfs";
+        std::string sfs_name;
+        switch (campaign)
+        {
+        case (RunIISummer20UL16APV):
+            json_path += "/2016preVFP_UL/muon_Z.json";
+            root_path += "/electron_hlt_sfs_2016.root";
+            sfs_name = "NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight";
+            year_str = "2016preVFP";
+            break;
+        case (RunIISummer20UL16):
+            json_path += "/2016postVFP_UL/muon_Z.json";
+            root_path += "/electron_hlt_sfs_2016.root";
+            sfs_name = "NUM_IsoMu24_or_IsoTkMu24_DEN_CutBasedIdTight_and_PFIsoTight";
+            year_str = "2016postVFP";
+            break;
+        case (RunIISummer20UL17):
+            json_path += "/2017_UL/muon_Z.json";
+            root_path += "/electron_hlt_sfs_2017.root";
+            sfs_name = "NUM_IsoMu27_DEN_CutBasedIdTight_and_PFIsoTight";
+            year_str = "2017";
+            break;
+        case (RunIISummer20UL18):
+            json_path += "/2018_UL/muon_Z.json";
+            root_path += "/electron_hlt_sfs_2018.root";
+            sfs_name = "NUM_IsoMu24_DEN_CutBasedIdTight_and_PFIsoTight";
+            year_str = "2018";
+            break;
+        default:
+            return;
+            break;
+        };
+        auto cset = correction::CorrectionSet::from_file(json_path);
+
+        elec_sfs = new SFHist(root_path, "EGamma_SF2D");
+        muon_sfs = cset->at(sfs_name);
+    };
+
+    double getElecSF(double pt, double eta) { return elec_sfs->getSF(eta, pt); };
+
+    double getElecErrUp(double pt, double eta) { return elec_sfs->getErr(eta, pt); };
+
+    double getElecErrDn(double pt, double eta) { return elec_sfs->getErr(eta, pt); };
+
+    double getMuonSF(double pt, double eta) { return getMUO("sf", pt, eta); };
+
+    double getMuonErrUp(double pt, double eta) { return getMUO("systup", pt, eta); };
+
+    double getMuonErrDn(double pt, double eta) { return getMUO("systdown", pt, eta); };
 };
 
 #endif
