@@ -131,7 +131,7 @@ public:
     {
         unsigned int abs_lep_pdgID = abs(arbol.getLeaf<int>("lep_pdgID"));
         bool passed = passesLepTriggers(abs_lep_pdgID);
-        if (!nt.isData() && passed)
+        if (!nt.isData() && hlt_sfs != nullptr && passed)
         {
             double pt = arbol.getLeaf<double>("lep_pt");
             double eta = arbol.getLeaf<double>("lep_eta");
@@ -225,7 +225,6 @@ public:
 
         // Store the fatjet
         globals.setVal<LorentzVector>("hbbjet_p4", best_hbbjet_p4);
-
         arbol.setLeaf<int>("n_hbbjet_genbquarks", n_hbbjet_genbquarks);
         arbol.setLeaf<double>("hbbjet_score", best_hbbjet_score);
         arbol.setLeaf<double>("hbbjet_pt", best_hbbjet_p4.pt());
@@ -264,7 +263,7 @@ public:
 
     bool isOverlap(int jet_i, LorentzVector jet_p4)
     {
-        return overlapsLepton(jet_i, jet_p4) or overlapsHbbJet(jet_p4);
+        return overlapsLepton(jet_i, jet_p4) || overlapsHbbJet(jet_p4);
     };
 };
 
@@ -568,7 +567,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(lep_pt_gt40, lep_triggers, Right);
 
         // Fat jet selection
-        Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this);
+        Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this, jes);
         cutflow.insert(lep_triggers, select_fatjets, Right);
 
         // Geq1FatJet
