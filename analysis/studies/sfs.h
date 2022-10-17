@@ -414,27 +414,7 @@ private:
 
         if (wp != "") { working_point = wp; }
 
-        double sf = elec_sfs->evaluate({year_str, variation, working_point, eta, pt});
-        if (variation == "sf")
-        {
-            return sf;
-        }
-        else
-        {
-            double central_sf = elec_sfs->evaluate({year_str, "sf", working_point, eta, pt});
-            if (variation == "sfup")
-            {
-                return (sf - central_sf)/central_sf;
-            }
-            else if (variation == "sfdown")
-            {
-                return (central_sf - sf)/central_sf;
-            }
-            else
-            {
-                return 1.;
-            }
-        }
+        return elec_sfs->evaluate({year_str, variation, working_point, eta, pt});
     };
 
     double getMUO(std::string variation, double pt, double eta, bool iso = false) 
@@ -456,27 +436,7 @@ private:
             break;
         }
 
-        double sf = muon_sfs->evaluate({year_str+"_UL", eta, pt, variation});
-        if (variation == "sf")
-        {
-            return sf;
-        }
-        else
-        {
-            double central_sf = muon_sfs->evaluate({year_str+"_UL", eta, pt, "sf"});
-            if (variation == "systup")
-            {
-                return (sf - central_sf)/central_sf;
-            }
-            else if (variation == "systdown")
-            {
-                return (central_sf - sf)/central_sf;
-            }
-            else
-            {
-                return 1.;
-            }
-        }
+        return muon_sfs->evaluate({year_str+"_UL", eta, pt, variation});
     };
 public:
     correction::Correction::Ref elec_sfs;
