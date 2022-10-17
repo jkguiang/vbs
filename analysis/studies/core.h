@@ -414,23 +414,24 @@ public:
             // Subtract uncorrected jet pt
             met_x -= jet_p4.px();
             met_y -= jet_p4.py();
-            // Apply JECs/JERs
+            // Apply JECs
             if (jes != nullptr)
             {
-                if (!nt.isData())
-                {
-                    jet_p4 = jes->applyJER(
-                        jer_seed, 
-                        jet_p4, 
-                        nt.fixedGridRhoFastjetAll(), 
-                        nt.GenJet_p4()
-                    );
-                }
-                jet_p4 = jes->applyJEC(jet_p4);
+                jet_p4 = jes->applyAK4JEC(jet_p4);
             }
             // Add corrected jet pt
             met_x += jet_p4.px();
             met_y += jet_p4.py();
+            // Apply JERs
+            if (!nt.isData() && jes != nullptr)
+            {
+                jet_p4 = jes->applyJER(
+                    jer_seed, 
+                    jet_p4, 
+                    nt.fixedGridRhoFastjetAll(), 
+                    nt.GenJet_p4()
+                );
+            }
             // Select good jets
             if (!isGoodJet(jet_i, jet_p4)) { continue; }
             if (isOverlap(jet_i, jet_p4)) { continue; }
@@ -520,19 +521,22 @@ public:
 class SelectFatJets : public AnalysisCut
 {
 public:
-    SelectFatJets(std::string name, Analysis& analysis) : AnalysisCut(name, analysis) 
+    JetEnergyScales* jes;
+
+    SelectFatJets(std::string name, Analysis& analysis, JetEnergyScales* jes = nullptr) 
+    : AnalysisCut(name, analysis) 
     {
-        // Do nothing
+        this->jes = jes;
     };
 
-    bool isGoodFatJet(int fatjet_i)
+    bool isGoodFatJet(int fatjet_i, LorentzVector fatjet_p4)
     {
-        if (nt.FatJet_pt().at(fatjet_i) <= 250) { return false; }
-        if (nt.FatJet_mass().at(fatjet_i) <= 50) { return false; }
+        if (fatjet_p4.pt() <= 300) { return false; }
+        if (fabs(fatjet_p4.eta()) >= 2.5) { return false; }
+        if (fatjet_p4.mass() <= 50) { return false; }
         if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { return false; }
-        if (fabs(nt.FatJet_eta().at(fatjet_i)) >= 2.5) { return false; }
         return true;
-    }
+    };
 
     bool evaluate()
     {
@@ -545,10 +549,16 @@ public:
         LorentzVectors veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
         for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
-            // Basic requirements
-            if (!isGoodFatJet(fatjet_i)) { continue; }
-            // Remove lepton overlap
             LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
+            if (jes != nullptr)
+            {
+                fatjet_p4 = jes->applyAK8JEC(fatjet_p4);
+            }
+
+            // Basic requirements
+            if (!isGoodFatJet(fatjet_i, fatjet_p4)) { continue; }
+
+            // Remove lepton overlap
             bool is_overlap = false;
             for (auto& lep_p4 : veto_lep_p4s)
             {
