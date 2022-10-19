@@ -461,6 +461,17 @@ public:
         arbol.setLeaf<double>("ST_up", arbol.getLeaf<double>("LT_up") + arbol.getLeaf<double>("hbbjet_pt"));
         arbol.setLeaf<double>("LT_dn", arbol.getLeaf<double>("lep_pt") + arbol.getLeaf<double>("MET_dn"));
         arbol.setLeaf<double>("ST_dn", arbol.getLeaf<double>("LT_dn") + arbol.getLeaf<double>("hbbjet_pt"));
+
+        if (!nt.isData() && nt.nLHEPdfWeight() == 103) // PDF-dependent; this is fine for VBSWH signal
+        {
+            arbol.setLeaf<double>("alphaS_up", nt.LHEPdfWeight().at(101));
+            arbol.setLeaf<double>("alphaS_dn", nt.LHEPdfWeight().at(102));
+        }
+        else
+        {
+            arbol.setLeaf<double>("alphaS_up", 1.);
+            arbol.setLeaf<double>("alphaS_dn", 1.);
+        }
         return true;
     };
 };
@@ -526,6 +537,8 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("trig_sf", -999);
         arbol.newBranch<double>("trig_sf_up", -999);
         arbol.newBranch<double>("trig_sf_dn", -999);
+        arbol.newBranch<double>("alphaS_up", -999);
+        arbol.newBranch<double>("alphaS_dn", -999);
     };
 
     virtual void initCorrections()
