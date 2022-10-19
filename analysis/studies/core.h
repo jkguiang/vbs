@@ -713,6 +713,8 @@ public:
 
     bool evaluate()
     {
+        if (nt.isData()) { return true; }
+
         /* From Events->GetListOfBranches()->ls("LHEScaleWeight*"):
            OBJ: TBranch   LHEScaleWeight  LHE scale variation weights (w_var / w_nominal); 
             [0] is MUF="0.5" MUR="0.5"; 
@@ -725,7 +727,6 @@ public:
             [7] is MUF="1.0" MUR="2.0"; 
             [8] is MUF="2.0" MUR="2.0"
         */
-        if (nt.isData()) { return true; }
         if (nt.nLHEScaleWeight() == 9)
         {
             std::vector<float> scale_weights = nt.LHEScaleWeight();
@@ -752,6 +753,7 @@ public:
             arbol.setLeaf<float>("lhe_muF1p0_muR2p0", 1.);
             arbol.setLeaf<float>("lhe_muF2p0_muR2p0", 1.);
         }
+
         /* From Events->GetListOfBranches()->ls("PSWeight*"):
            OBJ: TBranch   PSWeight    PS weights (w_var / w_nominal);   
             [0] is ISR=2 FSR=1; 
