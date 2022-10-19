@@ -24,8 +24,10 @@ int main(int argc, char** argv)
     // Initialize Looper
     Looper looper = Looper(cli);
 
-    // Initialize Arbol
+    // Initialize main Arbol
     Arbol arbol = Arbol(cli);
+
+    // Initialize Arbol for PDF variations
     Arbol pdf_arbol = Arbol(
         cli.output_dir+"/"+cli.output_name+"_pdf.root",
         "pdf_"+cli.output_ttree
@@ -68,7 +70,7 @@ int main(int argc, char** argv)
             for (int i = 1; i < 101; ++i)
             {
                 TString branch_name = "lhe_pdf_"+std::to_string(i);
-                if (nt.nLHEPdfWeight() > 100)
+                if (nt.nLHEPdfWeight() == 103)
                 {
                     pdf_arbol.setLeaf<double>(branch_name, nt.LHEPdfWeight().at(i));
                 }
