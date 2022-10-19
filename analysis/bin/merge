@@ -56,6 +56,12 @@ BKG_SAMPLE_MAP = {
         "2016postVFP": ["*HToBB*", "VHToNonbb_M125"],
         "2017": ["*HToBB*", "VHToNonbb_M125"],
         "2018": ["*HToBB*", "VHToNonbb_M125"]
+    },
+    "VBSWH_SM": {
+        "2016preVFP": ["VBFWH_HToBB*"],
+        "2016postVFP": ["VBFWH_HToBB*"],
+        "2017": ["VBFWH_HToBB*"],
+        "2018": ["VBFWH_HToBB*"]
     }
 }
 
@@ -65,12 +71,6 @@ SIG_SAMPLE_MAP = {
         "2016postVFP": ["VBSWH_mkW_Inclusive"],
         "2017": ["VBSWH_mkW_Inclusive"],
         "2018": ["VBSWH_mkW_Inclusive"]
-    },
-    "VBSWH_SM": {
-        "2016preVFP": ["VBFWH_HToBB*"],
-        "2016postVFP": ["VBFWH_HToBB*"],
-        "2017": ["VBFWH_HToBB*"],
-        "2018": ["VBFWH_HToBB*"]
     }
 }
 
@@ -162,7 +162,7 @@ if __name__ == "__main__":
     cutflows["TotalBkg"] = cutflows.sum()
     # Get Cutflow objects for signal samples
     cutflows += merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
-    cutflows.reorder(["VH", "EWKWLep", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW", "VBSWH_SM"])
+    cutflows.reorder(["VBSWH_SM", "VH", "EWKWLep", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
 
     # Write .cflow files
     for group_name, cutflow in cutflows.items():
