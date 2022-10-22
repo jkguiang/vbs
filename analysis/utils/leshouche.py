@@ -183,3 +183,8 @@ def __lhe_to_uproot_events(events, jagged_branches=[]):
         else:
             events[branch] = np.array(leaves)
     return events
+
+if __name__ == "__main__":
+    for lhe_file in sys.argv[1:]:
+        print(f"Converting {lhe_file} to {lhe_file.replace('.lhe', '.root')}")
+        lhe_to_root(lhe_file)
