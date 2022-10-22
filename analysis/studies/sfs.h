@@ -805,9 +805,9 @@ public:
 
     double getElecSF(double pt, double eta) { return elec_sfs->getSF(eta, pt); };
 
-    double getElecErrUp(double pt, double eta) { return elec_sfs->getErr(eta, pt); };
+    double getElecErrUp(double pt, double eta) { return getElecSF(pt, eta) + elec_sfs->getErr(eta, pt); };
 
-    double getElecErrDn(double pt, double eta) { return elec_sfs->getErr(eta, pt); };
+    double getElecErrDn(double pt, double eta) { return getElecSF(pt, eta) - elec_sfs->getErr(eta, pt); };
 
     double getMuonSF(double pt, double eta) { return getMUO("sf", pt, eta); };
 

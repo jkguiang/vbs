@@ -135,20 +135,17 @@ public:
         {
             double pt = arbol.getLeaf<double>("lep_pt");
             double eta = arbol.getLeaf<double>("lep_eta");
-            double hlt_sf = 1.;
             switch (abs_lep_pdgID)
             {
             case (11):
-                hlt_sf = hlt_sfs->getElecSF(pt, eta);
-                arbol.setLeaf<double>("trig_sf", hlt_sf);
-                arbol.setLeaf<double>("trig_sf_up", hlt_sf + hlt_sfs->getElecErrUp(pt, eta));
-                arbol.setLeaf<double>("trig_sf_dn", hlt_sf - hlt_sfs->getElecErrDn(pt, eta));
+                arbol.setLeaf<double>("trig_sf", hlt_sfs->getElecSF(pt, eta));
+                arbol.setLeaf<double>("trig_sf_up", hlt_sfs->getElecErrUp(pt, eta));
+                arbol.setLeaf<double>("trig_sf_dn", hlt_sfs->getElecErrDn(pt, eta));
                 break;
             case (13):
-                hlt_sf = hlt_sfs->getMuonSF(pt, eta);
-                arbol.setLeaf<double>("trig_sf", hlt_sf);
-                arbol.setLeaf<double>("trig_sf_up", hlt_sf + hlt_sfs->getMuonErrUp(pt, eta));
-                arbol.setLeaf<double>("trig_sf_dn", hlt_sf - hlt_sfs->getMuonErrDn(pt, eta));
+                arbol.setLeaf<double>("trig_sf", hlt_sfs->getMuonSF(pt, eta));
+                arbol.setLeaf<double>("trig_sf_up", hlt_sfs->getMuonErrUp(pt, eta));
+                arbol.setLeaf<double>("trig_sf_dn", hlt_sfs->getMuonErrDn(pt, eta));
                 break;
             default:
                 break;
