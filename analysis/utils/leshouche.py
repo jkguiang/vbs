@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
 import argparse
 import json
+import glob
 import sys
 import numpy as np
 import tqdm
@@ -122,7 +123,8 @@ class LesHouche:
                             event[key] = []
                         event[key].append(typ(item))
                 # Extract event weights
-                for wgt_elem in xml_elem.find("rwgt"):
+                wgt_elems = xml_elem.find("rwgt") or []
+                for wgt_elem in wgt_elems:
                     for wgt_name in self.event_schema["weights"]:
                         if wgt_name in wgt_elem.attrib["id"]:
                             if wgt_name not in event:
