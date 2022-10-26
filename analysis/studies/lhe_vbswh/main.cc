@@ -44,6 +44,10 @@ int main(int argc, char** argv)
     arbol.newBranch<double>("deta_jj", -999);
     arbol.newBranch<double>("ST", -999);
 
+    // Other trees
+    TList* beam_ttrees = new TList();
+    TList* processes_ttrees = new TList();
+
     // Initialize Cutflow
     Cutflow cutflow = Cutflow();
 
@@ -132,7 +136,17 @@ int main(int argc, char** argv)
 
     // Run looper
     looper.run(
-        [&](TTree* ttree) { lhe.Init(ttree); },
+        [&](TTree* ttree) 
+        { 
+            lhe.Init(ttree); 
+            // Store metadata ttree
+            TTree* beam_ttree = ((TTree*)ttree->GetCurrentFile()->Get("Beam"))->CloneTree();
+            beam_ttree->SetDirectory(0);
+            beam_ttrees->Add(beam_ttree);
+            TTree* processes_ttree = ((TTree*)ttree->GetCurrentFile()->Get("Processes"))->CloneTree();
+            processes_ttree->SetDirectory(0);
+            processes_ttrees->Add(processes_ttree);
+        },
         [&](int entry) 
         {
             lhe.GetEntry(entry);
@@ -147,8 +161,16 @@ int main(int argc, char** argv)
     );
 
     // Wrap up
+    TTree* merged_beam_ttrees = TTree::MergeTrees(beam_ttrees);
+    merged_beam_ttrees->SetName("Beam");
+    TTree* merged_processes_ttrees = TTree::MergeTrees(processes_ttrees);
+    merged_processes_ttrees->SetName("Processes");
+
     cutflow.print();
-    cutflow.writeCSV(cli.output_dir);
+
+    arbol.tfile->cd();
+    merged_beam_ttrees->Write();
+    merged_processes_ttrees->Write();
     arbol.write();
     return 0;
 }
