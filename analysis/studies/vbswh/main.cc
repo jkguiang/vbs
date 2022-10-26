@@ -32,7 +32,7 @@ int main(int argc, char** argv)
         cli.output_dir+"/"+cli.output_name+"_pdf.root",
         "pdf_"+cli.output_ttree
     );
-    for (int i = 1; i < 101; ++i)
+    for (int i = 0; i < 101; ++i)
     {
         pdf_arbol.newBranch<double>("lhe_pdf_"+std::to_string(i), -999);
     }
@@ -67,7 +67,7 @@ int main(int argc, char** argv)
         [&]()
         {
             if (nt.isData()) { return true; }
-            for (int i = 1; i < 101; ++i)
+            for (int i = 0; i < 101; ++i)
             {
                 TString branch_name = "lhe_pdf_"+std::to_string(i);
                 if (nt.nLHEPdfWeight() == 103)
