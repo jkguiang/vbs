@@ -7,7 +7,10 @@ import yahist
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 
-def plot_r_vs_2deltaLogL(combine_root_file, output_file="result.pdf"):
+def plot_r_vs_m2deltaLogL(combine_root_file, output_file="result.pdf"):
+    """
+    Plot profile likelihood ratio as a function of the signal strength (r)
+    """
     with uproot.open(combine_root_file) as f:
         points = f.get("limit").arrays(["r", "deltaNLL"], library="np")
         points["deltaNLL"] *= 2
@@ -48,7 +51,7 @@ def plot_r_vs_2deltaLogL(combine_root_file, output_file="result.pdf"):
         fig.savefig(output_file, bbox_inches="tight")
 
 if __name__ == "__main__":
-    plot_r_vs_2deltaLogL(
+    plot_r_vs_m2deltaLogL(
         "higgsCombineTest.MultiDimFit.mH125.root", 
-        output_file="/home/users/jguiang/public_html/vbswh_plots/limits/r_vs_2deltaLogL.pdf"
+        output_file="/home/users/jguiang/public_html/vbswh_plots/limits/r_vs_m2deltaLogL.pdf"
     )
