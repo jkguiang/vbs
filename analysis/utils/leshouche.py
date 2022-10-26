@@ -9,18 +9,35 @@ import uproot
 
 class LesHouche:
     """
-    Reads LHE (Les Houche) file and streams relevant XML elements.
+    Reads LHE (Les Houche) file and streams relevant XML elements. The schema that this 
+    function obeys is described below.
 
-    Follows this schema for reading header information:
-    <header>
-    ...
-    <MGGenerationInfo>
-    #  Number of Events        :  500
-    #  Integrated weight (pb)  :  XSEC
-    </MGGenerationInfo>
-    </header>
+    Follows this schema for reading the User Process (UP) Run common block:
+    ```
+    <init>
+    IDBMUP_1 IDBMUP_2 EBMUP_1 EBMUP_2 PDFGUP_1 PDFGUP_2 PDFSUP_1 PDFSUP_2 IDWTUP NPRUP 
+      XSECUP_1 XERRUP_1 XMAXUP_1 LPRUP_1 
+      XSECUP_2 XERRUP_2 XMAXUP_2 LPRUP_2
+      ...
+      XSECUP_J XERRUP_J XMAXUP_J LPRUP_J 
+    </init>
+    ```
+    - Line items (left to right):
+        - IDBMUP: (int) ID of beam particle according to the Particle Data Group (PDG)
+                  convention
+        - EBMUP: (float) energy in GeV of beam particle
+        - PDFGUP: (int) the author group for the beam according to the Cernlib PDFlib
+        - PDFSUP: (int) the PDF set for the beam according to the Cernlib PDFlib
+        - IDWTUP: (int) master switch dictating how the event weights (XWGTUP) are 
+                  interpreted; values are described in the "gory details" link
+        - NPRUP: (int) the number of different user subprocesses
+        - XSECUP: (float) the XSEC for the process in picobarns (for NPRUP processes)
+        - XERRUP: (float) the statistical error associated with XSECUP
+        - XMAXUP: (float) the maximum XWGTUP for the process
+        - LPRUP: (int) a listing of all user process IDs that can appear in IDPRUP of 
+                 HEPEUP for this run
 
-    Follows this schema for reading event-level information:
+    Follows this schema for reading the UP Event common block:
     ```
     <event>
     COMMON LINE
@@ -31,29 +48,34 @@ class LesHouche:
     </event>
     ```
     - Common line items (left to right):
-        NUP: (int) number of particle entries in this event
-        IDPRUP: (int) ID of the process for this event
-        XWGUP: (float) event weight
-        SCALUP: (float) scale of the event in GeV, as used for calculation of PDFs
-        AQEDUP: (float) the QED coupling α_QED used for this event (e.g. 1/128)
-        AQCDUP: (float) the QCD coupling α_QCD used for this event
+        - NUP: (int) number of particle entries in this event
+        - IDPRUP: (int) ID of the process for this event
+        - XWGUP: (float) event weight
+        - SCALUP: (float) scale of the event in GeV, as used for calculation of PDFs
+        - AQEDUP: (float) the QED coupling α_QED used for this event (e.g. 1/128)
+        - AQCDUP: (float) the QCD coupling α_QCD used for this event
     - Particle line items (left to right):
-        IDUP: (int) particle ID according to PDG convention
-        ISTUP: (int) status code (e.g. incoming = +1, outgoing = -1)
-        MOTHUP1: (int) index of first mother
-        MOTHUP2: (int) index of last mother
-        ICOLUP1: (int) integer tag for the color flow line passing through the color 
-            of the particle
-        ICOLUP2: (int) integer tag for the color flow line passing through the anti-
-            color of the particle
-        P_X: (float) x-component of lab frame 3-momentum of the particle
-        P_Y: (float) y-component of lab frame 3-momentum of the particle
-        P_Z: (float) z-component of lab frame 3-momentum of the particle
-        E: (float) Energy-component of lab frame 4-momentum of the particle
-        M: (float) the 'generated mass' of the particle
-        VTIMUP: (float) invariant lifetime cτ in mm (distance from production to decay)
-        SPINUP: (float) cosine of the angle between the spin-vector of particle and the 
-            3-momentum of the decaying particle, specified in the lab frame
+        - IDUP: (int) particle ID according to PDG convention
+        - ISTUP: (int) status code (e.g. incoming = +1, outgoing = -1)
+        - MOTHUP1: (int) index of first mother
+        - MOTHUP2: (int) index of last mother
+        - ICOLUP1: (int) integer tag for the color flow line passing through the color 
+                   of the particle
+        - ICOLUP2: (int) integer tag for the color flow line passing through the anti-
+                  color of the particle
+        - P_X: (float) x-component of lab frame 3-momentum of the particle
+        - P_Y: (float) y-component of lab frame 3-momentum of the particle
+        - P_Z: (float) z-component of lab frame 3-momentum of the particle
+        - E: (float) Energy-component of lab frame 4-momentum of the particle
+        - M: (float) the 'generated mass' of the particle
+        - VTIMUP: (float) invariant lifetime cτ in mm (distance from production to 
+                  decay)
+        - SPINUP: (float) cosine of the angle between the spin-vector of particle and 
+                  the 3-momentum of the decaying particle, specified in the lab frame
+    
+    Official documentation of this schema: 
+        - File structure: https://arxiv.org/pdf/hep-ph/0609017.pdf
+        - Gory details: https://arxiv.org/pdf/hep-ph/0109068.pdf
     """
     def __init__(self, lhe_file):
         major, minor, patch = uproot.__version__.split(".")
@@ -65,7 +87,17 @@ class LesHouche:
         self.lhe_file = lhe_file
         self.xml_root = None
         self.xml_context = None
-        self.header = {}
+        self.run = {}
+        self.run_schema = {
+            "beam": [
+                ("IDBMUP_1", int), ("IDBMUP_2", int), ("EBMUP_1", float), ("EBMUP_2", float),
+                ("PDFGUP_1", int), ("PDFGUP_2", int), ("PDFSUP_1", int), ("PDFSUP_2", int),
+                ("IDWTUP", int), ("NPRUP", int)
+            ],
+            "processes": [
+                ("XSECUP", float), ("XERRUP", float), ("XMAXUP", float), ("LPRUP", int)
+            ]
+        }
         self.event_schema = {
             "common": [
                 ("NUP", int), ("IDPRUP", int), ("XWGUP", float),
@@ -89,16 +121,27 @@ class LesHouche:
     def __exit__(self, exc_type, exc_value, traceback):
         self.close()
 
+    def __get_lines(self, text):
+        return list(filter(None, text.split("\n")))
+
+    def __get_items(self, line):
+        return list(filter(None, line.split()))
+
     def open(self):
         self.xml_context = ET.iterparse(self.lhe_file)
         xml_evt, self.xml_root = next(self.xml_context)
         for xml_evt, xml_elem in self.xml_context:
-            if xml_elem.tag == "header":
-                # Extract cross section (xsec)
-                madgraph_info = xml_elem.find("MGGenerationInfo")
-                lines = self.__get_lines(madgraph_info.text)
-                if "Integrated weight (pb)" in lines[-1]:
-                    self.header["XSEC"] = float(lines[-1].split(":")[-1])
+            if xml_elem.tag == "init":
+                beam_line, *process_lines = self.__get_lines(xml_elem.text)
+                for item_i, item in enumerate(self.__get_items(beam_line)):
+                    key, typ = self.run_schema["beam"][item_i]
+                    self.run[key] = typ(item)
+                for process_line in process_lines:
+                    for item_i, item in enumerate(self.__get_items(process_line)):
+                        key, typ = self.run_schema["processes"][item_i]
+                        if key not in self.run:
+                            self.run[key] = []
+                        self.run[key].append(typ(item))
                 xml_elem.clear()
                 break
 
@@ -113,11 +156,11 @@ class LesHouche:
                 common_line, *particle_lines = self.__get_lines(xml_elem.text)
                 event = {}
                 # Extract event information
-                for item_i, item in enumerate(common_line.split()):
+                for item_i, item in enumerate(self.__get_items(common_line)):
                     key, typ = self.event_schema["common"][item_i]
                     event[key] = typ(item)
                 for particle_line in particle_lines:
-                    for item_i, item in enumerate(particle_line.split()):
+                    for item_i, item in enumerate(self.__get_items(particle_line)):
                         key, typ = self.event_schema["particles"][item_i]
                         if key not in event:
                             event[key] = []
@@ -132,9 +175,6 @@ class LesHouche:
                             event[wgt_name].append(float(wgt_elem.text))
                 xml_elem.clear()
                 yield event
-
-    def __get_lines(self, text):
-        return list(filter(None, text.split("\n")))
 
 def lhe_to_json(lhe_file):
     with LesHouche(lhe_file) as lhe:
@@ -172,11 +212,11 @@ def lhe_to_root(lhe_file, basket_nbytes=100000):
             # Pick up remaining events
             events = __lhe_to_uproot_events(events, jagged_branches=particle_branches)
             root_file["Events"].extend(events)
-            # Convert header dict into a dict of lists
-            header = {
-                k: [v] if type(v) != list else v for k, v in lhe.header.items()
+            # Convert run dict into a dict of lists
+            run = {
+                k: [v] if type(v) != list else v for k, v in lhe.run.items()
             }
-            root_file["Header"] = header
+            root_file["Run"] = run
 
 def __lhe_to_uproot_events(events, jagged_branches=[]):
     for branch, leaves in events.items():
