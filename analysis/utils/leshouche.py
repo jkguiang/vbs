@@ -87,7 +87,8 @@ class LesHouche:
         self.lhe_file = lhe_file
         self.xml_root = None
         self.xml_context = None
-        self.run = {}
+        self.beam = {}
+        self.processes = {}
         self.run_schema = {
             "beam": [
                 ("IDBMUP_1", int), ("IDBMUP_2", int), ("EBMUP_1", float), ("EBMUP_2", float),
@@ -133,15 +134,18 @@ class LesHouche:
         for xml_evt, xml_elem in self.xml_context:
             if xml_elem.tag == "init":
                 beam_line, *process_lines = self.__get_lines(xml_elem.text)
+                # Extract beam information
                 for item_i, item in enumerate(self.__get_items(beam_line)):
                     key, typ = self.run_schema["beam"][item_i]
-                    self.run[key] = typ(item)
+                    self.beam[key] = [typ(item)]
+                # Extract process information
                 for process_line in process_lines:
                     for item_i, item in enumerate(self.__get_items(process_line)):
                         key, typ = self.run_schema["processes"][item_i]
-                        if key not in self.run:
-                            self.run[key] = []
-                        self.run[key].append(typ(item))
+                        if key not in self.processes:
+                            self.processes[key] = []
+                        self.processes[key].append(typ(item))
+
                 xml_elem.clear()
                 break
 
@@ -212,11 +216,9 @@ def lhe_to_root(lhe_file, basket_nbytes=100000):
             # Pick up remaining events
             events = __lhe_to_uproot_events(events, jagged_branches=particle_branches)
             root_file["Events"].extend(events)
-            # Convert run dict into a dict of lists
-            run = {
-                k: [v] if type(v) != list else v for k, v in lhe.run.items()
-            }
-            root_file["Run"] = run
+            # Write metadata TTrees
+            root_file["Beam"] = lhe.beam
+            root_file["Processes"] = lhe.processes
 
 def __lhe_to_uproot_events(events, jagged_branches=[]):
     for branch, leaves in events.items():
