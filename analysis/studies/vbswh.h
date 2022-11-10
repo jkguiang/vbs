@@ -78,7 +78,6 @@ public:
         case (2016):
             try { passed = (passed || nt.HLT_Ele27_WPTight_Gsf()); }
             catch (const runtime_error& error) { /* Do nothing */ }
-            passed = (passed || passesMuonTriggers());
             break;
         case (2017):
             try { passed = (passed || nt.HLT_Ele32_WPTight_Gsf_L1DoubleEG()); }
@@ -89,13 +88,14 @@ public:
             catch (const runtime_error& error) { /* Do nothing */ }
             break;
         }
-        return passed;
+        return (passed && !passesMuonTriggers());
     };
 
     bool passesLepTriggers(unsigned int abs_lep_pdgID)
     {
         if (!nt.isData()) 
         { 
+            /* This is what was done for SS, but PKU does what is implemented below
             switch (abs_lep_pdgID)
             {
             case (11):
@@ -108,6 +108,8 @@ public:
                 return true;
                 break;
             }
+            */
+            return (passesMuonTriggers() || passesElecTriggers());
         }
         else
         {
