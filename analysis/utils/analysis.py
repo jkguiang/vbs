@@ -252,9 +252,8 @@ class Optimization(PandasAnalysis):
 
     def plot_correlation(self, column, bins, base_selection=None, selections=None, x_label="", 
                          logy=False, norm=True, transf=lambda x: x):
-
-        fig = plt.figure(figsize=(6.4*1.5, 4.8*1.25*1.5))
-        gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.1)
+        fig = plt.figure()
+        gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
         hist_axes = fig.add_subplot(gs[0])
         ratio_axes = fig.add_subplot(gs[1])
 
@@ -286,22 +285,26 @@ class Optimization(PandasAnalysis):
 
             numer.plot(ax=hist_axes, label=f"after {selection}")
             (numer/denom).plot(ax=ratio_axes, errors=True)
+            
+        hep.cms.label(
+            "Preliminary",
+            data=False,
+            lumi=138,
+            loc=0,
+            ax=hist_axes,
+        )
 
-        hist_axes.xaxis.set_minor_locator(AutoMinorLocator())
-        hist_axes.yaxis.set_minor_locator(AutoMinorLocator())
-        hist_axes.legend(fontsize=16)
-        hist_axes.set_xmargin(0)
+        hist_axes.legend(fontsize=14)
         if norm:
-            hist_axes.set_ylabel("a.u.", size=18)
+            hist_axes.set_ylabel("a.u.")
         else:
-            hist_axes.set_ylabel("Events", size=18)
+            hist_axes.set_ylabel("Events")
 
-        ratio_axes.xaxis.set_minor_locator(AutoMinorLocator())
-        ratio_axes.yaxis.set_minor_locator(AutoMinorLocator())
+        hist_axes.set_xticklabels([])
         ratio_axes.axhline(y=1, color="k", linestyle="--", alpha=0.75, linewidth=0.75)
-        ratio_axes.set_xlabel(x_label, size=18)
-        ratio_axes.set_ylabel("after/before", size=18)
-        ratio_axes.set_ylim([0.5, 2.0])
+        ratio_axes.set_xlabel(x_label)
+        ratio_axes.set_ylabel("after/before")
+        ratio_axes.set_ylim([0, 2.0])
 
         if self.plots_dir:
             plot_file = f"{self.plots_dir}/{column}_correlations.pdf"
@@ -319,7 +322,7 @@ class Optimization(PandasAnalysis):
     def plot_sig_vs_bkg(self, column, bins, selection="", transf=lambda x: x, raw=False, 
                         x_label="", logy=False, axes=None, norm=False, stacked=False):
         if not axes:
-            fig, axes = plt.subplots(figsize=(12, 9))
+            fig, axes = plt.subplots()
 
         bkg_df = self.bkg_df(selection=selection)
         sig_df = self.sig_df(selection=selection)
@@ -372,19 +375,25 @@ class Optimization(PandasAnalysis):
             yahist.utils.plot_stack(bkg_hists, ax=axes, histtype="stepfilled", log=logy)
         bkg_hist.plot(ax=axes, alpha=0.5, log=logy)
         sig_hist.plot(ax=axes, linewidth=2, log=logy)
+
+        hep.cms.label(
+            "Preliminary",
+            data=False,
+            lumi=138,
+            loc=0,
+            ax=axes,
+        )
         
-        axes.xaxis.set_minor_locator(AutoMinorLocator())
-        axes.yaxis.set_minor_locator(AutoMinorLocator())
-        axes.set_xlabel(x_label, size=18)
+        axes.set_xlabel(x_label)
         axes.set_ylim(bottom=0)
         if stacked:
             axes.legend(fontsize=14)
         else:
-            axes.legend(fontsize=16)
+            axes.legend()
         if norm:
-            axes.set_ylabel("a.u.", size=18)
+            axes.set_ylabel("a.u.")
         else:
-            axes.set_ylabel("Events", size=18)
+            axes.set_ylabel("Events")
 
         if self.plots_dir:
             plot_file = f"{self.plots_dir}/{column}_sig_vs_bkg.pdf"
