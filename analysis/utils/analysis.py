@@ -7,6 +7,8 @@ from matplotlib import gridspec
 from matplotlib.ticker import AutoMinorLocator
 from tqdm import tqdm
 import yahist
+import mplhep as hep
+plt.style.use(hep.style.CMS)
 
 from utils.cutflow import Cut, Cutflow, CutflowCollection
 
@@ -302,15 +304,15 @@ class Optimization(PandasAnalysis):
         ratio_axes.set_ylim([0.5, 2.0])
 
         if self.plots_dir:
-            plot_file = f"{self.plots_dir}/{column}_correlations.png"
-            with open(plot_file.replace("png", "txt"), "w") as plot_txt:
+            plot_file = f"{self.plots_dir}/{column}_correlations.pdf"
+            with open(plot_file.replace("pdf", "txt"), "w") as plot_txt:
                 if base_selection:
-                    plot_file = plot_file.replace(".png", f"_{PandasAnalysis.get_selection_str(base_selection)}.png")
+                    plot_file = plot_file.replace(".pdf", f"_{PandasAnalysis.get_selection_str(base_selection)}.pdf")
                     plot_txt.write(f"BASE_SELECTION: {base_selection}\n")
                 plot_txt.write("SELECTIONS:\n")
                 plot_txt.write("\n".join(selections))
 
-            plt.savefig(plot_file)
+            plt.savefig(plot_file, bbox_inches="tight")
 
         return hist_axes, ratio_axes
 
@@ -385,17 +387,17 @@ class Optimization(PandasAnalysis):
             axes.set_ylabel("Events", size=18)
 
         if self.plots_dir:
-            plot_file = f"{self.plots_dir}/{column}_sig_vs_bkg.png"
+            plot_file = f"{self.plots_dir}/{column}_sig_vs_bkg.pdf"
             if stacked:
-                plot_file = plot_file.replace(".png", "_stacked.png")
+                plot_file = plot_file.replace(".pdf", "_stacked.pdf")
             if norm:
-                plot_file = plot_file.replace(".png", "_norm.png")
+                plot_file = plot_file.replace(".pdf", "_norm.pdf")
             if selection:
-                plot_file = plot_file.replace(".png", f"_{PandasAnalysis.get_selection_str(selection)}.png")
-                with open(plot_file.replace("png", "txt"), "w") as plot_txt:
+                plot_file = plot_file.replace(".pdf", f"_{PandasAnalysis.get_selection_str(selection)}.pdf")
+                with open(plot_file.replace("pdf", "txt"), "w") as plot_txt:
                     plot_txt.write(f"SELECTION: {selection}")
 
-            plt.savefig(plot_file)
+            plt.savefig(plot_file, bbox_inches="tight")
 
         return axes
 
@@ -441,48 +443,59 @@ class Validation(PandasAnalysis):
         mc_error = self.bkg_error(selection=selection, raw=raw)
         return data_error, mc_error
 
-    def plot_data_vs_mc(self, column, bins, blinded_range=None, selection="", x_label="", logy=False, 
-                        transf=lambda x: x, norm=False, stacked=False):
-
-        fig = plt.figure(figsize=(6.4*1.5, 4.8*1.25*1.5))
-        gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.1)
-        hist_axes = fig.add_subplot(gs[0])
-        ratio_axes = fig.add_subplot(gs[1])
+    def plot_data_vs_mc(self, column, bins, blinded_range=None, blinded_box=True, 
+                        selection="", x_label="", logy=False, transf=lambda x: x, 
+                        norm=False, stacked=False, axes=None, return_hists=False,
+                        legend_loc="best"):
+        if not axes:
+            fig = plt.figure()
+            gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
+            hist_axes = fig.add_subplot(gs[0])
+            ratio_axes = fig.add_subplot(gs[1])
+        else:
+            hist_axes, ratio_axes = axes
 
         if logy:
             hist_axes.set_yscale("log", nonpositive="clip")
 
-        # Get numerator (data) and denominator (bkg MC)
-        denom_df = self.bkg_df(selection=selection)
-        denom = yahist.Hist1D(
-            transf(denom_df[column]),
-            bins=bins, 
-            weights=denom_df.event_weight,
-            label=f"MC [{denom_df.event_weight.sum():0.1f} events]",
+        # Get data (numerator)
+        data_df = self.data_df(selection=selection)
+        if blinded_range and not blinded_box:
+            blind_low, blind_high = blinded_range
+            data_df = data_df.query(f"not ({column} >= {blind_low} and {column} < {blind_high})")
+
+        data_hist = yahist.Hist1D(
+            transf(data_df[column]),
+            bins=bins,
+            weights=data_df.event_weight,
+            label=f"Data [{len(data_df)} events]",
             color="k"
-        );
-        numer_df = self.data_df(selection=selection)
-        numer = yahist.Hist1D(
-            transf(numer_df[column]),
-            bins=bins, 
-            weights=numer_df.event_weight, 
-            label=f"data [{len(numer_df)} events]", 
+        )
+
+        # Get bkg MC (denominator)
+        mc_df = self.bkg_df(selection=selection)
+        mc_hist = yahist.Hist1D(
+            transf(mc_df[column]),
+            bins=bins,
+            weights=mc_df.event_weight,
+            label=f"Total MC [{mc_df.event_weight.sum():0.1f} events]",
             color="k"
-        );
+        )
+
         if norm:
-            numer = numer.normalize()
-            denom = denom.normalize()
+            data_hist = data_hist.normalize()
+            mc_hist = mc_hist.normalize()
 
         # Get stacked backgrounds
         bkg_hists = []
         if stacked:
-            for name in denom_df.name.unique():
-                weights = denom_df.event_weight[denom_df.name == name]
+            for name in mc_df.name.unique():
+                weights = mc_df.event_weight[mc_df.name == name]
                 if norm:
-                    weights /= denom_df.event_weight.sum()
+                    weights /= mc_df.event_weight.sum()
                 hist = yahist.Hist1D(
-                    transf(denom_df[denom_df.name == name][column]),
-                    bins=bins, 
+                    transf(mc_df[mc_df.name == name][column]),
+                    bins=bins,
                     weights=weights,
                     label=f"{name} [{sum(weights):.1f} events]",
                     color=self.bkg_colors[name] if self.bkg_colors else None
@@ -490,11 +503,11 @@ class Validation(PandasAnalysis):
                 bkg_hists.append(hist)
 
         # Get ratio
-        ratio = numer/denom
+        ratio_hist = data_hist/mc_hist
         # Set ratio errors to data relative stat error times the ratio
-        numer_counts = numer.counts
-        numer_counts[numer_counts == 0] = 1e-12
-        ratio._errors = (numer.errors/numer_counts)*ratio.counts
+        data_counts = data_hist.counts
+        data_counts[data_counts == 0] = 1e-12
+        ratio_hist._errors = (data_hist.errors/data_counts)*ratio_hist.counts
 
         # Plot stacked bkg hists
         if bkg_hists:
@@ -502,107 +515,116 @@ class Validation(PandasAnalysis):
             yahist.utils.plot_stack(bkg_hists, ax=hist_axes, histtype="stepfilled")
 
         # Plot hists and ratio
-        denom.plot(ax=hist_axes, alpha=0.5)
-        numer.plot(ax=hist_axes, errors=True)
-        ratio.plot(ax=ratio_axes, errors=True, color="k")
+        mc_hist.plot(ax=hist_axes, alpha=0.5, zorder=1)
+        data_hist.plot(ax=hist_axes, errors=True, zorder=1.2)
+        ratio_hist.plot(ax=ratio_axes, errors=True, color="k", zorder=1.2)
 
         # Plot MC relative stat error on unity; this makes no sense, but is LHC common practice
-        denom_counts = denom.counts
-        denom_counts[denom_counts == 0] = 1e-12
-        err_points = np.repeat(denom.edges, 2)[1:-1]
-        err_high = np.repeat(1 + denom.errors/denom_counts, 2)
-        err_low = np.repeat(1 - denom.errors/denom_counts, 2)
+        mc_counts = mc_hist.counts
+        mc_counts[mc_counts == 0] = 1e-12
+        err_points = np.repeat(mc_hist.edges, 2)[1:-1]
+        err_high = np.repeat(1 + mc_hist.errors/mc_counts, 2)
+        err_low = np.repeat(1 - mc_hist.errors/mc_counts, 2)
         ratio_axes.fill_between(
-            err_points, err_high, err_low, 
-            step="mid", 
-            hatch="///////", 
+            err_points, err_high, err_low,
+            step="mid",
+            hatch="///////",
             facecolor="none",
-            edgecolor=(0.85, 0.85, 0.85), 
-            linewidth=0.0, 
+            edgecolor=(0.85, 0.85, 0.85),
+            linewidth=0.0,
             linestyle="-",
-            zorder=2
+            zorder=1.1
         )
+
         # Plot MC error on histogram
-        err_high = np.repeat(denom_counts + denom.errors, 2)
-        err_low = np.repeat(denom_counts - denom.errors, 2)
+        err_high = np.repeat(mc_counts + mc_hist.errors, 2)
+        err_low = np.repeat(mc_counts - mc_hist.errors, 2)
         hist_axes.fill_between(
-            err_points, err_high, err_low, 
-            step="mid", 
-            hatch="///////", 
+            err_points, err_high, err_low,
+            step="mid",
+            hatch="///////",
             facecolor="none",
-            edgecolor=(0.85, 0.85, 0.85), 
-            linewidth=0.0, 
+            edgecolor=(0.85, 0.85, 0.85),
+            linewidth=0.0,
             linestyle="-",
-            zorder=2,
+            zorder=1.1,
             # label=u"MC unc. [stat \u2295 syst]" # TODO: uncomment this when you (a) have syst errors and (b) can add them here
             label=u"MC unc. [stat]"
         )
 
-        if blinded_range:
+        if blinded_range and blinded_box:
             blind_low, blind_high = blinded_range
+            box_hatch="//////"
             hist_axes.hist(
-                [], 
-                facecolor="darkgrey", 
-                edgecolor="k", 
-                hatch="//////",
+                [],
+                facecolor="whitesmoke",
+                edgecolor="lightgrey",
+                hatch=box_hatch,
                 label="Blinded"
             )
             hist_axes.axvspan(
-                blind_low, blind_high, 
-                facecolor="darkgrey", 
-                edgecolor="k", 
-                hatch="//////", 
-                zorder=99
+                blind_low, blind_high,
+                facecolor="whitesmoke",
+                edgecolor="lightgrey",
+                hatch=box_hatch,
+                zorder=1.9
             )
             ratio_axes.axvspan(
-                blind_low, blind_high, 
-                facecolor="darkgrey", 
-                edgecolor="k", 
-                hatch="//////", 
-                zorder=99
+                blind_low, blind_high,
+                facecolor="whitesmoke",
+                edgecolor="lightgrey",
+                hatch=box_hatch,
+                zorder=1.9
             )
 
+        hist_axes.set_xticklabels([])
         ratio_axes.axhline(y=1, color="k", linestyle="--", alpha=0.75, linewidth=0.75)
         ratio_axes.legend().remove()
+        ratio_axes.set_xlabel(x_label)
+        ratio_axes.set_ylabel("data/MC")
+        ratio_axes.set_ylim([0, 2])
+
+        hep.cms.label(
+            "Preliminary",
+            data=True,
+            lumi=138,
+            loc=0,
+            ax=hist_axes,
+        )
 
         if stacked:
-            hist_axes.legend()
+            hist_axes.legend(fontsize=14, loc=legend_loc).set_zorder(101)
         else:
-            hist_axes.legend(fontsize=14)
+            hist_axes.legend(loc=legend_loc).set_zorder(101)
+            
         if not logy:
-            hist_axes.xaxis.set_minor_locator(AutoMinorLocator())
-            hist_axes.yaxis.set_minor_locator(AutoMinorLocator())
             hist_axes.set_ylim(bottom=0)
         else:
             hist_axes.set_ylim(bottom=0.1)
-        hist_axes.set_xmargin(0)
+            
         if norm:
-            hist_axes.set_ylabel("a.u.", size=18)
+            hist_axes.set_ylabel("a.u.")
         else:
-            hist_axes.set_ylabel("Events", size=18)
-
-        if not logy:
-            ratio_axes.xaxis.set_minor_locator(AutoMinorLocator())
-            ratio_axes.yaxis.set_minor_locator(AutoMinorLocator())
-        ratio_axes.set_xlabel(x_label, size=18)
-        ratio_axes.set_ylabel("data/MC", size=18)
-        ratio_axes.set_ylim([0, 2])
+            hist_axes.set_ylabel("Events")
 
         if self.plots_dir:
-            plot_file = f"{self.plots_dir}/{column}_data_vs_mc.png"
+            plot_file = f"{self.plots_dir}/{column}_data_vs_mc.pdf"
             if norm:
-                plot_file = plot_file.replace(".png", "_norm.png")
+                plot_file = plot_file.replace(".pdf", "_norm.pdf")
             if logy:
-                plot_file = plot_file.replace(".png", "_log.png")
+                plot_file = plot_file.replace(".pdf", "_log.pdf")
             if selection:
-                plot_file = plot_file.replace(".png", f"_{PandasAnalysis.get_selection_str(selection)}.png")
-                with open(plot_file.replace("png", "txt"), "w") as plot_txt:
+                plot_file = plot_file.replace(".pdf", f"_{PandasAnalysis.get_selection_str(selection)}.pdf")
+                with open(plot_file.replace("pdf", "txt"), "w") as plot_txt:
                     plot_txt.write(f"SELECTION: {selection}")
 
             print(f"Wrote plot to {plot_file}")
-            plt.savefig(plot_file)
+            plt.savefig(plot_file, bbox_inches="tight")
 
-        return hist_axes, ratio_axes
+        if return_hists:
+            return hist_axes, ratio_axes, (data_hist, mc_hist, ratio_hist)
+        else:
+            return hist_axes, ratio_axes
 
 class Extrapolation(PandasAnalysis):
 
