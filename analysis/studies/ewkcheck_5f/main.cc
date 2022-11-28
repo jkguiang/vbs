@@ -121,16 +121,17 @@ int main(int argc, char** argv)
     cutflow.globals.newVar<LorentzVector>("gen_lep_p4");
     cutflow.globals.newVar<LorentzVector>("lep_p4");
     cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
-    cutflow.globals.newVar<LorentzVectors>("veto_lep_p4s", {});
-    cutflow.globals.newVar<LorentzVectors>("loose_lep_p4s", {});
-    cutflow.globals.newVar<LorentzVectors>("tight_lep_p4s", {});
+    cutflow.globals.newVar<LorentzVectors>("skim_veto_lep_p4s", {});
+    cutflow.globals.newVar<LorentzVectors>("skim_loose_lep_p4s", {});
+    cutflow.globals.newVar<LorentzVectors>("skim_tight_lep_p4s", {});
+    cutflow.globals.newVar<Integers>("skim_good_fatjet_idxs", {});
     std::vector<std::string> cuts;
 
     VBSWH::Analysis analysis = VBSWH::Analysis(arbol, nt, cli, cutflow);
     analysis.initBranches();
     analysis.initCutflow();
 
-    Cut* select_leps = new SelectLeptonsNoUL("SelectLeptonsNoUL", analysis, analysis.lep_sfs);
+    Cut* select_leps = new SelectLeptonsNoUL("SelectLeptonsNoUL", analysis);
     cutflow.replace("SelectLeptons", select_leps);
 
     Cut* has_1lep = new Has1LepNoUL("Has1TightLepNoUL", analysis);
@@ -310,26 +311,26 @@ int main(int argc, char** argv)
         "SKIM_FindLeptons", 
         [&]() 
         { 
-            LorentzVectors veto_lep_p4s;
-            LorentzVectors loose_lep_p4s;
-            LorentzVectors tight_lep_p4s;
+            LorentzVectors skim_veto_lep_p4s;
+            LorentzVectors skim_loose_lep_p4s;
+            LorentzVectors skim_tight_lep_p4s;
             for (unsigned int elec_i = 0; elec_i < nt.nElectron(); elec_i++)
             {
                 LorentzVector lep_p4 = nt.Electron_p4().at(elec_i);
-                if (ttH::electronID(elec_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
-                if (ttH::electronID(elec_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
-                if (ttH::electronID(elec_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
+                if (ttH::electronID(elec_i, ttH::IDveto, nt.year())) { skim_veto_lep_p4s.push_back(lep_p4); }
+                if (ttH::electronID(elec_i, ttH::IDfakable, nt.year())) { skim_loose_lep_p4s.push_back(lep_p4); }
+                if (ttH::electronID(elec_i, ttH::IDtight, nt.year())) { skim_tight_lep_p4s.push_back(lep_p4); }
             }
             for (unsigned int muon_i = 0; muon_i < nt.nMuon(); muon_i++)
             {
                 LorentzVector lep_p4 = nt.Muon_p4().at(muon_i);
-                if (ttH::muonID(muon_i, ttH::IDveto, nt.year())) { veto_lep_p4s.push_back(lep_p4); }
-                if (ttH::muonID(muon_i, ttH::IDfakable, nt.year())) { loose_lep_p4s.push_back(lep_p4); }
-                if (ttH::muonID(muon_i, ttH::IDtight, nt.year())) { tight_lep_p4s.push_back(lep_p4); }
+                if (ttH::muonID(muon_i, ttH::IDveto, nt.year())) { skim_veto_lep_p4s.push_back(lep_p4); }
+                if (ttH::muonID(muon_i, ttH::IDfakable, nt.year())) { skim_loose_lep_p4s.push_back(lep_p4); }
+                if (ttH::muonID(muon_i, ttH::IDtight, nt.year())) { skim_tight_lep_p4s.push_back(lep_p4); }
             }
-            cutflow.globals.setVal<LorentzVectors>("veto_lep_p4s", veto_lep_p4s);
-            cutflow.globals.setVal<LorentzVectors>("loose_lep_p4s", loose_lep_p4s);
-            cutflow.globals.setVal<LorentzVectors>("tight_lep_p4s", tight_lep_p4s);
+            cutflow.globals.setVal<LorentzVectors>("skim_veto_lep_p4s", skim_veto_lep_p4s);
+            cutflow.globals.setVal<LorentzVectors>("skim_loose_lep_p4s", skim_loose_lep_p4s);
+            cutflow.globals.setVal<LorentzVectors>("skim_tight_lep_p4s", skim_tight_lep_p4s);
             return true;
         }
     );
@@ -337,7 +338,7 @@ int main(int argc, char** argv)
 
     // Geq1VetoLep
     Cut* geq1vetolep_skim = new LambdaCut(
-        "SKIM_Geq1VetoLep", [&]() { return cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s").size() >= 1; }
+        "SKIM_Geq1VetoLep", [&]() { return cutflow.globals.getVal<LorentzVectors>("skim_veto_lep_p4s").size() >= 1; }
     );
     cutflow.insert(findleps_skim, geq1vetolep_skim, Right);
     cuts.push_back(geq1vetolep_skim->name);
@@ -347,7 +348,7 @@ int main(int argc, char** argv)
         "SKIM_Geq2Jets", 
         [&]() 
         { 
-            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s");
+            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("skim_veto_lep_p4s");
             int n_jets = 0;
             for (unsigned int jet_i = 0; jet_i < nt.nJet(); jet_i++)
             {
@@ -377,7 +378,7 @@ int main(int argc, char** argv)
         "SKIM_Geq1FatJetNoVetoLepOverlap", 
         [&]() 
         { 
-            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s");
+            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("skim_veto_lep_p4s");
             int n_fatjets = 0;
             for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
             {
@@ -410,8 +411,8 @@ int main(int argc, char** argv)
         "POSTSKIM_Exactly1TightLep", 
         [&]() 
         { 
-            int n_loose_leps = cutflow.globals.getVal<LorentzVectors>("loose_lep_p4s").size();
-            int n_tight_leps = cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").size();
+            int n_loose_leps = cutflow.globals.getVal<LorentzVectors>("skim_loose_lep_p4s").size();
+            int n_tight_leps = cutflow.globals.getVal<LorentzVectors>("skim_tight_lep_p4s").size();
             return (n_loose_leps == 1 && n_tight_leps == 1);
         }
     );
@@ -423,7 +424,7 @@ int main(int argc, char** argv)
         "POSTSKIM_Geq1FatJetNoTightLepOverlap", 
         [&]() 
         { 
-            LorentzVector lep_p4 = cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").at(0);
+            LorentzVector lep_p4 = cutflow.globals.getVal<LorentzVectors>("skim_tight_lep_p4s").at(0);
             int n_fatjets = 0;
             double hbbjet_score = -999.;
             LorentzVector hbbjet_p4;
@@ -467,7 +468,7 @@ int main(int argc, char** argv)
         [&]() 
         { 
             double ST = (
-                cutflow.globals.getVal<LorentzVectors>("tight_lep_p4s").at(0).pt()
+                cutflow.globals.getVal<LorentzVectors>("skim_tight_lep_p4s").at(0).pt()
                 + cutflow.globals.getVal<LorentzVector>("hbbjet_p4").pt()
                 + nt.MET_pt()
             );
@@ -481,6 +482,146 @@ int main(int argc, char** argv)
     cuts.push_back("ApplyAk4GlobalBVeto");
     cuts.push_back("XbbGt0p9_MSDLt150");
     cuts.push_back("STGt1500");
+
+    // DEBUG
+
+    Cut* skim_fatjet_overlap = new LambdaCut(
+        "SKIM_SelectFatJets", 
+        [&]() 
+        { 
+            LorentzVectors lep_p4s = cutflow.globals.getVal<LorentzVectors>("skim_veto_lep_p4s");
+            Integers good_fatjet_idxs;
+            for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
+            {
+                LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
+                bool is_overlap = false;
+                for (auto lep_p4 : lep_p4s)
+                {
+                    if (ROOT::Math::VectorUtil::DeltaR(lep_p4, fatjet_p4) < 0.8)
+                    {
+                        is_overlap = true;
+                        break;
+                    }
+                }
+                if (!is_overlap)
+                {
+                    good_fatjet_idxs.push_back(fatjet_i);
+                }
+            }
+            cutflow.globals.setVal<Integers>("skim_good_fatjet_idxs", good_fatjet_idxs);
+            return (good_fatjet_idxs.size() >= 1);
+        }
+    );
+    cutflow.insert(geq2jets_skim, skim_fatjet_overlap, Right);
+    cuts.push_back(skim_fatjet_overlap->name);
+
+    Cut* skim_fatjet_pt_sel = new LambdaCut(
+        "SKIM_Geq1FatJet_pTgt200", 
+        [&]() 
+        { 
+            int n_fatjets = 0;
+            for (auto& fatjet_i : cutflow.globals.getVal<Integers>("skim_good_fatjet_idxs"))
+            {
+                if (nt.FatJet_pt().at(fatjet_i) > 200) { n_fatjets++; }
+            }
+            return (n_fatjets >= 1);
+        }
+    );
+    cutflow.insert(skim_fatjet_overlap, skim_fatjet_pt_sel, Right);
+    cuts.push_back(skim_fatjet_pt_sel->name);
+
+    Cut* skim_fatjet_mass_sel = new LambdaCut(
+        "SKIM_Geq1FatJet_Mgt10", 
+        [&]() 
+        { 
+            int n_fatjets = 0;
+            for (auto& fatjet_i : cutflow.globals.getVal<Integers>("skim_good_fatjet_idxs"))
+            {
+                if (nt.FatJet_pt().at(fatjet_i) > 200
+                    && nt.FatJet_mass().at(fatjet_i) > 10)
+                {
+                    n_fatjets++;
+                }
+            }
+            return (n_fatjets >= 1);
+        }
+    );
+    cutflow.insert(skim_fatjet_pt_sel, skim_fatjet_mass_sel, Right);
+    cuts.push_back(skim_fatjet_mass_sel->name);
+
+    Cut* skim_fatjet_msoftdrop_sel = new LambdaCut(
+        "SKIM_Geq1FatJet_MSDgt10", 
+        [&]() 
+        { 
+            int n_fatjets = 0;
+            for (auto& fatjet_i : cutflow.globals.getVal<Integers>("skim_good_fatjet_idxs"))
+            {
+                if (nt.FatJet_pt().at(fatjet_i) > 200
+                    && nt.FatJet_mass().at(fatjet_i) > 10 
+                    && nt.FatJet_msoftdrop().at(fatjet_i) > 10)
+                {
+                    n_fatjets++;
+                }
+            }
+            return (n_fatjets >= 1);
+        }
+    );
+    cutflow.insert(skim_fatjet_mass_sel, skim_fatjet_msoftdrop_sel, Right);
+    cuts.push_back(skim_fatjet_msoftdrop_sel->name);
+
+    Cut* postskim_fatjet_pt_sel = new LambdaCut(
+        "POSTSKIM_Geq1FatJet_pTgt250", 
+        [&]() 
+        { 
+            int n_fatjets = 0;
+            for (auto& fatjet_i : cutflow.globals.getVal<Integers>("skim_good_fatjet_idxs"))
+            {
+                if (nt.FatJet_pt().at(fatjet_i) > 250) { n_fatjets++; }
+            }
+            return (n_fatjets >= 1);
+        }
+    );
+    cutflow.insert(exactly1tightlep_postskim, postskim_fatjet_pt_sel, Right);
+    cuts.push_back(postskim_fatjet_pt_sel->name);
+
+    Cut* postskim_fatjet_mass_sel = new LambdaCut(
+        "POSTSKIM_Geq1FatJet_Mgt50", 
+        [&]() 
+        { 
+            int n_fatjets = 0;
+            for (auto& fatjet_i : cutflow.globals.getVal<Integers>("skim_good_fatjet_idxs"))
+            {
+                if (nt.FatJet_pt().at(fatjet_i) > 250
+                    && nt.FatJet_mass().at(fatjet_i) > 50)
+                {
+                    n_fatjets++;
+                }
+            }
+            return (n_fatjets >= 1);
+        }
+    );
+    cutflow.insert(postskim_fatjet_pt_sel, postskim_fatjet_mass_sel, Right);
+    cuts.push_back(postskim_fatjet_mass_sel->name);
+
+    Cut* postskim_fatjet_msoftdrop_sel = new LambdaCut(
+        "POSTSKIM_Geq1FatJet_MSDgt40", 
+        [&]() 
+        { 
+            int n_fatjets = 0;
+            for (auto& fatjet_i : cutflow.globals.getVal<Integers>("skim_good_fatjet_idxs"))
+            {
+                if (nt.FatJet_pt().at(fatjet_i) > 250
+                    && nt.FatJet_mass().at(fatjet_i) > 50 
+                    && nt.FatJet_msoftdrop().at(fatjet_i) > 40)
+                {
+                    n_fatjets++;
+                }
+            }
+            return (n_fatjets >= 1);
+        }
+    );
+    cutflow.insert(postskim_fatjet_mass_sel, postskim_fatjet_msoftdrop_sel, Right);
+    cuts.push_back(postskim_fatjet_msoftdrop_sel->name);
 
     // Initialize hists
     TH1D* parton1_abs_pdgID_hist = new TH1D("parton1_abs_pdgID", "lhe_parton1_pdgID", 6, 1, 7);
