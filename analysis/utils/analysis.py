@@ -385,7 +385,10 @@ class Optimization(PandasAnalysis):
         )
         
         axes.set_xlabel(x_label)
-        axes.set_ylim(bottom=0)
+        if not logy:
+            axes.set_ylim(bottom=0)
+        else:
+            axes.set_ylim(bottom=0.01)
         if stacked:
             axes.legend(fontsize=14)
         else:
@@ -401,6 +404,8 @@ class Optimization(PandasAnalysis):
                 plot_file = plot_file.replace(".pdf", "_stacked.pdf")
             if norm:
                 plot_file = plot_file.replace(".pdf", "_norm.pdf")
+            if logy:
+                plot_file = plot_file.replace(".pdf", "_logy.pdf")
             if selection:
                 plot_file = plot_file.replace(".pdf", f"_{PandasAnalysis.get_selection_str(selection)}.pdf")
                 with open(plot_file.replace("pdf", "txt"), "w") as plot_txt:
