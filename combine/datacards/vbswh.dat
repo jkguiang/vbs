@@ -12,8 +12,8 @@ rate                    393.53      129.50
 ------------------------------------------
 abcd_syst     lnN            -       1.140
 abcd_stat     lnN            -       1.130
-pdf_vars      lnN        1.173           -
-alphaS_unc    lnN        1.025           -
+pdf_vars      lnN        1.010           -
+alphaS_unc    lnN        1.047           -
 muF_scale     lnN        1.179           -
 isr_weights   lnN        1.001           -
 fsr_weights   lnN        1.026           -
