@@ -35,11 +35,15 @@ struct Skimmer
     Nano& nt;
     HEPCLI& cli;
     Cutflow& cutflow;
+    TList* runs;
+    TList* lumis;
 
     Skimmer(Arbusto& arbusto_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
     : arbusto(arbusto_ref), nt(nt_ref), cli(cli_ref), cutflow(cutflow_ref)
     {
         gconf.nanoAOD_ver = 9;
+        runs = new TList();
+        lumis = new TList();
     };
 
     virtual void init(TTree* ttree)
@@ -49,6 +53,27 @@ struct Skimmer
 
         TString file_name = ttree->GetCurrentFile()->GetName();
         gconf.isAPV = (file_name.Contains("HIPM_UL2016") || file_name.Contains("NanoAODAPV") || file_name.Contains("UL16APV"));
+
+        // Store metadata ttrees
+        TTree* runtree = ((TTree*)ttree->GetCurrentFile()->Get("Runs"))->CloneTree();
+        runtree->SetDirectory(0);
+        runs->Add(runtree);
+        TTree* lumitree = ((TTree*)ttree->GetCurrentFile()->Get("LuminosityBlocks"))->CloneTree();
+        lumitree->SetDirectory(0);
+        lumis->Add(lumitree);
+    };
+
+    virtual void write()
+    {
+        TTree* merged_runs = TTree::MergeTrees(runs);
+        merged_runs->SetName("Runs");
+        TTree* merged_lumis = TTree::MergeTrees(lumis);
+        merged_lumis->SetName("LuminosityBlocks");
+
+        arbusto.tfile->cd();
+        merged_runs->Write();
+        merged_lumis->Write();
+        arbusto.write();
     };
 };
 
