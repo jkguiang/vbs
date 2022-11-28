@@ -1,5 +1,5 @@
-#ifndef SKIMS_H
-#define SKIMS_H
+#ifndef SKIM_VBSWH_H
+#define SKIM_VBSWH_H
 
 #include "core.h"
 // RAPIDO
