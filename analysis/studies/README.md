@@ -14,4 +14,5 @@
 - `vbswh`: main analysis code
 
 ### VBS VVH All-Hadronic
+- `lhe_vbswwh`: makes flat N-tuple from LHE file
 - `skim_vbsvvhjets`: main skim
