@@ -2,7 +2,7 @@
 
 ### VBS WH
 - `btageff`: computes b-tagging efficiency
-- EWK sample scrutiny
+- `ewkcheck_*`: EWK sample scrutiny
     - `ewkcheck_5f`: plots for 5-flavor vs. 4-flavor comparison
     - `ewkcheck_datamc`: data-MC comparison
     - `ewkcheck_origins`: gen-level study of how EWK events enter analysis
