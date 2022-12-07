@@ -67,10 +67,10 @@ BKG_SAMPLE_MAP = {
 
 SIG_SAMPLE_MAP = {
     "VBSWH_mkW": {
-        "2016preVFP": ["VBSWH_mkW_Inclusive"],
-        "2016postVFP": ["VBSWH_mkW_Inclusive"],
-        "2017": ["VBSWH_mkW_Inclusive"],
-        "2018": ["VBSWH_mkW_Inclusive"]
+        "2016preVFP": ["VBSWH_mkW_Mjj100toInf"],
+        "2016postVFP": ["VBSWH_mkW_Mjj100toInf"],
+        "2017": ["VBSWH_mkW_Mjj100toInf"],
+        "2018": ["VBSWH_mkW_Mjj100toInf"]
     }
 }
 
