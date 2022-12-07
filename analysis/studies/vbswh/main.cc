@@ -26,6 +26,7 @@ int main(int argc, char** argv)
 
     // Initialize main Arbol
     Arbol arbol = Arbol(cli);
+    arbol.newBranch<double>("ewkfix_sf", -999);
 
     // Initialize Arbol for PDF variations
     Arbol pdf_arbol = Arbol(
