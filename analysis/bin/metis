@@ -32,6 +32,10 @@ cli.add_argument(
     help="Use Python2 to run nanoAOD-tools on the condor worker node"
 )
 cli.add_argument(
+    "--name", type=str, required=True,
+    help="name of directory to write skims to: /ceph/cms/store/user/jguiang/NAME"
+)
+cli.add_argument(
     "--samples", type=str, required=True,
     help="sample to import"
 )
@@ -68,8 +72,6 @@ args = cli.parse_args()
 samples_module, samples_obj = args.samples.rsplit(".", 1)
 samples = getattr(importlib.import_module(samples_module), samples_obj)
 
-NAME = "VBSVHSkim"
-
 if args.python2:
     CMSSW_VERSION="CMSSW_10_6_25",
     SCRAM_ARCH="slc7_amd64_gcc700",
@@ -89,7 +91,7 @@ condor_submit_params = {
         ["XRootDHost", args.xrootd_host], 
         ["XRootDProtocol", args.xrootd_protocol],
         ["StudyName", args.study],
-        ["JobBatchName", "{}_{}".format(NAME, args.tag)]
+        ["JobBatchName", "{}_{}".format(args.name, args.tag)]
     ],
 }
 if args.python2:
@@ -154,10 +156,10 @@ for update_i in range(n_updates): # update every 30 mins
             condor_submit_params=condor_submit_params,
             cmssw_version=CMSSW_VERSION,
             scram_arch=SCRAM_ARCH,
-            input_executable="bin/condor_executable", # your condor executable here
+            input_executable="bin/condor_executable",          # your condor executable here
             additional_input_files=additional_input_files,
-            tarfile=PACKAGE, # your tarfile with assorted goodies here
-            special_dir="{0}/{1}".format(NAME, args.tag), # output files into /ceph/cms/store/<user>/<special_dir>
+            tarfile=PACKAGE,                                   # your tarfile with assorted goodies here
+            special_dir="{0}/{1}".format(args.name, args.tag), # output files into /ceph/cms/store/<user>/<special_dir>
             max_jobs=max_jobs
         )
         tasks.append(task)
@@ -169,4 +171,4 @@ for update_i in range(n_updates): # update every 30 mins
     if args.debug:
         break
     # Update monitoring GUI
-    StatsParser(data=total_summary, webdir="~/public_html/{}_metis".format(NAME.lower())).do()
+    StatsParser(data=total_summary, webdir="~/public_html/{}_metis".format(args.name.lower())).do()
