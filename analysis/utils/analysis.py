@@ -19,7 +19,8 @@ def clip(np_array, bins):
 
 class PandasAnalysis:
     def __init__(self, sig_root_files=None, bkg_root_files=None, data_root_files=None, 
-                 ttree_name="Events", weight_columns=None, plots_dir=None):
+                 ttree_name="Events", weight_columns=None, plots_dir=None, 
+                 sample_labels={}, vector_branches=[]):
 
         dfs = []
         # Load signal
@@ -27,7 +28,7 @@ class PandasAnalysis:
             for root_file in tqdm(sig_root_files, desc="Loading sig babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 with uproot.open(root_file) as f:
-                    df = f.get(ttree_name).arrays(library="pd")
+                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in vector_branches], library="pd")
                     df["name"] = name
                     df["is_signal"] = True
                     df["is_data"] = False
@@ -39,7 +40,7 @@ class PandasAnalysis:
                 name = root_file.split("/")[-1].replace(".root", "")
                 bkg_names.append(name)
                 with uproot.open(root_file) as f:
-                    df = f.get(ttree_name).arrays(library="pd")
+                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in vector_branches], library="pd")
                     df["name"] = name
                     df["is_signal"] = False
                     df["is_data"] = False
@@ -49,7 +50,7 @@ class PandasAnalysis:
             for root_file in tqdm(data_root_files, desc="Loading data babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 with uproot.open(root_file) as f:
-                    df = f.get(ttree_name).arrays(library="pd")
+                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in vector_branches], library="pd")
                     df["name"] = name
                     df["is_signal"] = False
                     df["is_data"] = True
@@ -67,10 +68,12 @@ class PandasAnalysis:
         if self.plots_dir:
             os.makedirs(self.plots_dir, exist_ok=True)
 
-        self.cutflows = CutflowCollection(
-            cutflows={name: Cutflow() for name in self.df.name.unique()}
-        )
-        self.__update_cutflows("base")
+        self.sample_labels = sample_labels
+
+        # self.cutflows = CutflowCollection(
+        #     cutflows={name: Cutflow() for name in self.df.name.unique()}
+        # )
+        # self.__update_cutflows("base")
 
         if len(bkg_names) <= 10:
             colors = [
@@ -160,7 +163,7 @@ class PandasAnalysis:
     def make_selection(self, selection):
         if selection and type(selection) == str:
             self.df = self.df[self.df.eval(selection)].copy()
-            self.__update_cutflows(selection)
+            # self.__update_cutflows(selection)
 
     def sample_df(self, name, selection=None):
         if not selection:
@@ -320,7 +323,8 @@ class Optimization(PandasAnalysis):
         return hist_axes, ratio_axes
 
     def plot_sig_vs_bkg(self, column, bins, selection="", transf=lambda x: x, raw=False, 
-                        x_label="", logy=False, axes=None, norm=False, stacked=False):
+                        x_label="", logy=False, axes=None, norm=False, stacked=False, 
+                        legend_loc="best"):
         if not axes:
             fig, axes = plt.subplots()
 
@@ -339,11 +343,12 @@ class Optimization(PandasAnalysis):
                 weights = bkg_weights[bkg_df.name == name]
                 if norm:
                     weights /= sum(bkg_weights)
+                sample_label = self.sample_labels[name] if name in self.sample_labels else name
                 hist = yahist.Hist1D(
                     transf(bkg_df[bkg_df.name == name][column]),
                     bins=bins, 
                     weights=weights,
-                    label=f"{name} [{sum(weights):.1f} events]",
+                    label=f"{sample_label} [{sum(weights):.1f} events]",
                     color=self.bkg_colors[name] if self.bkg_colors else None
                 )
                 bkg_hists.append(hist)
@@ -353,7 +358,7 @@ class Optimization(PandasAnalysis):
             transf(bkg_df[column]),
             bins=bins, 
             weights=bkg_weights,
-            label=f"total background [{sum(bkg_weights):0.1f} events]",
+            label=f"Total background [{sum(bkg_weights):0.1f} events]",
             color="k"
         )
 
@@ -362,7 +367,7 @@ class Optimization(PandasAnalysis):
             transf(sig_df[column]),
             bins=bins, 
             weights=sig_weights,
-            label=f"total signal [{sum(sig_weights):0.1f} events]",
+            label=f"Total signal [{sum(sig_weights):0.1f} events]",
             color="r"
         )
         if norm:
@@ -390,9 +395,9 @@ class Optimization(PandasAnalysis):
         else:
             axes.set_ylim(bottom=0.01)
         if stacked:
-            axes.legend(fontsize=14)
+            axes.legend(fontsize=14, loc=legend_loc)
         else:
-            axes.legend()
+            axes.legend(loc=legend_loc)
         if norm:
             axes.set_ylabel("a.u.")
         else:
@@ -507,11 +512,12 @@ class Validation(PandasAnalysis):
                 weights = mc_df.event_weight[mc_df.name == name]
                 if norm:
                     weights /= mc_df.event_weight.sum()
+                sample_label = self.sample_labels[name] if name in self.sample_labels else name
                 hist = yahist.Hist1D(
                     transf(mc_df[mc_df.name == name][column]),
                     bins=bins,
                     weights=weights,
-                    label=f"{name} [{sum(weights):.1f} events]",
+                    label=f"{sample_label} [{sum(weights):.1f} events]",
                     color=self.bkg_colors[name] if self.bkg_colors else None
                 )
                 bkg_hists.append(hist)
