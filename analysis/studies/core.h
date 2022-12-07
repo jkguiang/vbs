@@ -113,6 +113,8 @@ struct Analysis
         // Fat jet (AK8) globals
         cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
         cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
+        cutflow.globals.newVar<Doubles>("good_fatjet_wtags", {}); // ParticleNet
+        cutflow.globals.newVar<Doubles>("good_fatjet_ztags", {}); // ParticleNet
         cutflow.globals.newVar<Doubles>("good_fatjet_hbbtags", {}); // ParticleNet
         cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {}); // ParticleNet
         cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});  // ParticleNet
@@ -567,6 +569,8 @@ public:
     {
         LorentzVectors good_fatjet_p4s;
         Integers good_fatjet_idxs;
+        Doubles good_fatjet_wtags;
+        Doubles good_fatjet_ztags;
         Doubles good_fatjet_hbbtags;
         Doubles good_fatjet_xbbtags;
         Doubles good_fatjet_masses;
@@ -595,20 +599,23 @@ public:
             }
             if (is_overlap) { continue; }
 
-            double pnet_hbb = nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i);
             double pnet_xbb = nt.FatJet_particleNetMD_Xbb().at(fatjet_i);
             double pnet_qcd = nt.FatJet_particleNetMD_QCD().at(fatjet_i);
 
             // Store good fat jets
             good_fatjet_p4s.push_back(fatjet_p4);
             good_fatjet_idxs.push_back(fatjet_i);
-            good_fatjet_hbbtags.push_back(pnet_hbb);
+            good_fatjet_wtags.push_back(nt.FatJet_particleNet_WvsQCD().at(fatjet_i));
+            good_fatjet_ztags.push_back(nt.FatJet_particleNet_ZvsQCD().at(fatjet_i));
+            good_fatjet_hbbtags.push_back(nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i));
             good_fatjet_xbbtags.push_back(pnet_xbb/(pnet_xbb + pnet_qcd));
             good_fatjet_masses.push_back(nt.FatJet_particleNet_mass().at(fatjet_i));
             good_fatjet_msoftdrops.push_back(nt.FatJet_msoftdrop().at(fatjet_i));
         }
         globals.setVal<LorentzVectors>("good_fatjet_p4s", good_fatjet_p4s);
         globals.setVal<Integers>("good_fatjet_idxs", good_fatjet_idxs);
+        globals.setVal<Doubles>("good_fatjet_wtags", good_fatjet_wtags);
+        globals.setVal<Doubles>("good_fatjet_ztags", good_fatjet_ztags);
         globals.setVal<Doubles>("good_fatjet_hbbtags", good_fatjet_hbbtags);
         globals.setVal<Doubles>("good_fatjet_xbbtags", good_fatjet_xbbtags);
         globals.setVal<Doubles>("good_fatjet_masses", good_fatjet_masses);
