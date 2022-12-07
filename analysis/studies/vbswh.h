@@ -446,9 +446,12 @@ public:
 class SaveVariables : public Core::AnalysisCut
 {
 public:
-    SaveVariables(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
+    ParticleNetXbbSFs* xbb_sfs;
+
+    SaveVariables(std::string name, Core::Analysis& analysis, ParticleNetXbbSFs* xbb_sfs = nullptr) 
+    : AnalysisCut(name, analysis) 
     {
-        // Do nothing
+        this->xbb_sfs = xbb_sfs;
     };
 
     bool evaluate()
@@ -461,6 +464,20 @@ public:
         arbol.setLeaf<double>("LT_dn", arbol.getLeaf<double>("lep_pt") + arbol.getLeaf<double>("MET_dn"));
         arbol.setLeaf<double>("ST_dn", arbol.getLeaf<double>("LT_dn") + arbol.getLeaf<double>("hbbjet_pt"));
 
+        if (cli.is_signal && xbb_sfs != nullptr && arbol.getLeaf<double>("hbbjet_score") > 0.9)
+        {
+            double hbbjet_pt = arbol.getLeaf<double>("hbbjet_pt");
+            arbol.setLeaf<double>("xbb_sf", xbb_sfs->getSF(hbbjet_pt));
+            arbol.setLeaf<double>("xbb_sf_up", xbb_sfs->getSFUp(hbbjet_pt));
+            arbol.setLeaf<double>("xbb_sf_dn", xbb_sfs->getSFDn(hbbjet_pt));
+        }
+        else
+        {
+            arbol.setLeaf<double>("xbb_sf", 1.);
+            arbol.setLeaf<double>("xbb_sf_up", 1.);
+            arbol.setLeaf<double>("xbb_sf_dn", 1.);
+        }
+
         if (!nt.isData() && nt.nLHEPdfWeight() == 103) // PDF-dependent; this is fine for VBSWH signal
         {
             arbol.setLeaf<double>("alphaS_up", nt.LHEPdfWeight().at(101));
@@ -470,6 +487,17 @@ public:
         {
             arbol.setLeaf<double>("alphaS_up", 1.);
             arbol.setLeaf<double>("alphaS_dn", 1.);
+        }
+
+        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+        if (file_name.Contains("kWscan_kZscan"))
+        {
+            Doubles reweights;
+            for (auto reweight : nt.LHEReweightingWeight())
+            {
+                reweights.push_back(reweight);
+            }
+            arbol.setLeaf<Doubles>("reweights", reweights);
         }
         return true;
     };
@@ -482,6 +510,7 @@ struct Analysis : Core::Analysis
     HLT1LepSFs* hlt_sfs;
     BTagSFs* btag_sfs;
     PileUpSFs* pu_sfs;
+    ParticleNetXbbSFs* xbb_sfs;
     bool all_corrections;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
@@ -497,6 +526,7 @@ struct Analysis : Core::Analysis
         hlt_sfs = nullptr;
         btag_sfs = nullptr;
         pu_sfs = nullptr;
+        xbb_sfs = nullptr;
         all_corrections = false;
     };
 
@@ -538,6 +568,10 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("trig_sf_dn", -999);
         arbol.newBranch<double>("alphaS_up", -999);
         arbol.newBranch<double>("alphaS_dn", -999);
+        arbol.newBranch<Doubles>("reweights", {});
+        arbol.newBranch<double>("xbb_sf", 1.);
+        arbol.newBranch<double>("xbb_sf_up", 1.);
+        arbol.newBranch<double>("xbb_sf_dn", 1.);
     };
 
     virtual void initCorrections()
@@ -547,6 +581,7 @@ struct Analysis : Core::Analysis
         hlt_sfs = new HLT1LepSFs();
         btag_sfs = new BTagSFs(cli.output_name, "M");
         pu_sfs = new PileUpSFs();
+        xbb_sfs = new ParticleNetXbbSFs();
         all_corrections = true;
     };
 
@@ -605,7 +640,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(select_vbsjets_maxE, save_lhe, Right);
 
         // Save analysis variables
-        Cut* save_vars = new SaveVariables("SaveVariables", *this);
+        Cut* save_vars = new SaveVariables("SaveVariables", *this, xbb_sfs);
         cutflow.insert(save_lhe, save_vars, Right);
 
         // Basic VBS jet requirements
@@ -647,9 +682,13 @@ struct Analysis : Core::Analysis
             [&]() 
             { 
                 return (
-                    arbol.getLeaf<double>("hbbjet_score") > 0.9 
+                    arbol.getLeaf<double>("hbbjet_score") > 0.9
                     && arbol.getLeaf<double>("hbbjet_msoftdrop") < 150
-                ); 
+                );
+            },
+            [&]()
+            {
+                return arbol.getLeaf<double>("xbb_sf");
             }
         );
         cutflow.insert(SR1_ST_cut, SR1_hbb_cut, Right);
@@ -671,6 +710,7 @@ struct Analysis : Core::Analysis
             hlt_sfs->init(file_name);
             btag_sfs->init(file_name);
             pu_sfs->init(file_name);
+            xbb_sfs->init(file_name);
         }
     };
 };

@@ -816,4 +816,160 @@ public:
     double getMuonErrDn(double pt, double eta) { return getMUO("systdown", pt, eta); };
 };
 
+struct ParticleNetXbbSFs : NanoSFsUL
+{
+private:
+    double boohftCalib(std::string year, double pt, std::string var = "nominal")
+    {
+        if (year == "2018")
+        {
+            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2018/4_fit/index.html:
+               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
+               | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **0.988** [-0.036/+0.033] | **1.041** [-0.038/+0.043] | **1.074** [-0.038/+0.054] |
+            */
+            if (pt >= 250 && pt < 500)
+            {
+                if (var == "nominal") { return 0.988; }
+                else if (var == "up") { return 0.988+0.033; }
+                else if (var == "dn") { return 0.988-0.036; }
+            }
+            else if (pt >= 500 && pt < 700)
+            {
+                if (var == "nominal") { return 1.041; }
+                else if (var == "up") { return 1.041+0.043; }
+                else if (var == "dn") { return 1.041-0.038; }
+            }
+            else if (pt >= 700)
+            {
+                if (var == "nominal") { return 1.074; }
+                else if (var == "up") { return 1.074+0.054; }
+                else if (var == "dn") { return 1.074-0.038; }
+            }
+        }
+        if (year == "2017")
+        {
+            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2017/4_fit/index.html:
+               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
+               | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **1.020** [-0.022/+0.024] | **1.049** [-0.032/+0.041] | **1.034** [-0.033/+0.046] |
+            */
+            if (pt >= 250 && pt < 500)
+            {
+                if (var == "nominal") { return 1.020; }
+                else if (var == "up") { return 1.020+0.024; }
+                else if (var == "dn") { return 1.020-0.022; }
+            }
+            else if (pt >= 500 && pt < 700)
+            {
+                if (var == "nominal") { return 1.049; }
+                else if (var == "up") { return 1.049+0.041; }
+                else if (var == "dn") { return 1.049-0.032; }
+            }
+            else if (pt >= 700)
+            {
+                if (var == "nominal") { return 1.034; }
+                else if (var == "up") { return 1.034+0.046; }
+                else if (var == "dn") { return 1.034-0.033; }
+            }
+        }
+        if (year == "2016postVFP")
+        {
+            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016/4_fit/index.html:
+               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
+               | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **1.037** [-0.050/+0.053] | **1.097** [-0.102/+0.111] | **1.021** [-0.071/+0.095] |
+            */
+            if (pt >= 250 && pt < 500)
+            {
+                if (var == "nominal") { return 1.037; }
+                else if (var == "up") { return 1.037+0.053; }
+                else if (var == "dn") { return 1.037-0.050; }
+            }
+            else if (pt >= 500 && pt < 700)
+            {
+                if (var == "nominal") { return 1.097; }
+                else if (var == "up") { return 1.097+0.111; }
+                else if (var == "dn") { return 1.097-0.102; }
+            }
+            else if (pt >= 700)
+            {
+                if (var == "nominal") { return 1.021; }
+                else if (var == "up") { return 1.021+0.095; }
+                else if (var == "dn") { return 1.021-0.071; }
+            }
+        }
+        if (year == "2016preVFP")
+        {
+            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016APV/4_fit/index.html:
+               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
+               | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **1.041** [-0.119/+0.120] | **1.090** [-0.134/+0.139] | **1.034** [-0.152/+0.152] |
+            */
+            if (pt >= 250 && pt < 500)
+            {
+                if (var == "nominal") { return 1.041; }
+                else if (var == "up") { return 1.041+0.120; }
+                else if (var == "dn") { return 1.041-0.119; }
+            }
+            else if (pt >= 500 && pt < 700)
+            {
+                if (var == "nominal") { return 1.090; }
+                else if (var == "up") { return 1.090+0.139; }
+                else if (var == "dn") { return 1.090-0.134; }
+            }
+            else if (pt >= 700)
+            {
+                if (var == "nominal") { return 1.034; }
+                else if (var == "up") { return 1.034+0.152; }
+                else if (var == "dn") { return 1.034-0.152; }
+            }
+        }
+        return 1.;
+    };
+public:
+    std::string year_str;
+
+    ParticleNetXbbSFs() { /* Do nothing */ };
+
+    void init(TString file_name)
+    {
+        NanoSFsUL::init(file_name);
+
+        switch (campaign)
+        {
+        case (RunIISummer20UL16APV):
+            year_str = "2016preVFP";
+            break;
+        case (RunIISummer20UL16):
+            year_str = "2016postVFP";
+            break;
+        case (RunIISummer20UL17):
+            year_str = "2017";
+            break;
+        case (RunIISummer20UL18):
+            year_str = "2018";
+            break;
+        default:
+            return;
+            break;
+        };
+    };
+
+    double getSF(double pt) 
+    { 
+        return boohftCalib(year_str, pt);
+    };
+
+    double getSFUp(double pt) 
+    { 
+        return boohftCalib(year_str, pt, "up");
+    };
+
+    double getSFDn(double pt) 
+    { 
+        return boohftCalib(year_str, pt, "dn");
+    };
+};
+
 #endif
