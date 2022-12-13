@@ -171,7 +171,7 @@ class PandasAnalysis:
         else:
             if selection and type(selection) == str:
                 selection = self.df.eval(selection)
-            return self.df[(self.df.name == name) & selection]
+            return self.df[(self.df.name == name) & selection].copy()
 
     def sig_df(self, selection=None):
         if not selection:
@@ -179,7 +179,7 @@ class PandasAnalysis:
         else:
             if selection and type(selection) == str:
                 selection = self.df.eval(selection)
-            return self.df[~self.df.is_data & self.df.is_signal & selection]
+            return self.df[~self.df.is_data & self.df.is_signal & selection].copy()
 
     def bkg_df(self, selection=None):
         if not selection:
@@ -187,7 +187,7 @@ class PandasAnalysis:
         else:
             if selection and type(selection) == str:
                 selection = self.df.eval(selection)
-            return self.df[~self.df.is_data & ~self.df.is_signal & selection]
+            return self.df[~self.df.is_data & ~self.df.is_signal & selection].copy()
 
     def data_df(self, selection=None):
         if not selection:
@@ -195,7 +195,7 @@ class PandasAnalysis:
         else:
             if selection and type(selection) == str:
                 selection = self.df.eval(selection)
-            return self.df[self.df.is_data & selection]
+            return self.df[self.df.is_data & selection].copy()
 
     def sig_count(self, selection=None, raw=False):
         df = self.sig_df(selection=selection)
@@ -253,7 +253,7 @@ class Optimization(PandasAnalysis):
                 self.df.loc[split_left, f"{name}_weight"] *= orig_integral/split_left_integral
                 self.df.loc[split_right, f"{name}_weight"] *= orig_integral/split_right_integral
 
-    def plot_correlation(self, column, bins, base_selection=None, selections=None, x_label="", 
+    def plot_correlation(self, column, bins, weights=None, base_selection=None, selections=None, x_label="", 
                          logy=False, norm=True, transf=lambda x: x):
         fig = plt.figure()
         gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
@@ -266,6 +266,9 @@ class Optimization(PandasAnalysis):
             return hist_axes, ratio_axes
 
         denom_df = self.bkg_df(selection=base_selection)
+        if weights:
+            for weight in weights:
+                denom_df.event_weight *= denom_df[weight]
         denom = yahist.Hist1D(
             transf(denom_df[column]),
             bins=bins, 
@@ -278,6 +281,9 @@ class Optimization(PandasAnalysis):
 
         for selection in selections:
             numer_df = self.bkg_df(selection=f"({base_selection}) and ({selection})")
+            if weights:
+                for weight in weights:
+                    numer_df.event_weight *= numer_df[weight]
             numer = yahist.Hist1D(
                 transf(numer_df[column]),
                 bins=bins, 
@@ -322,14 +328,19 @@ class Optimization(PandasAnalysis):
 
         return hist_axes, ratio_axes
 
-    def plot_sig_vs_bkg(self, column, bins, selection="", transf=lambda x: x, raw=False, 
-                        x_label="", logy=False, axes=None, norm=False, stacked=False, 
+    def plot_sig_vs_bkg(self, column, bins, weights=None, selection="", transf=lambda x: x, 
+                        raw=False, x_label="", logy=False, axes=None, norm=False, stacked=False, 
                         legend_loc="best"):
         if not axes:
             fig, axes = plt.subplots()
 
         bkg_df = self.bkg_df(selection=selection)
         sig_df = self.sig_df(selection=selection)
+        
+        if weights:
+            for weight in weights:
+                bkg_df.event_weight *= bkg_df[weight]
+                sig_df.event_weight *= sig_df[weight]
 
         if raw:
             bkg_weights, sig_weights = np.ones(len(bkg_df)), np.ones(len(sig_df))
@@ -462,10 +473,9 @@ class Validation(PandasAnalysis):
         mc_error = self.bkg_error(selection=selection, raw=raw)
         return data_error, mc_error
 
-    def plot_data_vs_mc(self, column, bins, blinded_range=None, blinded_box=True, 
-                        selection="", x_label="", logy=False, transf=lambda x: x, 
-                        norm=False, stacked=False, axes=None, return_hists=False,
-                        legend_loc="best"):
+    def plot_data_vs_mc(self, column, bins, weights=None, blinded_range=None, blinded_box=True, 
+                        selection="", x_label="", logy=False, transf=lambda x: x, norm=False, 
+                        stacked=False, axes=None, return_hists=False, legend_loc="best"):
         if not axes:
             fig = plt.figure()
             gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
@@ -483,6 +493,14 @@ class Validation(PandasAnalysis):
             blind_low, blind_high = blinded_range
             data_df = data_df.query(f"not ({column} >= {blind_low} and {column} < {blind_high})")
 
+        # Get bkg MC (denominator)
+        mc_df = self.bkg_df(selection=selection)
+        
+        if weights:
+            for weight in weights:
+                data_df.event_weight *= data_df[weight]
+                mc_df.event_weight *= mc_df[weight]
+
         data_hist = yahist.Hist1D(
             transf(data_df[column]),
             bins=bins,
@@ -490,9 +508,6 @@ class Validation(PandasAnalysis):
             label=f"Data [{len(data_df)} events]",
             color="k"
         )
-
-        # Get bkg MC (denominator)
-        mc_df = self.bkg_df(selection=selection)
         mc_hist = yahist.Hist1D(
             transf(mc_df[column]),
             bins=bins,
@@ -667,7 +682,13 @@ class Extrapolation(PandasAnalysis):
             -------|-------
                A   |   B
 
-        where Region D is the signal region, and Regions A, B, and C are control regions.
+        where Region D is the signal region, and Regions A, B, and C are control regions 
+        such that the yield in Region D can be estimated from data as follows: 
+
+            Prediceted Region D = (Region C)*(Region A)/(Region B)
+
+        Returns the predicted yield in Region D with the statistical and systematic 
+        percent errors when possible. 
         """
         # Assemble regions
         h_left = f"(not ({h_right}))"
@@ -730,13 +751,6 @@ class Extrapolation(PandasAnalysis):
                 C_data = "BLINDED"
                 C_data_err = "BLINDED"
 
-        # Calculate extrapolation factors and relative errors
-        AtoB_extp = B_bkg_wgt/A_bkg_wgt
-        AtoB_err = np.sqrt((B_bkg_err/B_bkg_wgt)**2 + (A_bkg_err/A_bkg_wgt)**2)
-        BtoC_extp = C_bkg_wgt/B_bkg_wgt
-        BtoC_err = np.sqrt((C_bkg_err/C_bkg_wgt)**2 + (B_bkg_err/B_bkg_wgt)**2)
-        CtoD_extp = D_bkg_wgt/C_bkg_wgt
-        CtoD_err = np.sqrt((D_bkg_err/D_bkg_wgt)**2 + (C_bkg_err/C_bkg_wgt)**2)
         # Construct tables
         if show_raw:
             header = "cut,region,bkg_raw,bkg_wgt,bkg_err,sig_raw,sig_wgt,sig_err"
@@ -757,6 +771,16 @@ class Extrapolation(PandasAnalysis):
             C_row += f",{C_data},{C_data_err}"
             D_row += f",BLINDED,BLINDED"
 
+        # Calculate extrapolation factors and relative errors
+        BtoA_MC_extp = A_bkg_wgt/B_bkg_wgt
+        BtoA_MC_err = np.sqrt((B_bkg_err/B_bkg_wgt)**2 + (A_bkg_err/A_bkg_wgt)**2)
+        if A_data == "BLINDED" or B_data == "BLINDED" or C_data == "BLINDED":
+            BtoA_data_extp = None
+            BtoA_data_err = None
+        else:
+            BtoA_data_extp = A_data/B_data
+            BtoA_data_err = np.sqrt(1/A_data + 1/B_data)
+
         # Print tables
         print(header)
         print(A_row)
@@ -765,6 +789,18 @@ class Extrapolation(PandasAnalysis):
         print(D_row)
         print("")
         print("name,extp,rel_err")
-        print(f"AtoB,{AtoB_extp},{AtoB_err}")
-        print(f"BtoC,{BtoC_extp},{BtoC_err}")
-        print(f"CtoD,{CtoD_extp},{CtoD_err}")
+        print(f"BtoA_MC,{BtoA_MC_extp},{BtoA_MC_err}")
+        print(f"BtoA_data,{BtoA_data_extp},{BtoA_data_err}")
+
+        if A_data == "BLINDED" or B_data == "BLINDED" or C_data == "BLINDED":
+            return None, None, None
+
+        # Compute systematic and statistical percent errors
+        D_pred_MC = A_bkg_wgt/B_bkg_wgt*C_bkg_wgt
+        syst_err = abs(1 - D_pred_MC/D_bkg_wgt)
+        stat_err = np.sqrt(1/A_data + 1/B_data + 1/C_data)
+
+        # Compute predicted yield in data
+        D_pred_data = A_data/B_data*C_data
+
+        return D_pred_data, stat_err, syst_err
