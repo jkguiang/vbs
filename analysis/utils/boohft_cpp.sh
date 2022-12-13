@@ -1,3 +1,4 @@
+#!/bin/bash
 function writefunc {
     year=$1
     html=$2
