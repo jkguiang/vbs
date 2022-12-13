@@ -24,7 +24,7 @@ class VBSOrchestrator(Orchestrator):
     def get_file_info(self, input_file):
         file_info = {
             "is_data": ("Run201" in input_file),
-            "is_signal": ("VBSWH_mkW_Inclusive" in input_file), 
+            "is_signal": ("VBSWH" in input_file), 
             "output_name": None, # set below, depends on is_data
             "output_dir": None,  # set below, depends on year
             "n_events": None,    # set by file_info.parse
