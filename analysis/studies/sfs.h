@@ -823,106 +823,106 @@ private:
     {
         if (year == "2018")
         {
-            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2018/4_fit/index.html:
+            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_bb_ULNanoV9_PNetXbbVsQCD_ak8_2018/4_fit/index.html:
                |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
                | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **0.988** [-0.036/+0.033] | **1.041** [-0.038/+0.043] | **1.074** [-0.038/+0.054] |
+               | **High Purity** WP | **0.990** [-0.031/+0.027] | **1.040** [-0.034/+0.038] | **1.069** [-0.038/+0.056] |
             */
             if (pt >= 250 && pt < 500)
             {
-                if (var == "nominal") { return 0.988; }
-                else if (var == "up") { return 0.988+0.033; }
-                else if (var == "dn") { return 0.988-0.036; }
+                if (var == "nominal") { return 0.990; }
+                else if (var == "up") { return 0.990+0.027; }
+                else if (var == "dn") { return 0.990-0.031; }
             }
             else if (pt >= 500 && pt < 700)
             {
-                if (var == "nominal") { return 1.041; }
-                else if (var == "up") { return 1.041+0.043; }
-                else if (var == "dn") { return 1.041-0.038; }
+                if (var == "nominal") { return 1.040; }
+                else if (var == "up") { return 1.040+0.038; }
+                else if (var == "dn") { return 1.040-0.034; }
             }
             else if (pt >= 700)
             {
-                if (var == "nominal") { return 1.074; }
-                else if (var == "up") { return 1.074+0.054; }
-                else if (var == "dn") { return 1.074-0.038; }
+                if (var == "nominal") { return 1.069; }
+                else if (var == "up") { return 1.069+0.056; }
+                else if (var == "dn") { return 1.069-0.038; }
             }
         }
         if (year == "2017")
         {
-            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2017/4_fit/index.html:
+            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_bb_ULNanoV9_PNetXbbVsQCD_ak8_2017/4_fit/index.html:
                |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
                | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.020** [-0.022/+0.024] | **1.049** [-0.032/+0.041] | **1.034** [-0.033/+0.046] |
+               | **High Purity** WP | **1.020** [-0.025/+0.027] | **1.049** [-0.031/+0.041] | **1.030** [-0.030/+0.041] |
             */
             if (pt >= 250 && pt < 500)
             {
                 if (var == "nominal") { return 1.020; }
-                else if (var == "up") { return 1.020+0.024; }
-                else if (var == "dn") { return 1.020-0.022; }
+                else if (var == "up") { return 1.020+0.027; }
+                else if (var == "dn") { return 1.020-0.025; }
             }
             else if (pt >= 500 && pt < 700)
             {
                 if (var == "nominal") { return 1.049; }
                 else if (var == "up") { return 1.049+0.041; }
-                else if (var == "dn") { return 1.049-0.032; }
+                else if (var == "dn") { return 1.049-0.031; }
             }
             else if (pt >= 700)
             {
-                if (var == "nominal") { return 1.034; }
-                else if (var == "up") { return 1.034+0.046; }
-                else if (var == "dn") { return 1.034-0.033; }
+                if (var == "nominal") { return 1.030; }
+                else if (var == "up") { return 1.030+0.041; }
+                else if (var == "dn") { return 1.030-0.030; }
             }
         }
         if (year == "2016postVFP")
         {
-            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016/4_fit/index.html:
+            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016/4_fit/index.html:
                |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
                | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.037** [-0.050/+0.053] | **1.097** [-0.102/+0.111] | **1.021** [-0.071/+0.095] |
+               | **High Purity** WP | **1.028** [-0.047/+0.046] | **1.090** [-0.098/+0.104] | **1.045** [-0.087/+0.102] |
             */
             if (pt >= 250 && pt < 500)
             {
-                if (var == "nominal") { return 1.037; }
-                else if (var == "up") { return 1.037+0.053; }
-                else if (var == "dn") { return 1.037-0.050; }
-            }
-            else if (pt >= 500 && pt < 700)
-            {
-                if (var == "nominal") { return 1.097; }
-                else if (var == "up") { return 1.097+0.111; }
-                else if (var == "dn") { return 1.097-0.102; }
-            }
-            else if (pt >= 700)
-            {
-                if (var == "nominal") { return 1.021; }
-                else if (var == "up") { return 1.021+0.095; }
-                else if (var == "dn") { return 1.021-0.071; }
-            }
-        }
-        if (year == "2016preVFP")
-        {
-            /* Markdown table from web/vbswh_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016APV/4_fit/index.html:
-               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
-               | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.041** [-0.119/+0.120] | **1.090** [-0.134/+0.139] | **1.034** [-0.152/+0.152] |
-            */
-            if (pt >= 250 && pt < 500)
-            {
-                if (var == "nominal") { return 1.041; }
-                else if (var == "up") { return 1.041+0.120; }
-                else if (var == "dn") { return 1.041-0.119; }
+                if (var == "nominal") { return 1.028; }
+                else if (var == "up") { return 1.028+0.046; }
+                else if (var == "dn") { return 1.028-0.047; }
             }
             else if (pt >= 500 && pt < 700)
             {
                 if (var == "nominal") { return 1.090; }
-                else if (var == "up") { return 1.090+0.139; }
-                else if (var == "dn") { return 1.090-0.134; }
+                else if (var == "up") { return 1.090+0.104; }
+                else if (var == "dn") { return 1.090-0.098; }
             }
             else if (pt >= 700)
             {
-                if (var == "nominal") { return 1.034; }
-                else if (var == "up") { return 1.034+0.152; }
-                else if (var == "dn") { return 1.034-0.152; }
+                if (var == "nominal") { return 1.045; }
+                else if (var == "up") { return 1.045+0.102; }
+                else if (var == "dn") { return 1.045-0.087; }
+            }
+        }
+        if (year == "2016preVFP")
+        {
+            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016APV/4_fit/index.html:
+               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
+               | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **1.038** [-0.115/+0.116] | **1.084** [-0.132/+0.137] | **1.027** [-0.142/+0.145] |
+            */
+            if (pt >= 250 && pt < 500)
+            {
+                if (var == "nominal") { return 1.038; }
+                else if (var == "up") { return 1.038+0.116; }
+                else if (var == "dn") { return 1.038-0.115; }
+            }
+            else if (pt >= 500 && pt < 700)
+            {
+                if (var == "nominal") { return 1.084; }
+                else if (var == "up") { return 1.084+0.137; }
+                else if (var == "dn") { return 1.084-0.132; }
+            }
+            else if (pt >= 700)
+            {
+                if (var == "nominal") { return 1.027; }
+                else if (var == "up") { return 1.027+0.145; }
+                else if (var == "dn") { return 1.027-0.142; }
             }
         }
         return 1.;

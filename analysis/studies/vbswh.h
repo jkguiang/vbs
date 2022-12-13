@@ -609,13 +609,9 @@ struct Analysis : Core::Analysis
         );
         cutflow.insert(has_1lep, lep_pt_gt40, Right);
 
-        // Single-lepton triggers
-        Cut* lep_triggers = new Passes1LepTriggers("Passes1LepTriggers", *this, hlt_sfs);
-        cutflow.insert(lep_pt_gt40, lep_triggers, Right);
-
         // Fat jet selection
         Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this, jes);
-        cutflow.insert(lep_triggers, select_fatjets, Right);
+        cutflow.insert(lep_pt_gt40, select_fatjets, Right);
 
         // Geq1FatJet
         Cut* geq1fatjet = new LambdaCut(
@@ -643,15 +639,16 @@ struct Analysis : Core::Analysis
         Cut* save_vars = new SaveVariables("SaveVariables", *this, xbb_sfs);
         cutflow.insert(save_lhe, save_vars, Right);
 
+        // Single-lepton triggers
+        Cut* lep_triggers = new Passes1LepTriggers("Passes1LepTriggers", *this, hlt_sfs);
+        cutflow.insert(save_vars, lep_triggers, Right);
+
         // Basic VBS jet requirements
         Cut* vbsjets_presel = new LambdaCut(
-            "MjjGt500_detajjGt3", 
-            [&]()
-            {
-                return arbol.getLeaf<double>("M_jj") > 500 && fabs(arbol.getLeaf<double>("deta_jj")) > 3;
-            }
+            "MjjGt500", 
+            [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
         );
-        cutflow.insert(save_vars, vbsjets_presel, Right);
+        cutflow.insert(lep_triggers, vbsjets_presel, Right);
 
         Cut* xbb_presel = new LambdaCut(
             "XbbGt0p3", [&]() { return arbol.getLeaf<double>("hbbjet_score") > 0.3; }

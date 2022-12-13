@@ -53,6 +53,12 @@ int main(int argc, char** argv)
     Cut* fix_ewk_samples = new FixEWKSamples("FixEWKSamples", analysis);
     cutflow.insert("Bookkeeping", fix_ewk_samples, Right);
 
+    Cut* objsel = new Cut("ObjectSelection");
+    cutflow.insert("SaveVariables", objsel, Right);
+
+    Cut* presel = new Cut("Preselection");
+    cutflow.insert("ApplyAk4GlobalBVeto", presel, Right);
+
     Cut* pdf_SR1 = new LambdaCut(
         "SR1", 
         [&]() 
@@ -127,7 +133,7 @@ int main(int argc, char** argv)
                 nt.GetEntry(entry);
                 std::vector<bool> checkpoints = cutflow.run(
                     {
-                        "SaveVariables",        // Object selection
+                        "Passes1LepTriggers",   // Object selection + HLT
                         "ApplyAk4GlobalBVeto",  // Preselection
                         "XbbGt0p9_MSDLt150"     // SR1
                     }
