@@ -3,29 +3,29 @@ jmax 1 number of backgrounds
 kmax 19 number of nuisance parameters
 ------------------------------------------
 bin                       bin1
-observation                129
+observation                127
 ------------------------------------------
 bin                       bin1        bin1
 process              VBSWH_mkW    TotalBkg
 process                      0           1
-rate                    393.53      129.50
+rate                    415.24      127.28
 ------------------------------------------
-abcd_syst     lnN            -       1.140
+abcd_syst     lnN            -       1.080
 abcd_stat     lnN            -       1.130
-pdf_vars      lnN        1.010           -
-alphaS_unc    lnN        1.047           -
-muF_scale     lnN        1.179           -
+pdf_vars      lnN        1.022           -
+muF_scale     lnN        1.178           -
 isr_weights   lnN        1.001           -
-fsr_weights   lnN        1.026           -
-pu_rwgt       lnN        1.003           -
+fsr_weights   lnN        1.014           -
+pu_rwgt       lnN        1.002           -
 L1_prefire    lnN        1.010           -
 hlt_sfs       lnN        1.008           -
-mc_stat       lnN        1.021           -
-lep_id        lnN        1.014           -
+mc_stat       lnN        1.022           -
+lep_id        lnN        1.015           -
 elec_reco     lnN        1.003           -
 muon_iso      lnN        1.000           -
+xbb_sfs       lnN        1.057           -
 btag_sfs      lnN        1.003           -
-met_unc       lnN        1.001           -
-jes           lnN        1.061           -
-jer           lnN        1.001           -
+met_unc       lnN        1.002           -
+jes           lnN        1.066           -
+jer           lnN        1.008           -
 lumi          lnN        1.025           -
