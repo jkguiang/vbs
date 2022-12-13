@@ -2,7 +2,7 @@
 #define CUTS_H
 
 // VBS
-#include "../core.h"
+#include "core/cuts.h"
 // ROOT
 #include "TH2.h"
 

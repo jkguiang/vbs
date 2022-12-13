@@ -1,8 +1,7 @@
 // VBS
-#include "../core.h"
-#include "../jes.h"
-#include "../sfs.h"
-#include "../vbswh.h"
+#include "corrections/jets.h"
+#include "vbswh/collections.h"
+#include "vbswh/cuts.h"
 #include "cuts.h"
 // RAPIDO
 #include "arbol.h"
