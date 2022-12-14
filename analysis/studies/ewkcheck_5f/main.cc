@@ -1,4 +1,5 @@
-#include "../vbswh.h"
+#include "vbswh/collections.h"
+#include "vbswh/cuts.h"
 #include "cuts.h"
 // RAPIDO
 #include "arbol.h"

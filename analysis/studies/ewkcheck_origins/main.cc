@@ -1,5 +1,5 @@
-#include "../core.h"
-#include "../vbswh.h"
+#include "vbswh/collections.h"
+#include "vbswh/cuts.h"
 // RAPIDO
 #include "arbol.h"
 #include "hepcli.h"
