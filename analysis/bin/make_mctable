@@ -129,7 +129,7 @@ def make_mctable(table_year):
     table = table.replace("FOOTNOTES_TO_REPLACE", "\n".join(suffix_text))
     table = table.replace(
         "CAPTION_TO_REPLACE",
-        f"  Background MC samples used in this analysis, corresponding to {table_year} detector conditions (UL), with their respective cross sections in picobarns."
+        f"  Background MC samples used in this analysis, corresponding to {table_year} detector conditions (UL), with their respective cross sections in picobarns. \nThe cross sections for the \HT-binned W+jets samples are scaled by a ``stitching'' factor such that the samples together fill a continuous \HT distribution."
     )
     table = table.replace("LABEL_TO_REPLACE", f"tab:samples{table_year}")
     return table
