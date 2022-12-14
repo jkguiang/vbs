@@ -1,6 +1,7 @@
 # VBS VH/VVH
 This repository contains the code used to run the following analyses:
 - VBS WH
+- VBS VVH (all-hadronic)
 
 It is structured as follows:
 - `analysis`: [RAPIDO](https://github.com/jkguiang/rapido) analysis code
