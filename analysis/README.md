@@ -1,3 +1,11 @@
+# Overview
+This repository contains the code required to run the VBS WH and VBS VVH (all-hadronic) analyses and is structured as follows:
+- `bin`: all executables
+- `data`: extraneous data like scale factors, golden JSON, etc.
+- `include`: analysis code that is global to all studies
+- `studies`: analysis code specific to a given study
+- `utils`: various utility scripts
+
 # Instructions
 1. Install [RAPIDO](https://github.com/jkguiang/rapido)
 ```
@@ -59,7 +67,7 @@ python3 utils/file_info.py /path/to/file.root
 This will work only if the file path follows typical CMS conventions.
 
 ## Running over Run 2
-1. Use `bin/run` to run over many samples in parallel or `bin/{STUDY}` to run file-by-file
+1. Run `bin/run` to run over many samples in parallel or `bin/{STUDY}` to run file-by-file
 ```
 $ ./bin/run --help
 usage: run [-h] [--skim SKIM] [--skims [SKIMS ...]] [--tag TAG] [--var VAR] [--filter FILTER] [--output_ttree OUTPUT_TTREE] [--n_workers N_WORKERS] [--no_make] [--data] study
@@ -83,7 +91,7 @@ optional arguments:
   --no_make             Do not run make before running the study
   --data                Run looper over data files (in addition to MC)
 ```
-2. Use `bin/merge` to merge the results
+2. Run `bin/merge` to merge the results
 ```
 $ ./bin/merge --help
 usage: merge [-h] [--tag TAG] [--terminals [TERMINALS ...]] [--debug] [--n_workers N_WORKERS] study
@@ -112,8 +120,8 @@ git clone https://github.com/aminnj/ProjectMetis /path/to/ProjectMetis
 ```
 source /path/to/ProjectMetis/setup.sh
 ```
-3. Use `bin/make_package STUDY` to collect a given study into a tarball
-4. Use `bin/metis` to submit jobs to the cluster
+3. Run `bin/make_package STUDY` to collect a given study into a tarball
+4. Run `bin/metis` to submit jobs to the cluster
 ```
 usage: metis [-h] [-y] [--debug] [--python2] --samples SAMPLES --tag TAG
              [--filter FILTER] [--xrootd_protocol XROOTD_PROTOCOL]
