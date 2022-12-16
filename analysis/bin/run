@@ -157,7 +157,7 @@ if __name__ == "__main__":
             samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/merged*.root") # Also picks up RunIISummer20UL16APV
             samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/merged*.root")
             samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/merged*.root")
-        elif skim[:4] == "data_":
+        elif skim[:5] == "data_":
             samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged*.root")
             samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/merged*.root")
             samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/merged*.root")
