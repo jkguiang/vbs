@@ -3,7 +3,7 @@ This repository contains the code required to run the VBS WH and VBS VVH (all-ha
 - `bin`: all executables
 - `data`: extraneous data like scale factors, golden JSON, etc.
 - `include`: analysis code that is global to all studies
-- `studies`: analysis code specific to a given study
+- `studies/{STUDY}`: analysis code specific to a given study named `STUDY`
 - `utils`: various utility scripts
 
 # Instructions
@@ -123,6 +123,7 @@ source /path/to/ProjectMetis/setup.sh
 3. Run `bin/make_package STUDY` to collect a given study into a tarball
 4. Run `bin/metis` to submit jobs to the cluster
 ```
+$ ./bin/metis --help
 usage: metis [-h] [-y] [--debug] [--python2] --samples SAMPLES --tag TAG
              [--filter FILTER] [--xrootd_protocol XROOTD_PROTOCOL]
              [--xrootd_host XROOTD_HOST] [--sites [SITES [SITES ...]]]
