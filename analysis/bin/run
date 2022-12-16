@@ -35,15 +35,16 @@ class VBSOrchestrator(Orchestrator):
         }
 
         # Get output info
-        if not file_info["is_data"]:
-            file_info.update(
-                utils.file_info.parse(input_file=input_file, xsecs_json=self.xsecs_json)
-            )
-            file_info["output_name"] = input_file.split("_Tune")[0].split('/')[-1]
-        else:
+        if file_info["is_data"]:
             file_info["xsec_sf"] = 1
             file_info["year"] = utils.file_info.get_year(input_file)
             file_info["output_name"] = input_file.split("/")[-2].split("UL")[0][:-1].split('/')[-1]
+        else:
+            file_info.update(utils.file_info.parse(input_file=input_file, xsecs_json=self.xsecs_json))
+            file_info["output_name"] = input_file.split("_Tune")[0].split('/')[-1]
+
+        if input_file.split("/")[-1][:7] == "merged_":
+            file_info["output_name"] += input_file.split("/")[-1].split("merged")[-1].replace(".root", "")
 
         file_info["output_dir"] = f"{self.output_dir}/{file_info['year']}"
         os.makedirs(file_info["output_dir"], exist_ok=True)
@@ -58,12 +59,14 @@ class VBSOrchestrator(Orchestrator):
 
     def _get_job(self, input_file):
         file_info = self.get_file_info(input_file)
-        cmd = [self.executable]
-        cmd.append(f"--input_ttree=Events")
-        cmd.append(f"--output_dir={file_info['output_dir']}")
-        cmd.append(f"--output_name={file_info['output_name']}")
-        cmd.append(f"--output_ttree={self.output_ttree}")
-        cmd.append(f"--variation={self.variation}")
+        cmd = [
+            self.executable,
+            f"--input_ttree=Events",
+            f"--output_dir={file_info['output_dir']}",
+            f"--output_name={file_info['output_name']}",
+            f"--output_ttree={self.output_ttree}",
+            f"--variation={self.variation}"
+        ]
         if file_info["is_signal"]:
             cmd.append("--is_signal")
         if file_info["is_data"]:
@@ -100,8 +103,8 @@ if __name__ == "__main__":
         help="Name of the study to run"
     )
     cli.add_argument(
-        "--skim", type=str, default="",
-        help="Name of skim (i.e. bkg_{SKIM}, sig_{SKIM}, data_{SKIM})"
+        "--skimtag", type=str, default="",
+        help="Tag for skim (i.e. bkg_{SKIMTAG}, sig_{SKIMTAG}, data_{SKIMTAG})"
     )
     cli.add_argument(
         "--skims", type=str, nargs="*", default=[],
@@ -138,11 +141,11 @@ if __name__ == "__main__":
     args = cli.parse_args()
 
     ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
-    if args.skim:
+    if args.skimtag:
         if args.data:
-            skims = [f"{prefix}_{args.skim}" for prefix in ["bkg", "sig", "data"]]
+            skims = [f"{prefix}_{args.skimtag}" for prefix in ["bkg", "sig", "data"]]
         else:
-            skims = [f"{prefix}_{args.skim}" for prefix in ["bkg", "sig"]]
+            skims = [f"{prefix}_{args.skimtag}" for prefix in ["bkg", "sig"]]
     elif args.skims:
         skims = args.skims
     else:
@@ -150,20 +153,20 @@ if __name__ == "__main__":
 
     samples = []
     for skim in skims:
-        if skim == f"sig_{args.skim}":
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/merged.root") # Also picks up RunIISummer20UL16APV
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/merged.root")
-        elif skim == f"data_{args.skim}":
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2018*NanoAODv9*/merged.root")
+        if skim[:4] == "sig_":
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/merged*.root") # Also picks up RunIISummer20UL16APV
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/merged*.root")
+        elif skim[:4] == "data_":
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2018*NanoAODv9*/merged*.root")
         else:
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged*.root")
     if not samples:
         print("No samples found in these directories:")
         print("\n".join([f"{ceph_dir}/{skim}" for skim in skims]))
