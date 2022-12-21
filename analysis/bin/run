@@ -45,6 +45,13 @@ class VBSOrchestrator(Orchestrator):
 
         if input_file.split("/")[-1][:7] == "merged_":
             file_info["output_name"] += input_file.split("/")[-1].split("merged")[-1].replace(".root", "")
+            # Find companion files and adjust xsec_sf accordingly
+            input_dir = "/".join(input_file.split("/")[:-1])
+            for other_file in self.input_files:
+                if other_file != input_file and "/".join(other_file.split("/")[:-1]) == input_dir:
+                    other_file_info = utils.file_info.parse(input_file=other_file, xsecs_json=self.xsecs_json)
+                    file_info["n_events"] += other_file_info["n_events"]
+            file_info["xsec_sf"] = file_info["xsec"]*1000*file_info["lumi"]/file_info["n_events"]
 
         file_info["output_dir"] = f"{self.output_dir}/{file_info['year']}"
         os.makedirs(file_info["output_dir"], exist_ok=True)
@@ -103,6 +110,10 @@ if __name__ == "__main__":
         help="Name of the study to run"
     )
     cli.add_argument(
+        "--skimdir", type=str, default="/ceph/cms/store/user/jguiang/VBSVHSkim",
+        help="Base directory containing skims for this analysis (e.g. /ceph/cms/store/user/jguiang/VBSVHSkim)"
+    )
+    cli.add_argument(
         "--skimtag", type=str, default="",
         help="Tag for skim (i.e. bkg_{SKIMTAG}, sig_{SKIMTAG}, data_{SKIMTAG})"
     )
@@ -140,7 +151,6 @@ if __name__ == "__main__":
     )
     args = cli.parse_args()
 
-    ceph_dir = "/ceph/cms/store/user/jguiang/VBSVHSkim"
     if args.skimtag:
         if args.data:
             skims = [f"{prefix}_{args.skimtag}" for prefix in ["bkg", "sig", "data"]]
@@ -154,22 +164,22 @@ if __name__ == "__main__":
     samples = []
     for skim in skims:
         if skim[:4] == "sig_":
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL16*/merged*.root") # Also picks up RunIISummer20UL16APV
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL17*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*RunIISummer20UL18*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*RunIISummer20UL16*/merged*.root") # Also picks up RunIISummer20UL16APV
+            samples += glob.glob(f"{args.skimdir}/{skim}/*RunIISummer20UL17*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*RunIISummer20UL18*/merged*.root")
         elif skim[:5] == "data_":
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2016*NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2017*NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*-UL2018*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*-UL2016*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*-UL2017*NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*-UL2018*NanoAODv9*/merged*.root")
         else:
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODAPVv9*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL16NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL17NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{ceph_dir}/{skim}/*UL18NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL16NanoAODAPVv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL16NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL17NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL18NanoAODv9*/merged*.root")
     if not samples:
         print("No samples found in these directories:")
-        print("\n".join([f"{ceph_dir}/{skim}" for skim in skims]))
+        print("\n".join([f"{args.skimdir}/{skim}" for skim in skims]))
         exit()
 
     if args.tag:
