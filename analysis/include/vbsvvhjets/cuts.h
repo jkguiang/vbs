@@ -126,12 +126,12 @@ public:
         );
         LorentzVector hbbfatjet_p4 = good_fatjet_p4s.at(best_xbb_i);
         globals.setVal<LorentzVector>("hbbfatjet_p4", hbbfatjet_p4);
-        arbol.setLeaf<double>("hbbjet_score", good_fatjet_xbbtags.at(best_xbb_i));
-        arbol.setLeaf<double>("hbbjet_pt", hbbfatjet_p4.pt());
-        arbol.setLeaf<double>("hbbjet_eta", hbbfatjet_p4.eta());
-        arbol.setLeaf<double>("hbbjet_phi", hbbfatjet_p4.phi());
-        arbol.setLeaf<double>("hbbjet_mass", good_fatjet_masses.at(best_xbb_i));
-        arbol.setLeaf<double>("hbbjet_msoftdrop", good_fatjet_msoftdrops.at(best_xbb_i));
+        arbol.setLeaf<double>("hbbfatjet_score", good_fatjet_xbbtags.at(best_xbb_i));
+        arbol.setLeaf<double>("hbbfatjet_pt", hbbfatjet_p4.pt());
+        arbol.setLeaf<double>("hbbfatjet_eta", hbbfatjet_p4.eta());
+        arbol.setLeaf<double>("hbbfatjet_phi", hbbfatjet_p4.phi());
+        arbol.setLeaf<double>("hbbfatjet_mass", good_fatjet_masses.at(best_xbb_i));
+        arbol.setLeaf<double>("hbbfatjet_msoftdrop", good_fatjet_msoftdrops.at(best_xbb_i));
         // Remove Hbb fat jet candidate from consideration
         good_fatjet_p4s.erase(good_fatjet_p4s.begin() + best_xbb_i);
         good_fatjet_xbbtags.erase(good_fatjet_xbbtags.begin() + best_xbb_i);
@@ -230,6 +230,43 @@ public:
 
     bool evaluate()
     {
+        return true;
+    };
+};
+
+class SaveVariables : public Core::AnalysisCut
+{
+public:
+    Channel channel;
+
+    SaveVariables(std::string name, Core::Analysis& analysis, Channel channel) 
+    : Core::AnalysisCut(name, analysis) 
+    {
+        this->channel = channel;
+    };
+
+    bool evaluate()
+    {
+        arbol.setLeaf<bool>("passes_bveto", arbol.getLeaf<int>("n_medium_b_jets") == 0);
+        if (channel == AllMerged)
+        {
+            arbol.setLeaf<double>(
+                "ST",
+                arbol.getLeaf<double>("hbbfatjet_pt")
+                + arbol.getLeaf<double>("ld_vqqfatjet_pt")
+                + arbol.getLeaf<double>("tr_vqqfatjet_pt")
+            );
+        }
+        else if (channel == SemiMerged)
+        {
+            arbol.setLeaf<double>(
+                "ST",
+                arbol.getLeaf<double>("hbbfatjet_pt")
+                + arbol.getLeaf<double>("ld_vqqfatjet_pt")
+                + arbol.getLeaf<double>("ld_vqqjet_pt")
+                + arbol.getLeaf<double>("tr_vqqjet_pt")
+            );
+        }
         return true;
     };
 };

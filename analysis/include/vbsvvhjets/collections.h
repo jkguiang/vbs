@@ -31,13 +31,13 @@ struct Analysis : Core::Analysis
     : Core::Analysis(arbol_ref, nt_ref, cli_ref, cutflow_ref)
     {
         // W/Z fat jet globals
-        cutflow.globals.newVar<LorentzVector>("ld_vqqjet_p4");
-        cutflow.globals.newVar<LorentzVector>("tr_vqqjet_p4");
+        cutflow.globals.newVar<LorentzVector>("ld_vqqfatjet_p4");
+        cutflow.globals.newVar<LorentzVector>("tr_vqqfatjet_p4");
         // W/Z AK4 jet globals
         cutflow.globals.newVar<LorentzVector>("ld_vqqjet_p4");
         cutflow.globals.newVar<LorentzVector>("tr_vqqjet_p4");
         // Hbb jet globals
-        cutflow.globals.newVar<LorentzVector>("hbbjet_p4");
+        cutflow.globals.newVar<LorentzVector>("hbbfatjet_p4");
 
         // Scale factors
         jes = nullptr;
@@ -143,7 +143,7 @@ struct Analysis : Core::Analysis
 
         // VVH fat jet candidate selection
         Cut* allmerged_select_vvh = new SelectVVHFatJets("AllMerged_SelectVVHFatJets", *this, AllMerged);
-        cutflow.insert(select_fatjets, allmerged_select_vvh, Right);
+        cutflow.insert(exactly3_fatjets, allmerged_select_vvh, Right);
 
         // Jet selection
         Cut* allmerged_select_jets = new SelectJetsNoFatJetOverlap("AllMerged_SelectJets", *this, AllMerged, jes, btag_sfs);
@@ -152,6 +152,65 @@ struct Analysis : Core::Analysis
         // VBS jet selection
         Cut* allmerged_select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("AllMerged_SelectVBSJetsMaxE", *this);
         cutflow.insert(allmerged_select_jets, allmerged_select_vbsjets_maxE, Right);
+
+        // Save analysis variables
+        Cut* allmerged_save_vars = new SaveVariables("AllMerged_SaveVariables", *this, AllMerged);
+        cutflow.insert(allmerged_select_vbsjets_maxE, allmerged_save_vars, Right);
+
+        // Global AK4 b-veto
+        Cut* allmerged_apply_ak4bveto = new LambdaCut(
+            "AllMerged_ApplyAk4GlobalBVeto", [&]() { return arbol.getLeaf<bool>("passes_bveto"); }
+        );
+        cutflow.insert(allmerged_save_vars, allmerged_apply_ak4bveto, Right);
+
+        // Basic ST selection
+        Cut* allmerged_STgt1200 = new LambdaCut(
+            "AllMerged_STGt1200", [&]() { return arbol.getLeaf<double>("ST") > 1200; }
+        );
+        cutflow.insert(allmerged_apply_ak4bveto, allmerged_STgt1200, Right);
+
+        // Basic VBS jet requirements
+        Cut* allmerged_Mjjgt500 = new LambdaCut(
+            "AllMerged_MjjGt500", [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
+        );
+        cutflow.insert(allmerged_STgt1200, allmerged_Mjjgt500, Right);
+
+        Cut* allmerged_detajjgt3 = new LambdaCut(
+            "AllMerged_detajjGt3", [&]() { return fabs(arbol.getLeaf<double>("deta_jj")) > 3; }
+        );
+        cutflow.insert(allmerged_Mjjgt500, allmerged_detajjgt3, Right);
+        
+        // Preliminary cut tests
+        Cut* prelim_cut0 = new LambdaCut(
+            "AllMerged_MjjGt600_detajjGt4", 
+            [&]() 
+            { 
+                return (
+                    arbol.getLeaf<double>("M_jj") > 600
+                    && fabs(arbol.getLeaf<double>("deta_jj")) > 4
+                );
+            }
+        );
+        cutflow.insert(allmerged_detajjgt3, prelim_cut0, Right);
+        Cut* prelim_cut1 = new LambdaCut(
+            "AllMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_score") > 0.9; }
+        );
+        cutflow.insert(prelim_cut0, prelim_cut1, Right);
+        Cut* prelim_cut2 = new LambdaCut(
+            "AllMerged_XWqqGt0p7", 
+            [&]() 
+            { 
+                return (
+                    arbol.getLeaf<double>("ld_vqqfatjet_score") > 0.7
+                    && arbol.getLeaf<double>("ld_vqqfatjet_score") > 0.7
+                );
+            }
+        );
+        cutflow.insert(prelim_cut1, prelim_cut2, Right);
+        Cut* prelim_cut3 = new LambdaCut(
+            "AllMerged_STGt1500", [&]() { return arbol.getLeaf<double>("ST") > 1500; }
+        );
+        cutflow.insert(prelim_cut2, prelim_cut3, Right);
         /* ------------------------------------------------------ */
 
         /* ------------------ 2 fatjet channel ------------------ */
@@ -168,13 +227,29 @@ struct Analysis : Core::Analysis
         Cut* semimerged_select_jets = new SelectJetsNoFatJetOverlap("SemiMerged_SelectJets", *this, SemiMerged, jes, btag_sfs);
         cutflow.insert(semimerged_select_vvh, semimerged_select_jets, Right);
 
-        // V-->qq jet candidate selection
-        Cut* semimerged_select_vjets = new SelectVJets("SemiMerged_SelectVJets", *this);
-        cutflow.insert(semimerged_select_jets, semimerged_select_vjets, Right);
+        // N jets >= 4 (2 VBS + V --> qq)
+        Cut* semimerged_geq4_jets = new LambdaCut(
+            "SemiMerged_Geq4Jets", [&]() { return arbol.getLeaf<int>("n_jets") >= 4; }
+        );
+        cutflow.insert(semimerged_select_jets, semimerged_geq4_jets, Right);
 
         // VBS jet selection
         Cut* semimerged_select_vbsjets_maxE = new Core::SelectVBSJetsMaxE("SemiMerged_SelectVBSJetsMaxE", *this);
-        cutflow.insert(semimerged_select_vjets, semimerged_select_vbsjets_maxE, Right);
+        cutflow.insert(semimerged_geq4_jets, semimerged_select_vbsjets_maxE, Right);
+
+        // V --> qq jet candidate selection
+        Cut* semimerged_select_vjets = new SelectVJets("SemiMerged_SelectVJets", *this);
+        cutflow.insert(semimerged_select_vbsjets_maxE, semimerged_select_vjets, Right);
+
+        // Save analysis variables
+        Cut* semimerged_save_vars = new SaveVariables("SemiMerged_SaveVariables", *this, SemiMerged);
+        cutflow.insert(semimerged_select_vjets, semimerged_save_vars, Right);
+
+        // Basic VBS jet requirements
+        Cut* semimerged_Mjjgt500 = new LambdaCut(
+            "SemiMerged_MjjGt500", [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
+        );
+        cutflow.insert(semimerged_save_vars, semimerged_Mjjgt500, Right);
         /* ------------------------------------------------------ */
     };
 
