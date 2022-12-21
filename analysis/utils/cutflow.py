@@ -472,10 +472,47 @@ class CutflowCollection:
                     rows[row_i] = f"{rows[row_i]},{cutflow_row}"
         return rows
 
+    def get_ascii(self, terminal_cut_name):
+        col_widths = []
+        rows = []
+        for line_i, line in enumerate(self.get_csv(terminal_cut_name)):
+            row = line.replace("\n", "").split(",")
+            if line_i == 0:
+                col_widths = [len(col) for col in row]
+            else:
+                for col_i, col in enumerate(row):
+                    if len(col) > col_widths[col_i]:
+                        col_widths[col_i] = len(col)
+            rows.append(row)
+
+        pretty_rows = []
+        for row_i, row in enumerate(rows):
+            pretty_row = []
+            divide_row = []
+            for col_i, col in enumerate(row):
+                col_width = col_widths[col_i]
+                pretty_row.append(f'{col:^{col_width}s}')
+                divide_row.append(u"\u2500"*col_width)
+
+            if row_i == 0:
+                pretty_rows.append(u"\u250C\u2500"+u"\u2500\u252C\u2500".join(divide_row)+u"\u2500\u2510")
+            else:
+                pretty_rows.append(u"\u251C\u2500"+u"\u2500\u253C\u2500".join(divide_row)+u"\u2500\u2524")
+
+            pretty_rows.append(u"\u2502 "+u" \u2502 ".join(pretty_row)+u" \u2502")
+
+            if row_i == len(rows) - 1:
+                pretty_rows.append(u"\u2514\u2500"+u"\u2500\u2534\u2500".join(divide_row)+u"\u2500\u2518")
+
+        return pretty_rows
+
     def write_csv(self, output_csv, terminal_cut_name):
         with open(output_csv, "w") as f_out:
             f_out.write("\n".join(self.get_csv(terminal_cut_name)))
             f_out.write("\n")
+
+    def print(self, terminal_cut_name):
+        print("\n".join(self.get_ascii(terminal_cut_name))+"\n")
 
     @staticmethod
     def from_files(cflow_files, delimiter=","):
@@ -491,3 +528,4 @@ class CutflowCollection:
             return CutflowCollection(cutflows)
         else:
             raise ValueError("cutflow files must be arranged in a dict or list")
+
