@@ -1,0 +1,141 @@
+#!/usr/bin/env python3
+# -*- coding: utf-8 -*
+import os
+import argparse
+from utils.merge import merge
+
+BKG_SAMPLE_MAP = {
+    # "SingleTop": {
+    #     "2016preVFP": ["ST*"],
+    #     "2016postVFP": ["ST*"],
+    #     "2017": ["ST*"],
+    #     "2018": ["ST*"],
+    # },
+    "TTbar": {
+        "2016preVFP": ["TTToHadronic*"],
+        "2016postVFP": ["TTToHadronic*"],
+        "2017": ["TTToHadronic*"],
+        "2018": ["TTToHadronic*"],
+    },
+    "QCD": {
+        "2016preVFP": ["QCD_HT*"],
+        "2016postVFP": ["QCD_HT*"],
+        "2017": ["QCD_HT*"],
+        "2018": ["QCD_HT*"],
+    },
+    # "TTbar1L": {
+    #     "2016preVFP": ["TTToSemiLep*"],
+    #     "2016postVFP": ["TTToSemiLep*"],
+    #     "2017": ["TTToSemiLep*"],
+    #     "2018": ["TTToSemiLep*"],
+    # },
+    # "TTbar2L": {
+    #     "2016preVFP": ["TTTo2L*"],
+    #     "2016postVFP": ["TTTo2L*"],
+    #     "2017": ["TTTo2L*"],
+    #     "2018": ["TTTo2L*"],
+    # },
+    # "TTX": {
+    #     "2016preVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+    #     "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+    #     "2017": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+    #     "2018": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToHadronic*"],
+    # },
+    # "WJets": {
+    #     "2016preVFP": ["WJets*"],
+    #     "2016postVFP": ["WJets*"],
+    #     "2017": ["WJets*"],
+    #     "2018": ["WJets*"],
+    # },
+    # "Bosons": {
+    #     "2016preVFP": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+    #     "2016postVFP": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+    #     "2017": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+    #     "2018": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*"],
+    # },
+    # "EWKWLep": {
+    #     "2016preVFP": ["EWKW*WToLNu*"],
+    #     "2016postVFP": ["EWKW*WToLNu*"],
+    #     "2017": ["EWKW*WToLNu*"],
+    #     "2018": ["EWKW*WToLNu*"],
+    # },
+    # "VH": {
+    #     "2016preVFP": ["*HToBB*", "VHToNonbb_M125"],
+    #     "2016postVFP": ["*HToBB*", "VHToNonbb_M125"],
+    #     "2017": ["*HToBB*", "VHToNonbb_M125"],
+    #     "2018": ["*HToBB*", "VHToNonbb_M125"]
+    # },
+    # "VBSWH_SM": {
+    #     "2016preVFP": ["VBFWH_HToBB*"],
+    #     "2016postVFP": ["VBFWH_HToBB*"],
+    #     "2017": ["VBFWH_HToBB*"],
+    #     "2018": ["VBFWH_HToBB*"]
+    # }
+}
+
+SIG_SAMPLE_MAP = {
+    "VBSVVH": {
+        "2016preVFP": ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"],
+        "2016postVFP": ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"],
+        "2017": ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"],
+        "2018": ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"]
+    }
+}
+
+DATA_SAMPLE_MAP = {
+    "data": {
+        "2016preVFP": ["*Run201*"],
+        "2016postVFP": ["*Run201*"],
+        "2017": ["*Run201*"],
+        "2018": ["*Run201*"]
+    }
+}
+
+if __name__ == "__main__":
+    cli = argparse.ArgumentParser(description="Run merge results from /bin/run")
+    cli.add_argument(
+        "study", type=str,
+        help="Name of the study to run"
+    )
+    cli.add_argument(
+        "--tag", type=str, default="",
+        help="Unique tag for output"
+    )
+    cli.add_argument(
+        "--terminals", nargs="*",
+        help="Names of terminal cuts in cutflow to write to CSV"
+    )
+    cli.add_argument(
+        "--debug", action="store_true",
+        help="Run in debug mode"
+    )
+    cli.add_argument(
+        "--n_workers", type=int, default=8,
+        help="Number of workers to run hadds"
+    )
+    args = cli.parse_args()
+
+    if args.tag:
+        output_dir=f"studies/{args.study}/output_{args.tag}"
+    else:
+        output_dir=f"studies/{args.study}/output"
+
+    os.makedirs(f"{output_dir}/Run2", exist_ok=True)
+
+    # Get Cutflow objects for background samples
+    cutflows = merge(output_dir, BKG_SAMPLE_MAP, n_hadders=args.n_workers)
+    cutflows["TotalBkg"] = cutflows.sum()
+    # Get Cutflow objects for signal samples
+    cutflows += merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
+    cutflows.reorder(["QCD", "TTbar", "TotalBkg", "VBSVVH"])
+
+    # Write .cflow files
+    for group_name, cutflow in cutflows.items():
+        cutflow.write_cflow(f"{output_dir}/Run2/{group_name}_cutflow.cflow")
+    # Write CSV
+    for terminal_cut_name in args.terminals if args.terminals else cutflows.terminal_cut_names:
+        cutflows.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.csv", terminal_cut_name)
+        cutflows.write_txt(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.txt", terminal_cut_name)
+
+    # Merge data samples and DO NOT save Cutflow object
+    merge(output_dir, DATA_SAMPLE_MAP, n_hadders=args.n_workers)

@@ -472,7 +472,7 @@ class CutflowCollection:
                     rows[row_i] = f"{rows[row_i]},{cutflow_row}"
         return rows
 
-    def get_ascii(self, terminal_cut_name):
+    def get_txt(self, terminal_cut_name):
         col_widths = []
         rows = []
         for line_i, line in enumerate(self.get_csv(terminal_cut_name)):
@@ -506,13 +506,74 @@ class CutflowCollection:
 
         return pretty_rows
 
+    def get_tex(self, terminal_cut_name, caption="Cutflow for this analysis.", label="cutflow"):
+        col_widths = []
+        rows = []
+        for line_i, line in enumerate(self.get_csv(terminal_cut_name)):
+            row = line.replace("\n", "").split(",")
+            if line_i == 0:
+                col_widths = [len(col) for col in row]
+            else:
+                for col_i, col in enumerate(row):
+                    if len(col) > col_widths[col_i]:
+                        col_widths[col_i] = len(col)
+            rows.append(row)
+
+        # Add table headers
+        table_rows = [
+            "\\begin{table}[htp]",
+            "\\begin{center}",
+            "\\begin{tabular}{"+("c"*len(rows[0]))+"}",
+            "\\hline",
+            "\\hline"
+        ]
+
+        # Add table content
+        for row_i, row in enumerate(rows[1:]):
+            # For lines below, skip 'raw' column
+            table_row = []
+            if row_i == 0:
+                row = row[:1] + rows[0]
+
+            for col_i, col in enumerate(row[::2]):
+                if col_i == 0:
+                    col_width = col_widths[0]
+                else:
+                    col_width = max(col_widths[col_i*2-1], col_widths[col_i*2])
+
+                table_row.append(f'{col:^{col_width}s}')
+
+            table_rows.append(" & ".join(table_row)+" \\\\")
+
+        # Add table footers
+        table_rows += [
+            "\\hline",
+            "\\hline",
+            "\\end{tabular}",
+            "\\end{center}",
+            "\\caption{"+caption+"}",
+            "\\label{tab:"+label+"}",
+            "\\end{table}"
+        ]
+        return table_rows
+
     def write_csv(self, output_csv, terminal_cut_name):
         with open(output_csv, "w") as f_out:
             f_out.write("\n".join(self.get_csv(terminal_cut_name)))
             f_out.write("\n")
 
+    def write_txt(self, output_txt, terminal_cut_name):
+        with open(output_txt, "w") as f_out:
+            f_out.write("\n".join(self.get_txt(terminal_cut_name)))
+            f_out.write("\n")
+
+    def write_tex(self, output_tex, terminal_cut_name, caption="Cutflow for this analysis.", label="cutflow"):
+        with open(output_tex, "w") as f_out:
+            f_out.write("\n".join(self.get_tex(terminal_cut_name, caption=caption, label=label)))
+            f_out.write("\n")
+
     def print(self, terminal_cut_name):
-        print("\n".join(self.get_ascii(terminal_cut_name))+"\n")
+        print("\n".join(self.get_txt(terminal_cut_name))+"\n")
 
     @staticmethod
     def from_files(cflow_files, delimiter=","):
