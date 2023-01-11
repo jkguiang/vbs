@@ -245,6 +245,8 @@ public:
             && nt.Flag_HBHENoiseIsoFilter()
             && nt.Flag_EcalDeadCellTriggerPrimitiveFilter()
             && nt.Flag_BadPFMuonFilter()
+            && nt.Flag_eeBadScFilter()
+            && nt.Flag_ecalBadCalibFilter()
         );
         if (nt.isData())
         {
@@ -460,8 +462,8 @@ public:
     LorentzVector hbbjet_p4;
 
     SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis, JetEnergyScales* jes = nullptr, 
-                           BTagSFs* btag_sfs = nullptr) 
-    : Core::SelectJets(name, analysis, jes, btag_sfs) 
+                           BTagSFs* btag_sfs = nullptr, bool fix_hem = false) 
+    : Core::SelectJets(name, analysis, jes, btag_sfs, fix_hem) 
     {
         // Do nothing
     };
@@ -708,7 +710,7 @@ public:
         }
 
         TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-        if (file_name.Contains("kWscan_kZscan"))
+        if (file_name.Contains("kWscan_kZscan") || file_name.Contains("kWkZscan"))
         {
             Doubles reweights;
             for (auto reweight : nt.LHEReweightingWeight())
