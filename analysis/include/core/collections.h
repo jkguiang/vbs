@@ -90,11 +90,14 @@ struct Analysis
         // Fat jet (AK8) globals
         cutflow.globals.newVar<LorentzVectors>("good_fatjet_p4s", {});
         cutflow.globals.newVar<Integers>("good_fatjet_idxs", {});
-        cutflow.globals.newVar<Doubles>("good_fatjet_wtags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_ztags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_hbbtags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {}); // ParticleNet
-        cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});  // ParticleNet
+        cutflow.globals.newVar<Doubles>("good_fatjet_wqqtags", {});    // ParticleNet tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_zqqtags", {});    // ParticleNet tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_hbbtags", {});    // ParticleNet tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {});    // ParticleNet mass-decorrelated tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_xqqtags", {});    // ParticleNet mass-decorrelated tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_xcctags", {});    // ParticleNet mass-decorrelated tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_xwqqtags", {});   // ParticleNet mass-decorrelated(?) tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});     // ParticleNet regressed mass
         cutflow.globals.newVar<Doubles>("good_fatjet_msoftdrops", {});
         // VBS jet globals
         cutflow.globals.newVar<LorentzVector>("ld_vbsjet_p4");
@@ -135,6 +138,9 @@ struct Analysis
         arbol.newBranch<double>("prefire_sf", -999);
         arbol.newBranch<double>("prefire_sf_up", -999);
         arbol.newBranch<double>("prefire_sf_dn", -999);
+        arbol.newBranch<double>("trig_sf", -999);
+        arbol.newBranch<double>("trig_sf_up", -999);
+        arbol.newBranch<double>("trig_sf_dn", -999);
         arbol.newBranch<int>("event", -999);
         arbol.newBranch<double>("MET", -999);
         arbol.newBranch<double>("MET_up", -999);
