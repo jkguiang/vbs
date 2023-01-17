@@ -19,15 +19,20 @@ scramv1 b clean; scramv1 b # always make a clean build
 ```
 
 ## Producing the final result
-1. Turn the datacard into a workspace
+1. Set up HiggsCombine
+```
+cd /path/to/CMSSW_10_2_13/src/HiggsAnalysis/CombinedLimit
+scramv1 b clean; scramv1 b # always make a clean build
+```
+2. Turn the datacard into a workspace
 ```
 text2workspace.py  datacards/vbswh.dat -o vbswh.root
 ```
-2. Run the following HiggsCombine command (`MultiDimFit` options can be found [here](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/))
+3. Run the following HiggsCombine command (`MultiDimFit` options can be found [here](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/))
 ```
 combine -M MultiDimFit -d vbswh.root -m 125 -t -1 --expectSignal=0 --setParameters r_VBSWH_mKW=0 --setParameterRanges r_VBSWH_mKW=0.0,2.0 --saveNLL --algo grid --points 101 --rMin 0 --rMax 5 --alignEdges 1
 ```
-3. Check the output for the negative-log-likelihood data
+4. Check the output for the negative-log-likelihood data
 ```
 $ root higgsCombineTest.MultiDimFit.mH125.root
 root [0]
