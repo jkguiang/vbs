@@ -79,6 +79,21 @@ DATA_SAMPLE_MAP = {
     }
 }
 
+OTHER_SAMPLE_MAP = {
+    "VBSWH_negLambda": {
+        "2016preVFP": ["VBSWH_negLambdaWZ_kWkZscan_m2to2_Mjj100toInf"],
+        "2016postVFP": ["VBSWH_negLambdaWZ_kWkZscan_m2to2_Mjj100toInf"],
+        "2017": ["VBSWH_negLambdaWZ_kWkZscan_m2to2_Mjj100toInf"],
+        "2018": ["VBSWH_negLambdaWZ_kWkZscan_m2to2_Mjj100toInf"]
+    },
+    "VBSWH_posLambda": {
+        "2016preVFP": ["VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf"],
+        "2016postVFP": ["VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf"],
+        "2017": ["VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf"],
+        "2018": ["VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf"]
+    }
+}
+
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run merge results from /bin/run")
     cli.add_argument(
@@ -135,3 +150,8 @@ if __name__ == "__main__":
 
     # Merge data samples and DO NOT save Cutflow object
     merge(output_dir, DATA_SAMPLE_MAP, n_hadders=args.n_workers)
+    # Merge other samples
+    other_cutflows = merge(output_dir, OTHER_SAMPLE_MAP, n_hadders=args.n_workers)
+    # Write .cflow files
+    for group_name, cutflow in other_cutflows.items():
+        cutflow.write_cflow(f"{output_dir}/Run2/{group_name}_cutflow.cflow")
