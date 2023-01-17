@@ -157,17 +157,17 @@ public:
             LorentzVector ld_vqqfatjet_p4 = good_fatjet_p4s.at(ld_fatjet_i);
             LorentzVector tr_vqqfatjet_p4 = good_fatjet_p4s.at(tr_fatjet_i);
             globals.setVal<LorentzVector>("ld_vqqfatjet_p4", ld_vqqfatjet_p4);
-            arbol.setLeaf<double>("ld_vqqfatjet_score", good_fatjet_xbbtags.at(ld_fatjet_i));
+            arbol.setLeaf<double>("ld_vqqfatjet_score", good_fatjet_xwqqtags.at(ld_fatjet_i));
             arbol.setLeaf<double>("ld_vqqfatjet_pt", ld_vqqfatjet_p4.pt());
             arbol.setLeaf<double>("ld_vqqfatjet_eta", ld_vqqfatjet_p4.eta());
             arbol.setLeaf<double>("ld_vqqfatjet_phi", ld_vqqfatjet_p4.phi());
             arbol.setLeaf<double>("ld_vqqfatjet_mass", good_fatjet_masses.at(ld_fatjet_i));
             arbol.setLeaf<double>("ld_vqqfatjet_msoftdrop", good_fatjet_msoftdrops.at(ld_fatjet_i));
             globals.setVal<LorentzVector>("tr_vqqfatjet_p4", tr_vqqfatjet_p4);
-            arbol.setLeaf<double>("tr_vqqfatjet_score", good_fatjet_xbbtags.at(tr_fatjet_i));
-            arbol.setLeaf<double>("tr_vqqfatjet_pt", ld_vqqfatjet_p4.pt());
-            arbol.setLeaf<double>("tr_vqqfatjet_eta", ld_vqqfatjet_p4.eta());
-            arbol.setLeaf<double>("tr_vqqfatjet_phi", ld_vqqfatjet_p4.phi());
+            arbol.setLeaf<double>("tr_vqqfatjet_score", good_fatjet_xwqqtags.at(tr_fatjet_i));
+            arbol.setLeaf<double>("tr_vqqfatjet_pt", tr_vqqfatjet_p4.pt());
+            arbol.setLeaf<double>("tr_vqqfatjet_eta", tr_vqqfatjet_p4.eta());
+            arbol.setLeaf<double>("tr_vqqfatjet_phi", tr_vqqfatjet_p4.phi());
             arbol.setLeaf<double>("tr_vqqfatjet_mass", good_fatjet_masses.at(tr_fatjet_i));
             arbol.setLeaf<double>("tr_vqqfatjet_msoftdrop", good_fatjet_msoftdrops.at(tr_fatjet_i));
         }
