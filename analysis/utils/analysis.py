@@ -19,20 +19,26 @@ def clip(np_array, bins):
 
 class PandasAnalysis:
     def __init__(self, sig_root_files=None, bkg_root_files=None, data_root_files=None, 
-                 ttree_name="Events", weight_columns=None, plots_dir=None, 
-                 sample_labels={}, vector_branches=[]):
+                 ttree_name="Events", weight_columns=None, reweight_column=None, 
+                 plots_dir=None, sample_labels={}, drop_columns=[]):
+
+        if reweight_column:
+            drop_columns.append(reweight_column)
 
         dfs = []
+        self.sig_reweights = None
         # Load signal
         if sig_root_files:
             for root_file in tqdm(sig_root_files, desc="Loading sig babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 with uproot.open(root_file) as f:
-                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in vector_branches], library="pd")
+                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in drop_columns], library="pd")
                     df["name"] = name
                     df["is_signal"] = True
                     df["is_data"] = False
                     dfs.append(df)
+                    if reweight_column:
+                        self.sig_reweights = np.stack(f[ttree_name].arrays(reweight_column, library="np")[reweight_column])
         # Load background
         bkg_names = []
         if bkg_root_files:
@@ -40,7 +46,7 @@ class PandasAnalysis:
                 name = root_file.split("/")[-1].replace(".root", "")
                 bkg_names.append(name)
                 with uproot.open(root_file) as f:
-                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in vector_branches], library="pd")
+                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in drop_columns], library="pd")
                     df["name"] = name
                     df["is_signal"] = False
                     df["is_data"] = False
@@ -50,7 +56,7 @@ class PandasAnalysis:
             for root_file in tqdm(data_root_files, desc="Loading data babies"):
                 name = root_file.split("/")[-1].replace(".root", "")
                 with uproot.open(root_file) as f:
-                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in vector_branches], library="pd")
+                    df = f[ttree_name].arrays([k for k in f[ttree_name].keys() if k not in drop_columns], library="pd")
                     df["name"] = name
                     df["is_signal"] = False
                     df["is_data"] = True
@@ -63,6 +69,8 @@ class PandasAnalysis:
             self.df["event_weight"] = self.df[weight_columns[0]]
             for weight_col in weight_columns[1:]:
                 self.df["event_weight"] *= self.df[weight_col]
+        else:
+            self.df["event_weight"] = np.ones(self.df.shape[0])
 
         self.plots_dir = plots_dir
         if self.plots_dir:
@@ -219,12 +227,113 @@ class PandasAnalysis:
         df = self.data_df(selection=selection)
         return len(df)
 
-    def data_error(self, selection=None, raw=False):
-        df = self.bkg_df(selection=selection)
+    def data_error(self, selection=None):
+        df = self.data_df(selection=selection)
         return np.sqrt(len(df))
 
     def dump_plots(self, plots_yaml):
         return
+
+    def __plot(self, typ, column, bins, weights=None, selection="", transf=lambda x: x, 
+               raw=False, x_label="", logy=False, axes=None, norm=False, stacked=False, 
+               legend_loc="best", color="r"):
+
+        if not axes:
+            fig, axes = plt.subplots()
+        
+        if typ == "bkg":
+            df = self.bkg_df(selection=selection)
+        elif typ == "sig":
+            df = self.sig_df(selection=selection)
+        else:
+            return
+        
+        if weights:
+            for weight in weights:
+                df.event_weight *= df[weight]
+
+        if raw:
+            weights = np.ones(len(df))
+        else:
+            weights = df.event_weight
+
+        # Get stacked backgrounds
+        hists = []
+        if typ == "bkg":
+            if stacked:
+                for name in df.name.unique():
+                    weights = weights[df.name == name]
+                    if norm:
+                        weights /= sum(weights)
+                    sample_label = self.sample_labels[name] if name in self.sample_labels else name
+                    hist = yahist.Hist1D(
+                        transf(df[df.name == name][column]),
+                        bins=bins, 
+                        weights=weights,
+                        label=f"{sample_label} [{sum(weights):.1f} events]",
+                        color=self.bkg_colors[name] if self.bkg_colors else None
+                    )
+                    hists.append(hist)
+
+        # Get total background
+        hist = yahist.Hist1D(
+            transf(df[column]),
+            bins=bins, 
+            weights=weights,
+            label=f"Total [{sum(weights):0.1f} events]",
+            color=("k" if typ == "bkg" else color if typ == "sig" else "r")
+        )
+
+        if norm:
+            hist = hist.normalize()
+
+        # Plot everything
+        if hists:
+            hists.sort(key=lambda h: sum(h.counts))
+            yahist.utils.plot_stack(hists, ax=axes, histtype="stepfilled", log=logy)
+        if typ == "bkg":
+            hist.plot(ax=axes, alpha=0.5, log=logy)
+        elif typ == "sig":
+            hist.plot(ax=axes, linewidth=2, log=logy)
+
+        hep.cms.label("Preliminary", data=False, lumi=138, loc=0, ax=axes)
+        
+        axes.set_xlabel(x_label)
+        if not logy:
+            axes.set_ylim(bottom=0)
+        else:
+            axes.set_ylim(bottom=0.01)
+        if stacked:
+            axes.legend(fontsize=14, loc=legend_loc)
+        else:
+            axes.legend(loc=legend_loc)
+        if norm:
+            axes.set_ylabel("a.u.")
+        else:
+            axes.set_ylabel("Events")
+
+        if self.plots_dir:
+            plot_file = f"{self.plots_dir}/{column}_{typ}.pdf"
+            if stacked:
+                plot_file = plot_file.replace(".pdf", "_stacked.pdf")
+            if norm:
+                plot_file = plot_file.replace(".pdf", "_norm.pdf")
+            if logy:
+                plot_file = plot_file.replace(".pdf", "_logy.pdf")
+            if selection:
+                plot_file = plot_file.replace(".pdf", f"_{PandasAnalysis.get_selection_str(selection)}.pdf")
+                with open(plot_file.replace("pdf", "txt"), "w") as plot_txt:
+                    plot_txt.write(f"SELECTION: {selection}")
+
+            plt.savefig(plot_file, bbox_inches="tight")
+
+        return axes
+
+    def plot_sig(self, *args, **kwargs):
+        return self.__plot("sig", *args, **kwargs)
+
+    def plot_bkg(self, *args, **kwargs):
+        return self.__plot("bkg", *args, **kwargs)
 
 class Optimization(PandasAnalysis):
 
@@ -392,13 +501,7 @@ class Optimization(PandasAnalysis):
         bkg_hist.plot(ax=axes, alpha=0.5, log=logy)
         sig_hist.plot(ax=axes, linewidth=2, log=logy)
 
-        hep.cms.label(
-            "Preliminary",
-            data=False,
-            lumi=138,
-            loc=0,
-            ax=axes,
-        )
+        hep.cms.label("Preliminary", data=False, lumi=138, loc=0, ax=axes)
         
         axes.set_xlabel(x_label)
         if not logy:
@@ -619,13 +722,7 @@ class Validation(PandasAnalysis):
         ratio_axes.set_ylabel("data/MC")
         ratio_axes.set_ylim([0, 2])
 
-        hep.cms.label(
-            "Preliminary",
-            data=True,
-            lumi=138,
-            loc=0,
-            ax=hist_axes,
-        )
+        hep.cms.label("Preliminary", data=True, lumi=138, loc=0, ax=hist_axes)
 
         if stacked:
             hist_axes.legend(fontsize=14, loc=legend_loc).set_zorder(101)
