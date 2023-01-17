@@ -245,9 +245,14 @@ public:
             && nt.Flag_HBHENoiseIsoFilter()
             && nt.Flag_EcalDeadCellTriggerPrimitiveFilter()
             && nt.Flag_BadPFMuonFilter()
+            && nt.Flag_BadPFMuonDzFilter()
+            && nt.Flag_hfNoisyHitsFilter()
             && nt.Flag_eeBadScFilter()
-            && nt.Flag_ecalBadCalibFilter()
         );
+        if (nt.year() > 2016)
+        {
+            passed = passed && nt.Flag_ecalBadCalibFilter();
+        }
         if (nt.isData())
         {
             passed = passed && nt.Flag_globalSuperTightHalo2016Filter();
@@ -462,8 +467,8 @@ public:
     LorentzVector hbbjet_p4;
 
     SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis, JetEnergyScales* jes = nullptr, 
-                           BTagSFs* btag_sfs = nullptr, bool fix_hem = false) 
-    : Core::SelectJets(name, analysis, jes, btag_sfs, fix_hem) 
+                           BTagSFs* btag_sfs = nullptr) 
+    : Core::SelectJets(name, analysis, jes, btag_sfs) 
     {
         // Do nothing
     };
