@@ -1,4 +1,5 @@
 #include "core/collections.h"
+#include "core/cuts.h"
 #include "vbswh/cuts.h"
 // RAPIDO
 #include "arbusto.h"
@@ -88,11 +89,20 @@ int main(int argc, char** argv)
             LorentzVectors fatjet_p4s = {};
             for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
             {
-                if (nt.FatJet_msoftdrop().at(fatjet_i) > 40 
-                    && nt.FatJet_jetId().at(fatjet_i) > 0
-                    && nt.FatJet_pt().at(fatjet_i) > 200)
+                // if (nt.FatJet_msoftdrop().at(fatjet_i) > 40 
+                //     && nt.FatJet_jetId().at(fatjet_i) > 0
+                //     && nt.FatJet_pt().at(fatjet_i) > 200)
+                // {
+                //     fatjet_p4s.push_back(nt.FatJet_p4().at(fatjet_i));
+                // }
+                LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
+                if (fatjet_p4.pt() > 300
+                    && fabs(fatjet_p4.eta()) < 2.5
+                    && fatjet_p4.mass() > 50
+                    && nt.FatJet_msoftdrop().at(fatjet_i) > 40
+                    && nt.FatJet_jetId().at(fatjet_i) > 0)
                 {
-                    fatjet_p4s.push_back(nt.FatJet_p4().at(fatjet_i));
+                    fatjet_p4s.push_back(fatjet_p4);
                 }
             }
             if (fatjet_p4s.size() >= 2)
@@ -126,7 +136,15 @@ int main(int argc, char** argv)
                         break;
                     }
                 }
-                if (!is_overlap && nt.Jet_pt().at(jet_i) > 20)
+                // if (!is_overlap && nt.Jet_pt().at(jet_i) > 20)
+                // {
+                //     jet_p4s.push_back(jet_p4);
+                // }
+                bool passes_jet_id = (
+                    (nt.year() == 2016 && nt.Jet_jetId().at(jet_i) >= 1)
+                    || (nt.year() > 2016 && nt.Jet_jetId().at(jet_i) >= 2)
+                );
+                if (!is_overlap && jet_p4.pt() > 20 && passes_jet_id)
                 {
                     jet_p4s.push_back(jet_p4);
                 }
