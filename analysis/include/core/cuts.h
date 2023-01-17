@@ -195,6 +195,15 @@ public:
         this->btag_sfs = btag_sfs;
     };
 
+    virtual bool isGoodJet(int jet_i, LorentzVector jet_p4)
+    {
+        if (jet_p4.pt() < 20) { return false; }
+        int jet_id = nt.Jet_jetId().at(jet_i);
+        if (nt.year() == 2016 && jet_id < 1) { return false; }
+        if (nt.year() > 2016 && jet_id < 2) { return false; }
+        return true;
+    };
+
     virtual void loadOverlapVars()
     {
         veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
@@ -227,15 +236,6 @@ public:
         return overlapsLepton(jet_i, jet_p4);
     };
 
-    virtual bool isGoodJet(int jet_i, LorentzVector jet_p4)
-    {
-        if (jet_p4.pt() < 20) { return false; }
-        int jet_id = nt.Jet_jetId().at(jet_i);
-        if (nt.year() == 2016 && jet_id < 1) { return false; }
-        if (nt.year() > 2016 && jet_id < 2) { return false; }
-        return true;
-    };
-
     bool evaluate()
     {
         loadOverlapVars();
@@ -263,6 +263,22 @@ public:
             // Subtract uncorrected jet pt
             met_x -= jet_p4.px();
             met_y -= jet_p4.py();
+            // Apply HEM prescription
+            if (!nt.isData()
+                && nt.year() == 2018
+                && nt.event() % 1961 < 1286 
+                && jet_p4.phi() > -1.57 && jet_p4.phi() < -0.87)
+            {
+                double jet_eta = jet_p4.eta();
+                if (jet_eta > -2.5 && jet_eta < -1.3)
+                {
+                    jet_p4 *= 0.8;
+                }
+                else if (jet_eta > -3.0 && jet_eta < -2.5)
+                {
+                    jet_p4 *= 0.65;
+                }
+            }
             // Apply JECs
             if (jes != nullptr)
             {
@@ -285,7 +301,7 @@ public:
             if (!isGoodJet(jet_i, jet_p4)) { continue; }
             if (isOverlap(jet_i, jet_p4)) { continue; }
             // Perform b-tagging (for b-veto); only possible for pt > 20 GeV and |eta| < 2.4
-            if (fabs(jet_p4.eta()) < 2.4) 
+            if (fabs(jet_p4.eta()) < 2.4 && jet_p4.pt() > 20) 
             {
                 // Check DeepJet vs. working points in NanoCORE global config (gconf)
                 double deepflav_btag = nt.Jet_btagDeepFlavB().at(jet_i);
@@ -301,6 +317,7 @@ public:
                 {
                     if (!nt.isData() && btag_sfs != nullptr)
                     {
+                        // Apply DeepJet b-tagging scale factor (for a VETO using the medium WP)
                         int flavor = nt.Jet_hadronFlavour().at(jet_i);
                         double jet_pt = jet_p4.pt();
                         double jet_abseta = fabs(jet_p4.eta());
@@ -378,12 +395,13 @@ public:
         this->jes = jes;
     };
 
-    bool isGoodFatJet(int fatjet_i, LorentzVector fatjet_p4)
+    virtual bool isGoodFatJet(int fatjet_i, LorentzVector fatjet_p4)
     {
         if (fatjet_p4.pt() <= 300) { return false; }
         if (fabs(fatjet_p4.eta()) >= 2.5) { return false; }
         if (fatjet_p4.mass() <= 50) { return false; }
         if (nt.FatJet_msoftdrop().at(fatjet_i) <= 40) { return false; }
+        if (nt.FatJet_jetId().at(fatjet_i) <= 0) { return false; }
         return true;
     };
 
@@ -391,16 +409,36 @@ public:
     {
         LorentzVectors good_fatjet_p4s;
         Integers good_fatjet_idxs;
-        Doubles good_fatjet_wtags;
-        Doubles good_fatjet_ztags;
+        Doubles good_fatjet_wqqtags;
+        Doubles good_fatjet_zqqtags;
         Doubles good_fatjet_hbbtags;
         Doubles good_fatjet_xbbtags;
+        Doubles good_fatjet_xqqtags;
+        Doubles good_fatjet_xcctags;
+        Doubles good_fatjet_xwqqtags;
         Doubles good_fatjet_masses;
         Doubles good_fatjet_msoftdrops;
         LorentzVectors veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
         for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
             LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
+            // Apply HEM prescription
+            if (!nt.isData()
+                && nt.year() == 2018
+                && nt.event() % 1961 < 1286 
+                && fatjet_p4.phi() > -1.57 && fatjet_p4.phi() < -0.87)
+            {
+                double fatjet_eta = fatjet_p4.eta();
+                if (fatjet_eta > -2.5 && fatjet_eta < -1.3)
+                {
+                    fatjet_p4 *= 0.8;
+                }
+                else if (fatjet_eta > -3.0 && fatjet_eta < -2.5)
+                {
+                    fatjet_p4 *= 0.65;
+                }
+            }
+            // Apply jet energy corrections
             if (jes != nullptr)
             {
                 fatjet_p4 = jes->applyAK8JEC(fatjet_p4);
@@ -422,24 +460,32 @@ public:
             if (is_overlap) { continue; }
 
             double pnet_xbb = nt.FatJet_particleNetMD_Xbb().at(fatjet_i);
+            double pnet_xqq = nt.FatJet_particleNetMD_Xqq().at(fatjet_i);
+            double pnet_xcc = nt.FatJet_particleNetMD_Xcc().at(fatjet_i);
             double pnet_qcd = nt.FatJet_particleNetMD_QCD().at(fatjet_i);
 
             // Store good fat jets
             good_fatjet_p4s.push_back(fatjet_p4);
             good_fatjet_idxs.push_back(fatjet_i);
-            good_fatjet_wtags.push_back(nt.FatJet_particleNet_WvsQCD().at(fatjet_i));
-            good_fatjet_ztags.push_back(nt.FatJet_particleNet_ZvsQCD().at(fatjet_i));
+            good_fatjet_wqqtags.push_back(nt.FatJet_particleNet_WvsQCD().at(fatjet_i));
+            good_fatjet_zqqtags.push_back(nt.FatJet_particleNet_ZvsQCD().at(fatjet_i));
             good_fatjet_hbbtags.push_back(nt.FatJet_particleNet_HbbvsQCD().at(fatjet_i));
             good_fatjet_xbbtags.push_back(pnet_xbb/(pnet_xbb + pnet_qcd));
+            good_fatjet_xqqtags.push_back(pnet_xqq/(pnet_xqq + pnet_qcd));
+            good_fatjet_xcctags.push_back(pnet_xcc/(pnet_xcc + pnet_qcd));
+            good_fatjet_xwqqtags.push_back((pnet_xcc + pnet_xqq)/(pnet_xcc + pnet_xqq + pnet_qcd));
             good_fatjet_masses.push_back(nt.FatJet_particleNet_mass().at(fatjet_i));
             good_fatjet_msoftdrops.push_back(nt.FatJet_msoftdrop().at(fatjet_i));
         }
         globals.setVal<LorentzVectors>("good_fatjet_p4s", good_fatjet_p4s);
         globals.setVal<Integers>("good_fatjet_idxs", good_fatjet_idxs);
-        globals.setVal<Doubles>("good_fatjet_wtags", good_fatjet_wtags);
-        globals.setVal<Doubles>("good_fatjet_ztags", good_fatjet_ztags);
+        globals.setVal<Doubles>("good_fatjet_wqqtags", good_fatjet_wqqtags);
+        globals.setVal<Doubles>("good_fatjet_zqqtags", good_fatjet_zqqtags);
         globals.setVal<Doubles>("good_fatjet_hbbtags", good_fatjet_hbbtags);
         globals.setVal<Doubles>("good_fatjet_xbbtags", good_fatjet_xbbtags);
+        globals.setVal<Doubles>("good_fatjet_xqqtags", good_fatjet_xqqtags);
+        globals.setVal<Doubles>("good_fatjet_xcctags", good_fatjet_xcctags);
+        globals.setVal<Doubles>("good_fatjet_xwqqtags", good_fatjet_xwqqtags);
         globals.setVal<Doubles>("good_fatjet_masses", good_fatjet_masses);
         globals.setVal<Doubles>("good_fatjet_msoftdrops", good_fatjet_msoftdrops);
 
@@ -449,14 +495,195 @@ public:
     };
 };
 
-class SelectVBSJetsMaxE : public AnalysisCut
+class SelectVBSJets : public AnalysisCut
 {
 public:
-    SelectVBSJetsMaxE(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
+    SelectVBSJets(std::string name, Core::Analysis& analysis) : AnalysisCut(name, analysis) 
     {
         // Do nothing
     };
 
+    virtual std::vector<unsigned int> getVBSCandidates()
+    {
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+        std::vector<unsigned int> vbsjet_cand_idxs;
+        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        {
+            if (good_jet_p4s.at(jet_i).pt() >= 30.) { vbsjet_cand_idxs.push_back(jet_i); }
+        }
+        return vbsjet_cand_idxs;
+    };
+
+    virtual std::pair<unsigned int, unsigned int> getVBSPair(std::vector<unsigned int> vbsjet_cand_idxs)
+    {
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+        double max_detajj = -999;
+        std::pair<unsigned int, unsigned int> vbsjet_idxs;
+        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        {
+            for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
+            {
+                LorentzVector jet1_p4 = good_jet_p4s.at(jet_i);
+                LorentzVector jet2_p4 = good_jet_p4s.at(jet_j);
+                double detajj = fabs(jet1_p4.eta() - jet2_p4.eta());
+                if (detajj > max_detajj)
+                {
+                    max_detajj = detajj;
+                    vbsjet_idxs = std::make_pair(jet_i, jet_j);
+                }
+            }
+        }
+        return vbsjet_idxs;
+    };
+
+    bool evaluate()
+    {
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+
+        // Get VBS jet candidates
+        std::vector<unsigned int> vbsjet_cand_idxs = getVBSCandidates();
+        if (vbsjet_cand_idxs.size() < 2) { return false; }
+
+        // Select final VBS jet pair
+        std::pair<unsigned int, unsigned int> vbsjet_idxs = getVBSPair(vbsjet_cand_idxs);
+
+        // Sort the two VBS jets into leading/trailing
+        int ld_vbsjet_idx;
+        int tr_vbsjet_idx;
+        if (good_jet_p4s.at(vbsjet_idxs.first).pt() > good_jet_p4s.at(vbsjet_idxs.first).pt())
+        {
+            ld_vbsjet_idx = vbsjet_idxs.first;
+            tr_vbsjet_idx = vbsjet_idxs.second;
+        }
+        else
+        {
+            ld_vbsjet_idx = vbsjet_idxs.second;
+            tr_vbsjet_idx = vbsjet_idxs.first;
+        }
+        LorentzVector ld_vbsjet_p4 = good_jet_p4s.at(ld_vbsjet_idx);
+        LorentzVector tr_vbsjet_p4 = good_jet_p4s.at(tr_vbsjet_idx);
+
+        // Save VBS jet globals
+        globals.setVal<LorentzVector>("ld_vbsjet_p4", ld_vbsjet_p4);
+        globals.setVal<int>("ld_vbsjet_idx", ld_vbsjet_idx);
+        globals.setVal<LorentzVector>("tr_vbsjet_p4", tr_vbsjet_p4);
+        globals.setVal<int>("tr_vbsjet_idx", tr_vbsjet_idx);
+        // Set VBS jet leaves
+        arbol.setLeaf<double>("ld_vbsjet_pt", ld_vbsjet_p4.pt());
+        arbol.setLeaf<double>("tr_vbsjet_pt", tr_vbsjet_p4.pt());
+        arbol.setLeaf<double>("ld_vbsjet_eta", ld_vbsjet_p4.eta());
+        arbol.setLeaf<double>("tr_vbsjet_eta", tr_vbsjet_p4.eta());
+        arbol.setLeaf<double>("ld_vbsjet_phi", ld_vbsjet_p4.phi());
+        arbol.setLeaf<double>("tr_vbsjet_phi", tr_vbsjet_p4.phi());
+        arbol.setLeaf<double>("M_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).M());
+        arbol.setLeaf<double>("deta_jj", ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta());
+        arbol.setLeaf<double>("abs_deta_jj", fabs(ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta()));
+        arbol.setLeaf<double>("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbsjet_p4, tr_vbsjet_p4));
+
+        return true;
+    };
+};
+
+class SelectVBSJetsMaxMjj : public SelectVBSJets
+{
+public:
+    SelectVBSJetsMaxMjj(std::string name, Core::Analysis& analysis) : SelectVBSJets(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    std::pair<unsigned int, unsigned int> getVBSPair(std::vector<unsigned int> vbsjet_cand_idxs)
+    {
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+        double max_Mjj = -999;
+        std::pair<unsigned int, unsigned int> vbsjet_idxs;
+        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        {
+            for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
+            {
+                LorentzVector jet1_p4 = good_jet_p4s.at(jet_i);
+                LorentzVector jet2_p4 = good_jet_p4s.at(jet_j);
+                double Mjj = (jet1_p4 + jet2_p4).M();
+                if (Mjj > max_Mjj)
+                {
+                    max_Mjj = Mjj;
+                    vbsjet_idxs = std::make_pair(jet_i, jet_j);
+                }
+            }
+        }
+        return vbsjet_idxs;
+    };
+};
+
+class SelectVBSJetsMaxE : public SelectVBSJets
+{
+public:
+    SelectVBSJetsMaxE(std::string name, Core::Analysis& analysis) : SelectVBSJets(name, analysis) 
+    {
+        // Do nothing
+    };
+
+    std::pair<unsigned int, unsigned int> getVBSPair(std::vector<unsigned int> vbsjet_cand_idxs)
+    {
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+        // Sort candidates by pt
+        std::sort(
+            vbsjet_cand_idxs.begin(), vbsjet_cand_idxs.end(),
+            [&](int i, int j) -> bool { return good_jet_p4s.at(i).pt() > good_jet_p4s.at(j).pt(); }
+        );
+        // Process candidates
+        std::pair<unsigned int, unsigned int> vbsjet_idxs;
+        if (vbsjet_cand_idxs.size() == 2)
+        {
+            vbsjet_idxs = std::make_pair(vbsjet_cand_idxs.at(0), vbsjet_cand_idxs.at(1));
+        }
+        else
+        {
+            // Collect jets in pos/neg eta hemispheres
+            Integers vbs_pos_eta_jet_idxs;
+            Integers vbs_neg_eta_jet_idxs;
+            for (auto& jet_i : vbsjet_cand_idxs)
+            {
+                const LorentzVector& jet_p4 = good_jet_p4s.at(jet_i);
+                if (jet_p4.eta() >= 0)
+                {
+                    vbs_pos_eta_jet_idxs.push_back(jet_i);
+                }
+                else
+                {
+                    vbs_neg_eta_jet_idxs.push_back(jet_i);
+                }
+            }
+            // Sort the jets in each hemisphere by P
+            std::sort(
+                vbs_pos_eta_jet_idxs.begin(), vbs_pos_eta_jet_idxs.end(),
+                [&](int i, int j) -> bool { return good_jet_p4s.at(i).P() > good_jet_p4s.at(j).P(); }
+            );
+            std::sort(
+                vbs_neg_eta_jet_idxs.begin(), vbs_neg_eta_jet_idxs.end(),
+                [&](int i, int j) -> bool { return good_jet_p4s.at(i).P() > good_jet_p4s.at(j).P(); }
+            );
+            // Select VBS jets
+            if (vbs_pos_eta_jet_idxs.size() == 0)
+            {
+                // All candidates are in the -eta hemisphere
+                vbsjet_idxs = std::make_pair(vbs_neg_eta_jet_idxs.at(0), vbs_neg_eta_jet_idxs.at(1));
+            }
+            else if (vbs_neg_eta_jet_idxs.size() == 0)
+            {
+                // All candidates are in the +eta hemisphere
+                vbsjet_idxs = std::make_pair(vbs_pos_eta_jet_idxs.at(0), vbs_pos_eta_jet_idxs.at(1));
+            }
+            else
+            {
+                // Take the leading candidate (in P) from each hemisphere
+                vbsjet_idxs = std::make_pair(vbs_pos_eta_jet_idxs.at(0), vbs_neg_eta_jet_idxs.at(0));
+            }
+        }
+        return vbsjet_idxs;
+    };
+
+    /* Refactored
     bool evaluate()
     {
         LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
@@ -536,12 +763,12 @@ public:
         }
         LorentzVector ld_vbsjet_p4 = good_jet_p4s.at(ld_vbsjet_idx);
         LorentzVector tr_vbsjet_p4 = good_jet_p4s.at(tr_vbsjet_idx);
-        // Save VBS jet info
+        // Save VBS jet globals
         globals.setVal<LorentzVector>("ld_vbsjet_p4", ld_vbsjet_p4);
         globals.setVal<int>("ld_vbsjet_idx", ld_vbsjet_idx);
         globals.setVal<LorentzVector>("tr_vbsjet_p4", tr_vbsjet_p4);
         globals.setVal<int>("tr_vbsjet_idx", tr_vbsjet_idx);
-
+        // Set VBS jet leaves
         arbol.setLeaf<double>("ld_vbsjet_pt", ld_vbsjet_p4.pt());
         arbol.setLeaf<double>("tr_vbsjet_pt", tr_vbsjet_p4.pt());
         arbol.setLeaf<double>("ld_vbsjet_eta", ld_vbsjet_p4.eta());
@@ -555,6 +782,7 @@ public:
 
         return true;
     };
+    */
 };
 
 class SaveSystWeights : public AnalysisCut
