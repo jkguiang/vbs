@@ -143,9 +143,6 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("ST_up", -999);
         arbol.newBranch<double>("ST_dn", -999);
         arbol.newBranch<bool>("passes_bveto", false);
-        arbol.newBranch<double>("trig_sf", -999);
-        arbol.newBranch<double>("trig_sf_up", -999);
-        arbol.newBranch<double>("trig_sf_dn", -999);
         arbol.newBranch<double>("alphaS_up", -999);
         arbol.newBranch<double>("alphaS_dn", -999);
         arbol.newBranch<Doubles>("reweights", {});
