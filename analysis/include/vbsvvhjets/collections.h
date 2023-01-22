@@ -87,6 +87,9 @@ struct Analysis : Core::Analysis
         // Other branches
         arbol.newBranch<double>("ST", -999);
         arbol.newBranch<bool>("passes_bveto", false);
+        arbol.newBranch<bool>("is_allmerged", false);
+        arbol.newBranch<bool>("is_semimerged", false);
+        arbol.newBranch<double>("reweight_c2v_eq_3", -999);
     };
 
     virtual void initCorrections()
@@ -157,11 +160,17 @@ struct Analysis : Core::Analysis
         Cut* allmerged_save_vars = new SaveVariables("AllMerged_SaveVariables", *this, AllMerged);
         cutflow.insert(allmerged_select_vbsjets, allmerged_save_vars, Right);
 
+        // Basic ST cut
+        Cut* presel_ST = new LambdaCut(
+            "AllMerged_STGt800", [&]() { return arbol.getLeaf<double>("ST") > 800; }
+        );
+        cutflow.insert(allmerged_save_vars, presel_ST, Right);
+
         // Basic VBS jet requirements
         Cut* allmerged_Mjjgt500 = new LambdaCut(
             "AllMerged_MjjGt500", [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
         );
-        cutflow.insert(allmerged_save_vars, allmerged_Mjjgt500, Right);
+        cutflow.insert(presel_ST, allmerged_Mjjgt500, Right);
         Cut* allmerged_detajjgt3 = new LambdaCut(
             "AllMerged_detajjGt3", [&]() { return fabs(arbol.getLeaf<double>("deta_jj")) > 3; }
         );
