@@ -96,7 +96,8 @@ struct Analysis
         cutflow.globals.newVar<Doubles>("good_fatjet_xbbtags", {});    // ParticleNet mass-decorrelated tagger
         cutflow.globals.newVar<Doubles>("good_fatjet_xqqtags", {});    // ParticleNet mass-decorrelated tagger
         cutflow.globals.newVar<Doubles>("good_fatjet_xcctags", {});    // ParticleNet mass-decorrelated tagger
-        cutflow.globals.newVar<Doubles>("good_fatjet_xwqqtags", {});   // ParticleNet mass-decorrelated(?) tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_xwqqtags", {});   // ParticleNet mass-decorrelated W-like tagger
+        cutflow.globals.newVar<Doubles>("good_fatjet_xvqqtags", {});   // ParticleNet mass-decorrelated W/Z-like tagger
         cutflow.globals.newVar<Doubles>("good_fatjet_masses", {});     // ParticleNet regressed mass
         cutflow.globals.newVar<Doubles>("good_fatjet_msoftdrops", {});
         // VBS jet globals
@@ -164,13 +165,13 @@ struct Analysis
     {
         // Global config
         gconf.nanoAOD_ver = 9;
-        gconf.GetConfigs(nt.year());
         TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
         gconf.isAPV = (
             file_name.Contains("HIPM_UL2016") 
             || file_name.Contains("NanoAODAPV") 
             || file_name.Contains("UL16APV")
         );
+        gconf.GetConfigs(nt.year());
 
         // Golden JSON
         if (nt.isData())

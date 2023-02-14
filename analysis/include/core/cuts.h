@@ -114,12 +114,12 @@ public:
 
     virtual bool passesVetoElecID(int elec_i)
     {
-        return ttH_UL::electronID(elec_i, ttH::IDveto, nt.year());
+        return ttH::electronID(elec_i, ttH::IDveto, nt.year());
     };
 
     virtual bool passesVetoMuonID(int muon_i)
     {
-        return ttH_UL::muonID(muon_i, ttH::IDveto, nt.year());
+        return ttH::muonID(muon_i, ttH::IDveto, nt.year());
     };
 
     bool evaluate()
@@ -416,6 +416,7 @@ public:
         Doubles good_fatjet_xqqtags;
         Doubles good_fatjet_xcctags;
         Doubles good_fatjet_xwqqtags;
+        Doubles good_fatjet_xvqqtags;
         Doubles good_fatjet_masses;
         Doubles good_fatjet_msoftdrops;
         LorentzVectors veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
@@ -474,6 +475,7 @@ public:
             good_fatjet_xqqtags.push_back(pnet_xqq/(pnet_xqq + pnet_qcd));
             good_fatjet_xcctags.push_back(pnet_xcc/(pnet_xcc + pnet_qcd));
             good_fatjet_xwqqtags.push_back((pnet_xcc + pnet_xqq)/(pnet_xcc + pnet_xqq + pnet_qcd));
+            good_fatjet_xvqqtags.push_back((pnet_xbb + pnet_xcc + pnet_xqq)/(pnet_xbb + pnet_xcc + pnet_xqq + pnet_qcd));
             good_fatjet_masses.push_back(nt.FatJet_particleNet_mass().at(fatjet_i));
             good_fatjet_msoftdrops.push_back(nt.FatJet_msoftdrop().at(fatjet_i));
         }
@@ -486,6 +488,7 @@ public:
         globals.setVal<Doubles>("good_fatjet_xqqtags", good_fatjet_xqqtags);
         globals.setVal<Doubles>("good_fatjet_xcctags", good_fatjet_xcctags);
         globals.setVal<Doubles>("good_fatjet_xwqqtags", good_fatjet_xwqqtags);
+        globals.setVal<Doubles>("good_fatjet_xvqqtags", good_fatjet_xvqqtags);
         globals.setVal<Doubles>("good_fatjet_masses", good_fatjet_masses);
         globals.setVal<Doubles>("good_fatjet_msoftdrops", good_fatjet_msoftdrops);
 
@@ -509,7 +512,11 @@ public:
         std::vector<unsigned int> vbsjet_cand_idxs;
         for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
         {
-            if (good_jet_p4s.at(jet_i).pt() >= 30.) { vbsjet_cand_idxs.push_back(jet_i); }
+            LorentzVector jet_p4 = good_jet_p4s.at(jet_i);
+            if (jet_p4.pt() >= 30. && fabs(jet_p4.eta()) < 4.7) 
+            {
+                vbsjet_cand_idxs.push_back(jet_i); 
+            }
         }
         return vbsjet_cand_idxs;
     };
