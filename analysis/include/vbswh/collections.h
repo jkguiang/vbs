@@ -27,6 +27,8 @@ struct Skimmer : Core::Skimmer
         cutflow.globals.newVar<double>("ST", -999);
         cutflow.globals.newVar<LorentzVectors>("veto_lep_p4s", {});
         cutflow.globals.newVar<LorentzVectors>("tight_lep_p4s", {});
+        cutflow.globals.newVar<Integers>("veto_lep_pdgIDs", {});
+        cutflow.globals.newVar<Integers>("tight_lep_pdgIDs", {});
     };
 
     virtual void initCutflow()
@@ -149,6 +151,7 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("xbb_sf", 1.);
         arbol.newBranch<double>("xbb_sf_up", 1.);
         arbol.newBranch<double>("xbb_sf_dn", 1.);
+        arbol.newBranch<double>("ewkfix_sf", -999);
     };
 
     virtual void initCorrections()
