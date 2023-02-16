@@ -21,12 +21,16 @@ scramv1 b clean; scramv1 b # always make a clean build
 ## Producing the final result
 1. Set up HiggsCombine
 ```
-cd /path/to/CMSSW_10_2_13/src/HiggsAnalysis/CombinedLimit
+cwd=$PWD
+cd CMSSW_10_2_13/src
+cmsenv
+cd HiggsAnalysis/CombinedLimit
 scramv1 b clean; scramv1 b # always make a clean build
+cd $cwd
 ```
 2. Turn the datacard into a workspace
 ```
-text2workspace.py  datacards/vbswh.dat -o vbswh.root
+text2workspace.py datacards/vbswh.dat -o vbswh.root
 ```
 3. Run the following HiggsCombine command (`MultiDimFit` options can be found [here](http://cms-analysis.github.io/HiggsAnalysis-CombinedLimit/part3/commonstatsmethods/))
 ```
