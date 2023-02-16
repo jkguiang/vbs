@@ -1,6 +1,7 @@
 #include "core/collections.h"
 #include "core/cuts.h"
 #include "vbswh/cuts.h"
+#include "vbsvvhjets/cuts.h"
 // RAPIDO
 #include "arbusto.h"
 #include "looper.h"
@@ -34,7 +35,6 @@ int main(int argc, char** argv)
         {
             "Electron*", "nElectron",
             "Muon*", "nMuon",
-            "Tau*", "nTau", 
             "Jet*", "nJet", 
             "FatJet*", "nFatJet", 
             "GenPart*", "nGenPart",
@@ -60,6 +60,8 @@ int main(int argc, char** argv)
     Cutflow cutflow = Cutflow(cli.output_name+"_Cutflow");
     cutflow.globals.newVar<LorentzVectors>("veto_lep_p4s", {});
     cutflow.globals.newVar<LorentzVectors>("tight_lep_p4s", {});
+    cutflow.globals.newVar<Integers>("veto_lep_pdgIDs", {});
+    cutflow.globals.newVar<Integers>("tight_lep_pdgIDs", {});
     cutflow.globals.newVar<LorentzVectors>("jet_p4s", {});
     cutflow.globals.newVar<LorentzVectors>("fatjet_p4s", {});
 
@@ -70,7 +72,7 @@ int main(int argc, char** argv)
     Cut* base = new LambdaCut("Base", [&]() { return true; });
     cutflow.setRoot(base);
 
-    Cut* find_leps = new VBSWH::FindLeptonsPKU("FindLeptonsPKU", skimmer);
+    Cut* find_leps = new VBSVVHJets::FindLeptonsTTHNoUL("FindLeptonsTTH", skimmer);
     cutflow.insert(base, find_leps, Right);
 
     Cut* no_leps = new LambdaCut(
@@ -89,12 +91,6 @@ int main(int argc, char** argv)
             LorentzVectors fatjet_p4s = {};
             for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
             {
-                // if (nt.FatJet_msoftdrop().at(fatjet_i) > 40 
-                //     && nt.FatJet_jetId().at(fatjet_i) > 0
-                //     && nt.FatJet_pt().at(fatjet_i) > 200)
-                // {
-                //     fatjet_p4s.push_back(nt.FatJet_p4().at(fatjet_i));
-                // }
                 LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
                 if (fatjet_p4.pt() > 300
                     && fabs(fatjet_p4.eta()) < 2.5
@@ -136,10 +132,6 @@ int main(int argc, char** argv)
                         break;
                     }
                 }
-                // if (!is_overlap && nt.Jet_pt().at(jet_i) > 20)
-                // {
-                //     jet_p4s.push_back(jet_p4);
-                // }
                 bool passes_jet_id = (
                     (nt.year() == 2016 && nt.Jet_jetId().at(jet_i) >= 1)
                     || (nt.year() > 2016 && nt.Jet_jetId().at(jet_i) >= 2)
@@ -149,15 +141,8 @@ int main(int argc, char** argv)
                     jet_p4s.push_back(jet_p4);
                 }
             }
-            if (jet_p4s.size() >= 2)
-            {
-                cutflow.globals.setVal<LorentzVectors>("jet_p4s", jet_p4s);
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            cutflow.globals.setVal<LorentzVectors>("jet_p4s", jet_p4s);
+            return (jet_p4s.size() >= 2);
         }
     );
     cutflow.insert(geq2_fatjets, geq2_jets, Right);
@@ -207,7 +192,8 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.run("Geq2FatJets");
+                // bool passed = cutflow.run("Geq2FatJets");
+                bool passed = cutflow.run("Geq2JetsNoFatJetOverlap");
                 if (passed) { arbusto.fill(entry); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
