@@ -22,6 +22,7 @@ int main(int argc, char** argv)
 
     // Initialize Arbol
     Arbol arbol = Arbol(cli);
+    arbol.newBranch<double>("reweight_c2v_eq_3", -999);
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name + "_Cutflow");
@@ -30,35 +31,6 @@ int main(int argc, char** argv)
     VBSVVHJets::Analysis analysis = VBSVVHJets::Analysis(arbol, nt, cli, cutflow);
     analysis.initBranches();
     analysis.initCutflow();
-
-    Cut* reweight_c2v = new LambdaCut(
-        "ReweightC2Vto3",
-        [&]() 
-        { 
-            if (cli.is_signal && nt.nLHEReweightingWeight() > 0)
-            {
-                arbol.setLeaf<double>("reweight_c2v_eq_3", nt.LHEReweightingWeight().at(31));
-            }
-            return true;
-        },
-        [&]() 
-        { 
-            double weight = 1.;
-            if (cli.is_signal && nt.nLHEReweightingWeight() > 0)
-            {
-                weight = arbol.setLeaf<double>("reweight_c2v_eq_3");
-            }
-            return weight;
-        }
-    );
-    cutflow.insert("Bookkeeping", reweight_c2v, Right);
-
-    // Cut* debug_gen = new LambdaCut(
-    //     "DEBUG_GEN",
-    //     [&]()
-    //     {}
-    // );
-    // cutflow.insert("Bookkeeping", debug_gen, Right);
 
     // Run looper
     tqdm bar;
@@ -79,7 +51,7 @@ int main(int argc, char** argv)
 
                 nt.GetEntry(entry);
                 // Run cutflow
-                bool passed = cutflow.run("AllMerged_STGt800");
+                bool passed = cutflow.run("AllMerged_SaveVariables");
                 if (passed) { arbol.fill(); }
 
                 // Update progress bar
