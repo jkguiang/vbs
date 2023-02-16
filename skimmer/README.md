@@ -1,7 +1,7 @@
 # Instructions
 1. Ensure [ProjectMetis](https://github.com/aminnj/ProjectMetis) is installed and set up
 2. Create the skimmer package
-    - Ensure that you have ROOT available (e.g. in a CMSSW env) if you indent to to compile NanoCORE
+    - Ensure that you have ROOT available (e.g. in a CMSSW env) if you intend to to compile NanoCORE
 ```
 ./bin/make_package --module=MODULE
 ```
