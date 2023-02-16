@@ -9,11 +9,41 @@
 // VBS
 #include "core/collections.h"
 #include "core/cuts.h"
+#include "vbswh/cuts.h"
 #include "vbsvvhjets/enums.h"
 #include "corrections/all.h"
 
 namespace VBSVVHJets
 {
+
+class FindLeptonsTTHNoUL : public VBSWH::FindLeptons
+{
+public:
+    FindLeptonsTTHNoUL(std::string name, Core::Skimmer& skimmer) : FindLeptons(name, skimmer) 
+    {
+        // Do nothing
+    };
+
+    virtual bool passesVetoElecID(int elec_i)
+    {
+        return ttH::electronID(elec_i, ttH::IDveto, nt.year()); // same as ttH_UL
+    };
+
+    virtual bool passesTightElecID(int elec_i)
+    {
+        return ttH::electronID(elec_i, ttH::IDtight, nt.year());   // not the same as ttH_UL
+    };
+
+    virtual bool passesVetoMuonID(int muon_i)
+    {
+        return ttH::muonID(muon_i, ttH::IDveto, nt.year());     // same as ttH_UL
+    };
+
+    virtual bool passesTightMuonID(int muon_i)
+    {
+        return ttH::muonID(muon_i, ttH::IDtight, nt.year());       // not the same as ttH_UL
+    };
+};
 
 class PassesTriggers : public Core::AnalysisCut
 {
@@ -116,7 +146,7 @@ public:
     {
         LorentzVectors good_fatjet_p4s = globals.getVal<LorentzVectors>("good_fatjet_p4s");
         Doubles good_fatjet_xbbtags = globals.getVal<Doubles>("good_fatjet_xbbtags");
-        Doubles good_fatjet_xwqqtags = globals.getVal<Doubles>("good_fatjet_xwqqtags");
+        Doubles good_fatjet_xvqqtags = globals.getVal<Doubles>("good_fatjet_xvqqtags");
         Doubles good_fatjet_msoftdrops = globals.getVal<Doubles>("good_fatjet_msoftdrops");
         Doubles good_fatjet_masses = globals.getVal<Doubles>("good_fatjet_masses");
 
@@ -135,36 +165,61 @@ public:
         // Remove Hbb fat jet candidate from consideration
         good_fatjet_p4s.erase(good_fatjet_p4s.begin() + best_xbb_i);
         good_fatjet_xbbtags.erase(good_fatjet_xbbtags.begin() + best_xbb_i);
-        good_fatjet_xwqqtags.erase(good_fatjet_xwqqtags.begin() + best_xbb_i);
+        good_fatjet_xvqqtags.erase(good_fatjet_xvqqtags.begin() + best_xbb_i);
         good_fatjet_msoftdrops.erase(good_fatjet_msoftdrops.begin() + best_xbb_i);
         good_fatjet_masses.erase(good_fatjet_masses.begin() + best_xbb_i);
+
+        // Find two best Vqq jets
+        int ld_xvqqtag_i = -999;
+        int tr_xvqqtag_i = -999;
+        double ld_xvqqtag = -999.;
+        double tr_xvqqtag = -999.;
+        for (unsigned int fatjet_i = 0; fatjet_i < good_fatjet_xvqqtags.size(); ++fatjet_i)
+        {
+            double fatjet_xvqqtag = good_fatjet_xvqqtags.at(fatjet_i);
+            if (fatjet_xvqqtag > ld_xvqqtag)
+            {
+                if (ld_xvqqtag != -999)
+                {
+                    tr_xvqqtag = ld_xvqqtag;
+                    tr_xvqqtag_i = ld_xvqqtag_i;
+                }
+                ld_xvqqtag = fatjet_xvqqtag;
+                ld_xvqqtag_i = fatjet_i;
+            }
+            else if (fatjet_xvqqtag > tr_xvqqtag)
+            {
+                tr_xvqqtag = fatjet_xvqqtag;
+                tr_xvqqtag_i = fatjet_i;
+            }
+        }
 
         // Select W/Z candidate(s) last
         if (channel == AllMerged)
         {
             unsigned int ld_fatjet_i;
             unsigned int tr_fatjet_i;
-            if (good_fatjet_p4s.at(0).pt() > good_fatjet_p4s.at(1).pt())
+            if (good_fatjet_p4s.at(ld_xvqqtag_i).pt() > good_fatjet_p4s.at(tr_xvqqtag_i).pt())
             {
-                ld_fatjet_i = 0;
-                tr_fatjet_i = 1;
+                ld_fatjet_i = ld_xvqqtag_i;
+                tr_fatjet_i = tr_xvqqtag_i;
             }
             else
             {
-                ld_fatjet_i = 1;
-                tr_fatjet_i = 0;
+                ld_fatjet_i = tr_xvqqtag_i;
+                tr_fatjet_i = ld_xvqqtag_i;
             }
             LorentzVector ld_vqqfatjet_p4 = good_fatjet_p4s.at(ld_fatjet_i);
             LorentzVector tr_vqqfatjet_p4 = good_fatjet_p4s.at(tr_fatjet_i);
             globals.setVal<LorentzVector>("ld_vqqfatjet_p4", ld_vqqfatjet_p4);
-            arbol.setLeaf<double>("ld_vqqfatjet_score", good_fatjet_xwqqtags.at(ld_fatjet_i));
+            arbol.setLeaf<double>("ld_vqqfatjet_score", good_fatjet_xvqqtags.at(ld_fatjet_i));
             arbol.setLeaf<double>("ld_vqqfatjet_pt", ld_vqqfatjet_p4.pt());
             arbol.setLeaf<double>("ld_vqqfatjet_eta", ld_vqqfatjet_p4.eta());
             arbol.setLeaf<double>("ld_vqqfatjet_phi", ld_vqqfatjet_p4.phi());
             arbol.setLeaf<double>("ld_vqqfatjet_mass", good_fatjet_masses.at(ld_fatjet_i));
             arbol.setLeaf<double>("ld_vqqfatjet_msoftdrop", good_fatjet_msoftdrops.at(ld_fatjet_i));
             globals.setVal<LorentzVector>("tr_vqqfatjet_p4", tr_vqqfatjet_p4);
-            arbol.setLeaf<double>("tr_vqqfatjet_score", good_fatjet_xwqqtags.at(tr_fatjet_i));
+            arbol.setLeaf<double>("tr_vqqfatjet_score", good_fatjet_xvqqtags.at(tr_fatjet_i));
             arbol.setLeaf<double>("tr_vqqfatjet_pt", tr_vqqfatjet_p4.pt());
             arbol.setLeaf<double>("tr_vqqfatjet_eta", tr_vqqfatjet_p4.eta());
             arbol.setLeaf<double>("tr_vqqfatjet_phi", tr_vqqfatjet_p4.phi());
@@ -173,13 +228,13 @@ public:
         }
         else if (channel == SemiMerged)
         {
-            LorentzVector vqqfatjet_p4 = good_fatjet_p4s.at(0);
-            arbol.setLeaf<double>("ld_vqqfatjet_score", good_fatjet_xbbtags.at(0));
+            LorentzVector vqqfatjet_p4 = good_fatjet_p4s.at(ld_xvqqtag_i);
+            arbol.setLeaf<double>("ld_vqqfatjet_score", good_fatjet_xbbtags.at(ld_xvqqtag_i));
             arbol.setLeaf<double>("ld_vqqfatjet_pt", vqqfatjet_p4.pt());
             arbol.setLeaf<double>("ld_vqqfatjet_eta", vqqfatjet_p4.eta());
             arbol.setLeaf<double>("ld_vqqfatjet_phi", vqqfatjet_p4.phi());
-            arbol.setLeaf<double>("ld_vqqfatjet_mass", good_fatjet_masses.at(0));
-            arbol.setLeaf<double>("ld_vqqfatjet_msoftdrop", good_fatjet_msoftdrops.at(0));
+            arbol.setLeaf<double>("ld_vqqfatjet_mass", good_fatjet_masses.at(ld_xvqqtag_i));
+            arbol.setLeaf<double>("ld_vqqfatjet_msoftdrop", good_fatjet_msoftdrops.at(ld_xvqqtag_i));
         }
         return true;
     };
@@ -211,7 +266,7 @@ public:
     {
         bool hbb_overlap = ROOT::Math::VectorUtil::DeltaR(hbbfatjet_p4, jet_p4) < 0.8;
         bool vqq_overlap = ROOT::Math::VectorUtil::DeltaR(ld_vqqfatjet_p4, jet_p4) < 0.8;
-        if (channel == SemiMerged)
+        if (channel == AllMerged)
         {
             vqq_overlap = vqq_overlap || ROOT::Math::VectorUtil::DeltaR(tr_vqqfatjet_p4, jet_p4) < 0.8;
         }
@@ -230,6 +285,66 @@ public:
 
     bool evaluate()
     {
+        int ld_vbsjet_idx = globals.getVal<int>("ld_vbsjet_idx");
+        int tr_vbsjet_idx = globals.getVal<int>("tr_vbsjet_idx");
+
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+        Integers good_jet_idxs = globals.getVal<Integers>("good_jet_idxs");
+        if (good_jet_idxs.size() < 4) { return false; }
+
+        double min_dR = 99999;
+        std::pair<unsigned int, unsigned int> vqqjet_idxs;
+        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        {
+            int jet_idx = good_jet_idxs.at(jet_i);
+            // Skip VBS jet candidates
+            if (jet_idx == ld_vbsjet_idx || jet_idx == tr_vbsjet_idx) { continue; }
+            // Iterate over all pairs
+            for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
+            {
+                LorentzVector jet1_p4 = good_jet_p4s.at(jet_i);
+                LorentzVector jet2_p4 = good_jet_p4s.at(jet_j);
+                double dR = ROOT::Math::VectorUtil::DeltaR(jet1_p4, jet2_p4);
+                if (dR < min_dR)
+                {
+                    min_dR = dR;
+                    vqqjet_idxs = std::make_pair(jet_i, jet_j);
+                }
+            }
+        }
+
+        // Sort the two VBS jets into leading/trailing
+        int ld_vqqjet_idx;
+        int tr_vqqjet_idx;
+        if (good_jet_p4s.at(vqqjet_idxs.first).pt() > good_jet_p4s.at(vqqjet_idxs.first).pt())
+        {
+            ld_vqqjet_idx = vqqjet_idxs.first;
+            tr_vqqjet_idx = vqqjet_idxs.second;
+        }
+        else
+        {
+            ld_vqqjet_idx = vqqjet_idxs.second;
+            tr_vqqjet_idx = vqqjet_idxs.first;
+        }
+        LorentzVector ld_vqqjet_p4 = good_jet_p4s.at(ld_vqqjet_idx);
+        LorentzVector tr_vqqjet_p4 = good_jet_p4s.at(tr_vqqjet_idx);
+        int ld_vqqjet_nanoidx = good_jet_idxs.at(ld_vqqjet_idx);
+        int tr_vqqjet_nanoidx = good_jet_idxs.at(tr_vqqjet_idx);
+
+        globals.setVal<LorentzVector>("ld_vqqjet_p4", ld_vqqjet_p4);
+        globals.setVal<LorentzVector>("tr_vqqjet_p4", tr_vqqjet_p4);
+        arbol.setLeaf<double>("ld_vqqjet_score", nt.Jet_qgl().at(ld_vqqjet_nanoidx));
+        arbol.setLeaf<double>("ld_vqqjet_pt", ld_vqqjet_p4.pt());
+        arbol.setLeaf<double>("ld_vqqjet_eta", ld_vqqjet_p4.eta());
+        arbol.setLeaf<double>("ld_vqqjet_phi", ld_vqqjet_p4.phi());
+        arbol.setLeaf<double>("ld_vqqjet_mass", ld_vqqjet_p4.M());
+        arbol.setLeaf<double>("tr_vqqjet_score", nt.Jet_qgl().at(tr_vqqjet_nanoidx));
+        arbol.setLeaf<double>("tr_vqqjet_pt", tr_vqqjet_p4.pt());
+        arbol.setLeaf<double>("tr_vqqjet_eta", tr_vqqjet_p4.eta());
+        arbol.setLeaf<double>("tr_vqqjet_phi", tr_vqqjet_p4.phi());
+        arbol.setLeaf<double>("tr_vqqjet_mass", tr_vqqjet_p4.M());
+        arbol.setLeaf<double>("vqqjets_Mjj", (ld_vqqjet_p4 + tr_vqqjet_p4).M());
+        arbol.setLeaf<double>("vqqjets_dR", min_dR);
         return true;
     };
 };
@@ -256,6 +371,7 @@ public:
                 + arbol.getLeaf<double>("ld_vqqfatjet_pt")
                 + arbol.getLeaf<double>("tr_vqqfatjet_pt")
             );
+            arbol.setLeaf<bool>("is_allmerged", true);
         }
         else if (channel == SemiMerged)
         {
@@ -266,6 +382,7 @@ public:
                 + arbol.getLeaf<double>("ld_vqqjet_pt")
                 + arbol.getLeaf<double>("tr_vqqjet_pt")
             );
+            arbol.setLeaf<bool>("is_semimerged", true);
         }
         return true;
     };
