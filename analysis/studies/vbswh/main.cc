@@ -7,7 +7,7 @@
 #include "vbswh/collections.h"
 #include "vbswh/cuts.h"
 #include "corrections/all.h"
-#include "cuts.h"
+// #include "cuts.h"
 // ROOT
 #include "TString.h"
 #include "Math/VectorUtil.h"
@@ -26,7 +26,6 @@ int main(int argc, char** argv)
 
     // Initialize main Arbol
     Arbol arbol = Arbol(cli);
-    arbol.newBranch<double>("ewkfix_sf", -999);
 
     // Initialize Arbol for PDF variations
     Arbol pdf_arbol = Arbol(
@@ -50,7 +49,7 @@ int main(int argc, char** argv)
     analysis.initCorrections();
     analysis.initCutflow();
 
-    Cut* fix_ewk_samples = new FixEWKSamples("FixEWKSamples", analysis);
+    Cut* fix_ewk_samples = new VBSWH::FixEWKSamples("FixEWKSamples", analysis);
     cutflow.insert("Bookkeeping", fix_ewk_samples, Right);
 
     Cut* objsel = new Cut("ObjectSelection");
