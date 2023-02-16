@@ -9,6 +9,7 @@ from tqdm import tqdm
 import yahist
 import mplhep as hep
 plt.style.use(hep.style.CMS)
+plt.rcParams.update({"figure.facecolor":  (1,1,1,0)})
 
 from utils.cutflow import Cut, Cutflow, CutflowCollection
 
@@ -84,11 +85,11 @@ class PandasAnalysis:
         # self.__update_cutflows("base")
 
         if len(bkg_names) <= 10:
-            colors = [
+            self.colors = [
                 "#364b9a", "#e8eff6", "#6ea5cd", "#97cae1", "#c2e4ee", 
                 "#eaeccc", "#feda8a", "#fdb366", "#f67e4b", "#dd3c2d"
             ]
-            self.bkg_colors = {name: colors[i] for i, name in enumerate(bkg_names)}
+            self.bkg_colors = {name: self.colors[i] for i, name in enumerate(bkg_names)}
         else:
             self.bkg_colors = {}
 
@@ -338,9 +339,15 @@ class PandasAnalysis:
 class Optimization(PandasAnalysis):
 
     def get_event_counts(self, selection=None, raw=False):
-        sig_count = self.sig_count(selection=selection, raw=raw)
-        bkg_count = self.bkg_count(selection=selection, raw=raw)
-        return sig_count, bkg_count
+        df = self.df[~self.df.is_data]
+        if selection:
+            if selection and type(selection) == str:
+                selection = df.eval(selection)
+            df = df[selection]
+        if raw:
+            return len(df[df.is_signal]), len(df[~df.is_signal])
+        else:
+            return df[df.is_signal].event_weight.sum(), df[~df.is_signal].event_weight.sum()
 
     def get_event_errors(self, selection=None, raw=False):
         sig_error = self.sig_error(selection=selection, raw=raw)
@@ -388,7 +395,7 @@ class Optimization(PandasAnalysis):
 
         denom.plot(ax=hist_axes, label="before", color="k")
 
-        for selection in selections:
+        for selection_i, selection in enumerate(selections):
             numer_df = self.bkg_df(selection=f"({base_selection}) and ({selection})")
             if weights:
                 for weight in weights:
@@ -396,7 +403,8 @@ class Optimization(PandasAnalysis):
             numer = yahist.Hist1D(
                 transf(numer_df[column]),
                 bins=bins, 
-                weights=numer_df.event_weight
+                weights=numer_df.event_weight,
+                color=self.colors[selection_i//2 - selection_i*(selection_i%2)]
             );
             if norm:
                 numer = numer.normalize()
@@ -563,6 +571,32 @@ class Optimization(PandasAnalysis):
             else:
                 sig_raw, bkg_raw = self.get_event_counts(selection=sel, raw=True)
                 print(f"{sel},{sig_wgt},{sig_raw},{bkg_wgt},{bkg_raw},{fom(sig_wgt, bkg_wgt)}")
+
+    def bf_scan(self, scans, base_scan=None, 
+                fom=lambda S, B: S/np.sqrt(B) if B > 0 else S/np.sqrt(0.0001)):
+        scans = {
+            "bdt": np.linspace(0.85, 0.95, 11),
+            "hbbfatjet_score": np.linspace(0.88, 0.98, 11),
+            "ld_vqqfatjet_score": np.linspace(0.88, 0.98, 11),
+            "tr_vqqfatjet_score": np.linspace(0.88, 0.98, 11)
+        }
+
+        cuts = {}
+        for var, wps in scans.items():
+            cuts[var] = []
+            for wp in wps:
+                cuts[var].append(f"{var} > {wp}")
+
+        selections = [" and ".join(combo) for combo in itertools.product(*cuts.values())]
+        if base_selection:
+            selections = [f"{sel} and {base_selection}" for sel in selections]
+                    
+        results = []
+        for sel in tqdm(selections):
+            sig, bkg = self.get_event_counts(selection=sel)
+            results.append((sel, sig, bkg, fom(sig, bkg)))
+
+        return results
 
 class Validation(PandasAnalysis):
 
