@@ -1,17 +1,20 @@
 ZH_HToBB_ZToLL_M-125:
-(0.42080 pb ZH xsec)*(0.5824 Hbb BR)*(0.107212 Zll BR) = 0.02627486511
+(0.42080 pb ZH xsec)*(0.5824 H->bb BR)*(0.107212 Z->ll BR) = 0.02627486511
+
+ZH_HToBB_ZToQQ_M-125:
+(0.42080 pb ZH xsec)*(0.5824 H->bb BR)*(0.69911 Z->qq BR) = 0.1713336282
 
 ggZH_HToBB_ZToLL_M-125:
-(0.03942 pb ggZH xsec)*(0.5824 Hbb BR)*(0.107212 Zll BR) = 0.002461395396
+(0.03942 pb ggZH xsec)*(0.5824 H->bb BR)*(0.107212 Z->ll BR) = 0.002461395396
 
 WminusH_HToBB_WToLNu_M-125:
-(0.25720 pb W-H xsec)*(0.5824 Hbb BR)*(0.3272  Wlnu BR) = 0.04901236122
+(0.25720 pb W-H xsec)*(0.5824 H->bb BR)*(0.3272  W->lnu BR) = 0.04901236122
 
 WplusH_HToBB_WToLNu_M-125:
-(0.44540 pb W+H xsec)*(0.5824 Hbb BR)*(0.3272  Wlnu BR) = 0.08487599411
+(0.44540 pb W+H xsec)*(0.5824 H->bb BR)*(0.3272  W->lnu BR) = 0.08487599411
 
 TTTo2L2Nu:
-(831.76 pb ttbar xsec)*(0.338 t->lnub BR)*(0.338 tbar->lnub BR) = 94.936764
+(831.76 pb ttbar xsec)*(0.338 t->lnub BR)*(0.338 tbar->W(->lnu)b BR) = 94.936764
 
 TTToSemiLep:                
 (831.76 pb ttbar xsec)*(
@@ -20,4 +23,7 @@ TTToSemiLep:
 ) = 373.9093904
 
 TTToHadronic:
-(831.76 pb ttbar xsec)*(0.665 lnub BR)*(0.665 lnub BR) = 367.825066
+(831.76 pb ttbar xsec)*(0.665 t->W(->lnu)b BR)*(0.665 t->W(->lnu)b BR) = 367.825066
+
+VBFWH_HToBB_WToLNu_M-125_dipoleRecoilOn:
+(0.02202 pb xsecs from MadGraph)*(0.5840 H->bb BR) = 0.01285968
