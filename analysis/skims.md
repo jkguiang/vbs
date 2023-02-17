@@ -21,5 +21,7 @@ These tags are described in greater detail (when/where possible) here.
     - Accidentally saved the output earlier in the cutflow: AK4 selections are not applied
 - `*_0lep_2ak4_2ak8_ttH_v2`
     - Now apply >= 2 AK4 jet selection
-    - Loose VBS selection _not_ applied
+        - No overlap removal with fat jets!
+        - Why? I did not want to apply the HEM prescription in the skim, just in case...
+    - Very loose VBS selection: at least one pair of AK4 jets with Mjj > 500 GeV and |detajj| > 2.5
 
