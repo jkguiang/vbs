@@ -92,6 +92,7 @@ struct Analysis : Core::Analysis
     HLT1LepSFs* hlt_sfs;
     BTagSFs* btag_sfs;
     PileUpSFs* pu_sfs;
+    PileUpJetIDSFs* puid_sfs;
     ParticleNetXbbSFs* xbb_sfs;
     bool all_corrections;
 
@@ -108,6 +109,7 @@ struct Analysis : Core::Analysis
         hlt_sfs = nullptr;
         btag_sfs = nullptr;
         pu_sfs = nullptr;
+        puid_sfs = nullptr;
         xbb_sfs = nullptr;
         all_corrections = false;
     };
@@ -161,6 +163,7 @@ struct Analysis : Core::Analysis
         hlt_sfs = new HLT1LepSFs();
         btag_sfs = new BTagSFs(cli.output_name, "M");
         pu_sfs = new PileUpSFs();
+        puid_sfs = new PileUpJetIDSFs();
         xbb_sfs = new ParticleNetXbbSFs();
         all_corrections = true;
     };
@@ -204,7 +207,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(geq1fatjet, select_hbbjet, Right);
 
         // Jet selection
-        Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", *this, jes, btag_sfs);
+        Cut* select_jets = new SelectJetsNoHbbOverlap("SelectJetsNoHbbOverlap", *this, jes, btag_sfs, puid_sfs);
         cutflow.insert(select_hbbjet, select_jets, Right);
 
         // VBS jet selection
@@ -289,6 +292,7 @@ struct Analysis : Core::Analysis
             hlt_sfs->init(file_name);
             btag_sfs->init(file_name);
             pu_sfs->init(file_name);
+            puid_sfs->init(file_name);
             xbb_sfs->init(file_name);
         }
     };

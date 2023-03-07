@@ -118,6 +118,9 @@ struct Analysis
         arbol.newBranch<double>("btag_sf", -999);
         arbol.newBranch<double>("btag_sf_up", -999);
         arbol.newBranch<double>("btag_sf_dn", -999);
+        arbol.newBranch<double>("puid_sf", -999);
+        arbol.newBranch<double>("puid_sf_up", -999);
+        arbol.newBranch<double>("puid_sf_dn", -999);
         // Jet (AK8) branches
         arbol.newBranch<int>("n_fatjets", -999);
         // VBS jet branches
@@ -143,6 +146,7 @@ struct Analysis
         arbol.newBranch<double>("trig_sf_up", -999);
         arbol.newBranch<double>("trig_sf_dn", -999);
         arbol.newBranch<int>("event", -999);
+        arbol.newBranch<int>("year", -999);
         arbol.newBranch<double>("MET", -999);
         arbol.newBranch<double>("MET_up", -999);
         arbol.newBranch<double>("MET_dn", -999);

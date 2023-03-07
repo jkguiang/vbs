@@ -487,8 +487,8 @@ public:
     LorentzVector hbbjet_p4;
 
     SelectJetsNoHbbOverlap(std::string name, Core::Analysis& analysis, JetEnergyScales* jes = nullptr, 
-                           BTagSFs* btag_sfs = nullptr) 
-    : Core::SelectJets(name, analysis, jes, btag_sfs) 
+                           BTagSFs* btag_sfs = nullptr, PileUpJetIDSFs* puid_sfs = nullptr) 
+    : Core::SelectJets(name, analysis, jes, btag_sfs, puid_sfs) 
     {
         // Do nothing
     };

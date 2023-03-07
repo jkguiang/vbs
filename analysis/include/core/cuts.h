@@ -72,6 +72,7 @@ public:
         arbol.setLeaf<double>("prefire_sf", (nt.isData()) ? 1. : nt.L1PreFiringWeight_Nom());
         arbol.setLeaf<double>("prefire_sf_up", (nt.isData()) ? 1. : nt.L1PreFiringWeight_Up());
         arbol.setLeaf<double>("prefire_sf_dn", (nt.isData()) ? 1. : nt.L1PreFiringWeight_Dn());
+        arbol.setLeaf<int>("year", (nt.year() == 2016 && gconf.isAPV) ? -nt.year() : nt.year());
         if (!nt.isData() && pu_sfs != nullptr)
         {
             arbol.setLeaf<double>("pu_sf", pu_sfs->getSF(nt.Pileup_nTrueInt()));
@@ -185,22 +186,29 @@ class SelectJets : public AnalysisCut
 public:
     JetEnergyScales* jes;
     BTagSFs* btag_sfs;
+    PileUpJetIDSFs* puid_sfs;
     LorentzVectors veto_lep_p4s;
     Integers veto_lep_jet_idxs;
 
-    SelectJets(std::string name, Core::Analysis& analysis, JetEnergyScales* jes = nullptr, BTagSFs* btag_sfs = nullptr) 
+    SelectJets(std::string name, Core::Analysis& analysis, JetEnergyScales* jes = nullptr, BTagSFs* btag_sfs = nullptr,
+               PileUpJetIDSFs* puid_sfs = nullptr) 
     : AnalysisCut(name, analysis)
     {
         this->jes = jes;
         this->btag_sfs = btag_sfs;
+        this->puid_sfs = puid_sfs;
     };
 
     virtual bool isGoodJet(int jet_i, LorentzVector jet_p4)
     {
-        if (jet_p4.pt() < 20) { return false; }
+        if (jet_p4.pt() <= 20) { return false; }
         int jet_id = nt.Jet_jetId().at(jet_i);
         if (nt.year() == 2016 && jet_id < 1) { return false; }
         if (nt.year() > 2016 && jet_id < 2) { return false; }
+        if (jet_p4.pt() < 50)
+        {
+            if (nt.Jet_puId().at(jet_i) == 0) { return false; }
+        }
         return true;
     };
 
@@ -246,6 +254,9 @@ public:
         double btag_sf = 1.;
         double btag_sf_up = 1.;
         double btag_sf_dn = 1.;
+        double puid_sf = 1.;
+        double puid_sf_up = 1.;
+        double puid_sf_dn = 1.;
         double ht = 0.;
         LorentzVectors good_jet_p4s;
         Integers good_jet_idxs;
@@ -300,6 +311,22 @@ public:
             // Select good jets
             if (!isGoodJet(jet_i, jet_p4)) { continue; }
             if (isOverlap(jet_i, jet_p4)) { continue; }
+            // Apply PU jet ID scale factors
+            double jet_pt = jet_p4.pt();
+            double jet_eta = jet_p4.eta();
+            if (!nt.isData() && puid_sfs != nullptr && jet_pt < 50 && nt.Jet_puId().at(jet_i) > 0)
+            {
+                for (auto genjet_p4 : nt.GenJet_p4())
+                {
+                    if (ROOT::Math::VectorUtil::DeltaR(jet_p4, genjet_p4) < 0.4)
+                    {
+                        puid_sf *= puid_sfs->getSF(jet_pt, jet_eta, "L");
+                        puid_sf_up *= puid_sfs->getSFUp(jet_pt, jet_eta, "L");
+                        puid_sf_dn *= puid_sfs->getSFDn(jet_pt, jet_eta, "L");
+                        break;
+                    }
+                }
+            }
             // Perform b-tagging (for b-veto); only possible for pt > 20 GeV and |eta| < 2.4
             if (fabs(jet_p4.eta()) < 2.4 && jet_p4.pt() > 20) 
             {
@@ -315,12 +342,11 @@ public:
                 }
                 else
                 {
+                    // Apply DeepJet b-tagging scale factor (for a VETO using the medium WP)
                     if (!nt.isData() && btag_sfs != nullptr)
                     {
-                        // Apply DeepJet b-tagging scale factor (for a VETO using the medium WP)
                         int flavor = nt.Jet_hadronFlavour().at(jet_i);
-                        double jet_pt = jet_p4.pt();
-                        double jet_abseta = fabs(jet_p4.eta());
+                        double jet_abseta = fabs(jet_eta);
                         double sf = btag_sfs->getSF(flavor, jet_pt, jet_abseta);
                         double sf_up = btag_sfs->getSFUp(flavor, jet_pt, jet_abseta);
                         double sf_dn = btag_sfs->getSFDn(flavor, jet_pt, jet_abseta);
@@ -362,17 +388,23 @@ public:
         arbol.setLeaf<int>("n_medium_b_jets", n_medium_b_jets);
         arbol.setLeaf<int>("n_tight_b_jets", n_tight_b_jets);
         arbol.setLeaf<int>("n_jets", n_jets);
-        if (!nt.isData() && btag_sfs != nullptr)
+        if (!nt.isData())
         {
             arbol.setLeaf<double>("btag_sf", btag_sf);
             arbol.setLeaf<double>("btag_sf_up", btag_sf_up);
             arbol.setLeaf<double>("btag_sf_dn", btag_sf_dn);
+            arbol.setLeaf<double>("puid_sf", puid_sf);
+            arbol.setLeaf<double>("puid_sf_up", puid_sf_up);
+            arbol.setLeaf<double>("puid_sf_dn", puid_sf_dn);
         }
         else
         {
             arbol.setLeaf<double>("btag_sf", 1.);
             arbol.setLeaf<double>("btag_sf_up", 1.);
             arbol.setLeaf<double>("btag_sf_dn", 1.);
+            arbol.setLeaf<double>("puid_sf", 1.);
+            arbol.setLeaf<double>("puid_sf_up", 1.);
+            arbol.setLeaf<double>("puid_sf_dn", 1.);
         }
 
         return true;
@@ -380,7 +412,7 @@ public:
 
     double weight()
     {
-        return arbol.getLeaf<double>("btag_sf");
+        return arbol.getLeaf<double>("btag_sf")*arbol.getLeaf<double>("puid_sf");
     };
 };
 
