@@ -63,7 +63,6 @@ int main(int argc, char** argv)
     cutflow.globals.newVar<Integers>("veto_lep_pdgIDs", {});
     cutflow.globals.newVar<Integers>("tight_lep_pdgIDs", {});
     cutflow.globals.newVar<LorentzVectors>("jet_p4s", {});
-    cutflow.globals.newVar<LorentzVectors>("fatjet_p4s", {});
 
     Core::Skimmer skimmer = Core::Skimmer(arbusto, nt, cli, cutflow);
 
@@ -103,7 +102,6 @@ int main(int argc, char** argv)
             }
             if (fatjet_p4s.size() >= 2)
             {
-                cutflow.globals.setVal<LorentzVectors>("fatjet_p4s", fatjet_p4s);
                 return true;
             }
             else
@@ -115,28 +113,18 @@ int main(int argc, char** argv)
     cutflow.insert(no_leps, geq2_fatjets, Right);
 
     Cut* geq2_jets = new LambdaCut(
-        "Geq2JetsNoFatJetOverlap",
+        "Geq2Jets",
         [&]() 
         {
-            LorentzVectors fatjet_p4s = cutflow.globals.getVal<LorentzVectors>("fatjet_p4s");
             LorentzVectors jet_p4s = {};
             for (unsigned int jet_i = 0; jet_i < nt.nJet(); jet_i++)
             {
                 LorentzVector jet_p4 = nt.Jet_p4().at(jet_i);
-                bool is_overlap = false;
-                for (auto fatjet_p4 : fatjet_p4s)
-                {
-                    if (ROOT::Math::VectorUtil::DeltaR(fatjet_p4, jet_p4) < 0.8)
-                    {
-                        is_overlap = true;
-                        break;
-                    }
-                }
                 bool passes_jet_id = (
                     (nt.year() == 2016 && nt.Jet_jetId().at(jet_i) >= 1)
                     || (nt.year() > 2016 && nt.Jet_jetId().at(jet_i) >= 2)
                 );
-                if (!is_overlap && jet_p4.pt() > 20 && passes_jet_id)
+                if (jet_p4.pt() > 20 && passes_jet_id)
                 {
                     jet_p4s.push_back(jet_p4);
                 }
@@ -161,7 +149,7 @@ int main(int argc, char** argv)
                     LorentzVector jet2_p4 = jet_p4s.at(jet_j);
                     double M_jj = (jet1_p4 + jet2_p4).M();
                     double abs_deta_jj = fabs(jet1_p4.eta() - jet2_p4.eta());
-                    if (M_jj > 500 && abs_deta_jj > 3)
+                    if (M_jj > 250 && abs_deta_jj > 2.5)
                     {
                         n_vbsjet_pairs++;
                     }
@@ -192,8 +180,7 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                // bool passed = cutflow.run("Geq2FatJets");
-                bool passed = cutflow.run("Geq2JetsNoFatJetOverlap");
+                bool passed = cutflow.run("FindVBSJetPairs");
                 if (passed) { arbusto.fill(entry); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
