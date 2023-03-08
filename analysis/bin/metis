@@ -67,6 +67,10 @@ cli.add_argument(
     "--max_jobs", type=int, default=0,
     help="Maximum number of jobs per sample"
 )
+cli.add_argument(
+    "--n_inputs", type=int, default=3,
+    help="Number of input files per job"
+)
 args = cli.parse_args()
 
 samples_module, samples_obj = args.samples.rsplit(".", 1)
@@ -150,7 +154,7 @@ for update_i in range(n_updates): # update every 30 mins
     for sample in samples:
         task = CondorTask(
             sample=sample,
-            files_per_output=3,
+            files_per_output=args.n_inputs,
             output_name="output.root",
             tag=args.tag,
             condor_submit_params=condor_submit_params,
