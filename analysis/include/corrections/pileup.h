@@ -70,4 +70,66 @@ public:
     };
 };
 
+struct PileUpJetIDSFs : NanoSFsUL
+{
+private:
+    double get(std::string variation, std::string wp, double pt, double eta) 
+    { 
+        NanoSFsUL::assertYear();
+        return sfs->evaluate({eta, pt, variation, wp});
+    };
+public:
+    correction::Correction::Ref sfs;
+
+    PileUpJetIDSFs() { /* Do nothing */ };
+
+    void init(TString file_name)
+    {
+        NanoSFsUL::init(file_name);
+
+        // Note: the gzipped JSONs in cvmfs can only be read by correctionlib v2.1.x
+        std::string json_path = "data/pog_jsons/JME";
+        std::string sfs_name;
+        switch (campaign)
+        {
+        case (RunIISummer20UL16APV):
+            json_path += "/2016preVFP_UL/jmar.json";
+            sfs_name = "PUJetID_eff";
+            break;
+        case (RunIISummer20UL16):
+            json_path += "/2016postVFP_UL/jmar.json";
+            sfs_name = "PUJetID_eff";
+            break;
+        case (RunIISummer20UL17):
+            json_path += "/2017_UL/jmar.json";
+            sfs_name = "PUJetID_eff";
+            break;
+        case (RunIISummer20UL18):
+            json_path += "/2018_UL/jmar.json";
+            sfs_name = "PUJetID_eff";
+            break;
+        default:
+            return;
+            break;
+        };
+        auto cset = correction::CorrectionSet::from_file(json_path);
+        sfs = cset->at(sfs_name);
+    };
+
+    double getSF(double pt, double eta, std::string wp = "L") 
+    { 
+        return get("nom", wp, pt, eta); 
+    };
+
+    double getSFUp(double pt, double eta, std::string wp = "L") 
+    { 
+        return get("up", wp, pt, eta); 
+    };
+
+    double getSFDn(double pt, double eta, std::string wp = "L") 
+    { 
+        return get("down", wp, pt, eta); 
+    };
+};
+
 #endif
