@@ -18,11 +18,11 @@ private:
         switch (flavor)
         {
         case 0:
-            return sfs_light->evaluate({variation, working_point, flavor, eta, pt});
+            return sfs_light->evaluate({variation, wp, flavor, eta, pt});
             break;
         case 4:
         case 5:
-            return sfs_bc->evaluate({variation, working_point, flavor, eta, pt});
+            return sfs_bc->evaluate({variation, wp, flavor, eta, pt});
             break;
         default:
             throw std::runtime_error("BTagSFs::getBTagSF - invalid hadron flavor (0, 4, 5 allowed)");
@@ -36,12 +36,12 @@ public:
     correction::Correction::Ref sfs_bc;
     correction::Correction::Ref sfs_light;
     std::string name;
-    std::string working_point;
+    std::string wp;
 
     BTagSFs(std::string name, std::string working_point) 
     { 
         this->name = name;
-        this->working_point = working_point;
+        this->wp = working_point;
     };
 
     void init(TString file_name)
@@ -77,19 +77,19 @@ public:
         sfs_bc = cset->at("deepJet_comb");
         sfs_light = cset->at("deepJet_incl");
 
-        if (working_point == "L")
+        if (wp == "L")
         {
             eff_b = new SFHist(root_path, "deepjet_eff_b_loose");
             eff_c = new SFHist(root_path, "deepjet_eff_c_loose");
             eff_light = new SFHist(root_path, "deepjet_eff_light_loose");
         }
-        else if (working_point == "M")
+        else if (wp == "M")
         {
             eff_b = new SFHist(root_path, "deepjet_eff_b_medium");
             eff_c = new SFHist(root_path, "deepjet_eff_c_medium");
             eff_light = new SFHist(root_path, "deepjet_eff_light_medium");
         }
-        else if (working_point == "T")
+        else if (wp == "T")
         {
             eff_b = new SFHist(root_path, "deepjet_eff_b_tight");
             eff_c = new SFHist(root_path, "deepjet_eff_c_tight");
