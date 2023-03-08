@@ -7,21 +7,6 @@ import concurrent.futures as futures
 from subprocess import Popen, PIPE
 from tqdm import tqdm
 
-def run_job(args):
-    cmd, stdout_file, stderr_file = args
-    with open(stdout_file,"wb") as stdout:
-        stdout.write(f"{' '.join(cmd)}\n".encode("utf-8"))
-    with open(stdout_file,"ab") as stdout, open(stderr_file,"wb") as stderr:
-        process = Popen(cmd, stdout=stdout, stderr=stderr)
-        process.wait()
-    return
-
-def prepare_job(args):
-    orchestrator, input_file = args
-    cmd = orchestrator._get_job(input_file)
-    stdout_file, stderr_file = orchestrator._get_log_files(input_file)
-    return cmd, stdout_file, stderr_file
-
 class Job:
     def __init__(self, cmd, stdout_file, stderr_file):
         self.cmd = cmd
@@ -44,14 +29,32 @@ class Orchestrator:
 
         signal.signal(signal.SIGINT, self.stop())
 
+    def run_job(self, args):
+        cmd, stdout_file, stderr_file = args
+        with open(stdout_file,"wb") as stdout:
+            stdout.write(f"{' '.join(cmd)}\n".encode("utf-8"))
+        with open(stdout_file,"ab") as stdout, open(stderr_file,"wb") as stderr:
+            process = Popen(cmd, stdout=stdout, stderr=stderr)
+            process.wait()
+        return
+
+    def prepare_job(self, args):
+        input_file = args[0]
+        cmd = self._get_job(input_file)
+        stdout_file, stderr_file = self._get_log_files(input_file)
+        return cmd, stdout_file, stderr_file
+
     def run(self):
+        # Get path to logfile
+        logfile = logging.getLoggerClass().root.handlers[0].baseFilename
+
         # Prepare jobs
         jobs = []
         stderr_files = []
         with tqdm(total=len(self.input_files), desc="Preparing jobs") as pbar:
             with futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
                 self.submitted_futures = {
-                    executor.submit(prepare_job, (self, f)): f for f in self.input_files
+                    executor.submit(self.prepare_job, (f,)): f for f in self.input_files
                 }
                 for future in futures.as_completed(self.submitted_futures):
                     job = Job(*future.result())
@@ -64,7 +67,7 @@ class Orchestrator:
         with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
             with futures.ThreadPoolExecutor(max_workers=self.n_workers) as executor:
                 self.submitted_futures = {
-                    executor.submit(run_job, job.unpack()): job for job in jobs
+                    executor.submit(self.run_job, job.unpack()): job for job in jobs
                 }
                 for future in futures.as_completed(self.submitted_futures):
                     # Check for errors
@@ -81,7 +84,6 @@ class Orchestrator:
 
         # Print warning about errors thrown if any
         if n_errors > 0:
-            logfile = logging.getLoggerClass().root.handlers[0].baseFilename
             n_jobs = f"{n_errors} job{'s' if n_errors > 1 else ''}"
             print(f"WARNING: {n_jobs} did not run successfully; check {logfile}")
 
