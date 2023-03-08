@@ -13,7 +13,15 @@ from utils.systematics import Systematic, SystematicsTable
 from utils.cutflow import Cutflow
 from utils.datacard import Datacard
 
-def get_systs(sample_name, signal_regions, sf, *sf_variations):
+def get_year_str(year, doAPV=True):
+    if doAPV and year == -2016:
+        return "2016preVFP"
+    elif doAPV and year == 2016:
+        return "2016postVFP"
+    else:
+        return str(abs(year))
+
+def get_systs(sample_name, signal_regions, sf, *sf_variations, year=None):
     global vsbwh
     systs = []
     for SR in signal_regions:
@@ -23,7 +31,15 @@ def get_systs(sample_name, signal_regions, sf, *sf_variations):
         # Get delta = nominal - variation for each variation
         deltas = []
         for sf_var in sf_variations:
-            count_var = np.sum(df.event_weight/df[sf]*df[sf_var])
+            if year:
+                year_df = df[df.year == year]
+                count_var = (
+                    np.sum(year_df.event_weight/year_df[sf]*year_df[sf_var])
+                    + np.sum(df[df.year != year].event_weight)
+                )
+            else:
+                count_var = np.sum(df.event_weight/df[sf]*df[sf_var])
+
             deltas.append(abs((count - count_var)/count))
         
         systs.append(max(deltas))
@@ -152,7 +168,6 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
 
     for reweight_i in tqdm(range(vbswh.sig_reweights.shape[-1]), desc=f"Writing datacards to ../combine/datacards/{SIG_NAME}"):
 
-        SIG_SYSTS_TABLE = SystematicsTable(samples=[SIG_NAME])
         SIG_SYSTS_LIMIT = SystematicsTable(samples=[SIG_NAME])
 
         vbswh.df.loc[vbswh.df.is_signal, "event_weight"] = vbswh.df[vbswh.df.is_signal].orig_event_weight.values*vbswh.sig_reweights.T[reweight_i]
@@ -191,7 +206,6 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
 
         pdf_systs = Systematic("PDF variations", SIGNAL_REGIONS)
         pdf_systs.add_systs(systs)
-        SIG_SYSTS_TABLE.add_row(pdf_systs)
         SIG_SYSTS_LIMIT.add_row(pdf_systs.copy("pdf_vars"))
         # --------------------------------------------------------------------------------------
 
@@ -199,94 +213,74 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
         lhe_muR_weights = list(vbswh.df.columns[vbswh.df.columns.str.contains("muF1p0")])
         lhe_muF_weights = list(vbswh.df.columns[vbswh.df.columns.str.contains("muR1p0")])
 
-        muR_systs = Systematic("$\\mu_R$ scale", SIGNAL_REGIONS)
+        muR_systs = Systematic("muR_scale", SIGNAL_REGIONS)
         muR_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *lhe_muR_weights)
         )
 
-        muF_systs = Systematic("$\\mu_F$ scale", SIGNAL_REGIONS)
+        muF_systs = Systematic("muF_scale", SIGNAL_REGIONS)
         muF_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *lhe_muF_weights)
         )
 
-        # SIG_SYSTS_TABLE.add_row(muR_systs)                   # muR variations have not effect
-        SIG_SYSTS_TABLE.add_row(muF_systs)
-        # SIG_SYSTS_LIMIT.add_row(muR_systs.copy("muR_scale")) # muR variations have not effect
-        SIG_SYSTS_LIMIT.add_row(muF_systs.copy("muF_scale"))
+        # SIG_SYSTS_LIMIT.add_row(muR_systs) # muR variations have not effect
+        SIG_SYSTS_LIMIT.add_row(muF_systs)
         # --------------------------------------------------------------------------------------
 
         # -- Parton shower weights -------------------------------------------------------------
         isr_weights = list(vbswh.df.columns[vbswh.df.columns.str.contains("fsr1p0")])
         fsr_weights = list(vbswh.df.columns[vbswh.df.columns.str.contains("isr1p0")])
 
-        isr_sf_systs = Systematic("Parton shower ISR weights", SIGNAL_REGIONS)
+        isr_sf_systs = Systematic("isr_weights", SIGNAL_REGIONS)
         isr_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *isr_weights)
         )
 
-        fsr_sf_systs = Systematic("Parton shower FSR weights", SIGNAL_REGIONS)
+        fsr_sf_systs = Systematic("fsr_weights", SIGNAL_REGIONS)
         fsr_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *fsr_weights)
         )
 
-        SIG_SYSTS_TABLE.add_row(isr_sf_systs)
-        SIG_SYSTS_TABLE.add_row(fsr_sf_systs)
-        SIG_SYSTS_LIMIT.add_row(isr_sf_systs.copy("isr_weights"))
-        SIG_SYSTS_LIMIT.add_row(fsr_sf_systs.copy("fsr_weights"))
+        SIG_SYSTS_LIMIT.add_row(isr_sf_systs)
+        SIG_SYSTS_LIMIT.add_row(fsr_sf_systs)
         # --------------------------------------------------------------------------------------
 
         # -- Pileup reweighting ----------------------------------------------------------------
-        pu_sf_systs = Systematic("Pileup reweighting", SIGNAL_REGIONS)
+        pu_sf_systs = Systematic("pu_rwgt", SIGNAL_REGIONS)
         pu_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "pu_sf", "pu_sf_dn", "pu_sf_up")
         )
-        SIG_SYSTS_TABLE.add_row(pu_sf_systs)
-        SIG_SYSTS_LIMIT.add_row(pu_sf_systs.copy("pu_rwgt"))
+        SIG_SYSTS_LIMIT.add_row(pu_sf_systs)
         # --------------------------------------------------------------------------------------
 
         # -- L1 prefiring weight ---------------------------------------------------------------
-        prefire_sf_systs = Systematic("L1 pre-fire corrections", SIGNAL_REGIONS)
+        prefire_sf_systs = Systematic("L1_prefire", SIGNAL_REGIONS)
         prefire_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "prefire_sf", "prefire_sf_up", "prefire_sf_dn")
         )
-        SIG_SYSTS_TABLE.add_row(prefire_sf_systs)
-        SIG_SYSTS_LIMIT.add_row(prefire_sf_systs.copy("L1_prefire"))
+        SIG_SYSTS_LIMIT.add_row(prefire_sf_systs)
         # --------------------------------------------------------------------------------------
 
         # -- HLT scale factors -----------------------------------------------------------------
-        trig_sf_systs = Systematic("HLT scale factors", SIGNAL_REGIONS)
+        trig_sf_systs = Systematic("hlt_sfs", SIGNAL_REGIONS)
         trig_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "trig_sf", "trig_sf_up", "trig_sf_dn")
         )
-        SIG_SYSTS_TABLE.add_row(trig_sf_systs)
-        SIG_SYSTS_LIMIT.add_row(trig_sf_systs.copy("hlt_sfs"))
+        SIG_SYSTS_LIMIT.add_row(trig_sf_systs)
         # --------------------------------------------------------------------------------------
 
         # -- MC statistical uncertainty --------------------------------------------------------
-        stat_systs = Systematic("Simulation stat. unc.", SIGNAL_REGIONS)
+        stat_systs = Systematic("mc_stat", SIGNAL_REGIONS)
         stat_systs.add_systs(
             [
                 vbswh.sig_error(selection="SR1")/vbswh.sig_count(selection="SR1"), 
                 vbswh.sig_error(selection="SR2")/vbswh.sig_count(selection="SR2")
             ]
         )
-        SIG_SYSTS_TABLE.add_row(stat_systs)
-        SIG_SYSTS_LIMIT.add_row(stat_systs.copy("mc_stat"))
+        SIG_SYSTS_LIMIT.add_row(stat_systs)
         # --------------------------------------------------------------------------------------
 
         # -- Lepton scale factors --------------------------------------------------------------
-        lep_sf_systs = Systematic("Lepton scale factors", SIGNAL_REGIONS)
-        lep_sf_systs.add_systs(
-            get_systs(SIG_NAME, SIGNAL_REGIONS, "lep_id_sf", "lep_id_sf_up", "lep_id_sf_dn")
-        )
-        lep_sf_systs.add_systs(
-            get_systs(SIG_NAME, SIGNAL_REGIONS, "elec_reco_sf", "elec_reco_sf_up", "elec_reco_sf_dn")
-        )
-        lep_sf_systs.add_systs(
-            get_systs(SIG_NAME, SIGNAL_REGIONS, "muon_iso_sf", "muon_iso_sf_up", "muon_iso_sf_dn")
-        )
-        SIG_SYSTS_TABLE.add_row(lep_sf_systs)
-
         lep_id_sf_systs = Systematic("lep_id", SIGNAL_REGIONS)
         lep_id_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "lep_id_sf", "lep_id_sf_up", "lep_id_sf_dn")
@@ -307,12 +301,17 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
         # --------------------------------------------------------------------------------------
 
         # -- ParticleNet Xbb scale factors -----------------------------------------------------
-        btag_sf_systs = Systematic("ParticleNet Xbb scale factors", SIGNAL_REGIONS)
-        btag_sf_systs.add_systs(
-            get_systs(SIG_NAME, SIGNAL_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up")
-        )
-        SIG_SYSTS_TABLE.add_row(btag_sf_systs)
-        SIG_SYSTS_LIMIT.add_row(btag_sf_systs.copy("xbb_sfs"))
+        # xbb_sf_systs = Systematic("ParticleNet Xbb scale factors", SIGNAL_REGIONS)
+        # xbb_sf_systs.add_systs(
+        #     get_systs(SIG_NAME, SIGNAL_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up")
+        # )
+        # SIG_SYSTS_LIMIT.add_row(xbb_sf_systs.copy("xbb_sfs"))
+        for year in [-2016, 2016, 2017, 2018]:
+            xbb_sf_systs = Systematic(f"xbb_sfs_{get_year_str(year)}", SIGNAL_REGIONS)
+            xbb_sf_systs.add_systs(
+                get_systs(SIG_NAME, SIGNAL_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up", year=year)
+            )
+            SIG_SYSTS_LIMIT.add_row(xbb_sf_systs)
         # --------------------------------------------------------------------------------------
 
         # -- DeepJet b-tagging scale factors ---------------------------------------------------
@@ -320,7 +319,6 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
         btag_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "btag_sf", "btag_sf_dn", "btag_sf_up")
         )
-        SIG_SYSTS_TABLE.add_row(btag_sf_systs)
         SIG_SYSTS_LIMIT.add_row(btag_sf_systs.copy("btag_sfs"))
         # --------------------------------------------------------------------------------------
 
@@ -329,7 +327,6 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
         met_unc_systs.add_systs(
             get_systs_nonSF(SIG_NAME, SIGNAL_REGIONS, ["SR1_dn", "SR2_dn"], ["SR1_up", "SR2_up"])
         )
-        SIG_SYSTS_TABLE.add_row(met_unc_systs)
         SIG_SYSTS_LIMIT.add_row(met_unc_systs.copy("met_unc"))
         # --------------------------------------------------------------------------------------
 
@@ -341,7 +338,6 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
             {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
             "Jet energy scale"
         )
-        SIG_SYSTS_TABLE.add_row(jec_systs)
         SIG_SYSTS_LIMIT.add_row(jec_systs.copy("jes"))
         # --------------------------------------------------------------------------------------
 
@@ -353,15 +349,19 @@ for SIG_NAME in ["VBSWH_negLambda", "VBSWH_posLambda"]:
             {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
             "Jet energy resolution"
         )
-        SIG_SYSTS_TABLE.add_row(jer_systs)
         SIG_SYSTS_LIMIT.add_row(jer_systs.copy("jer"))
         # --------------------------------------------------------------------------------------
 
         # -- Luminosity ------------------------------------------------------------------------
         lumi_systs = Systematic("Luminosity", SIGNAL_REGIONS)
-        lumi_systs.add_systs([0.025, 0.025])
-        SIG_SYSTS_TABLE.add_row(lumi_systs)
+        lumi_systs.add_systs([0.016, 0.016])
         SIG_SYSTS_LIMIT.add_row(lumi_systs.copy("lumi"))
+        # --------------------------------------------------------------------------------------
+
+        # -- H to bb BR ------------------------------------------------------------------------
+        lumi_systs = Systematic("Htobb BR", SIGNAL_REGIONS)
+        lumi_systs.add_systs([0.0127, 0.0127])
+        SIG_SYSTS_LIMIT.add_row(lumi_systs.copy("hbb_br"))
         # --------------------------------------------------------------------------------------
 
         with open("../notebooks/AN_numbers.json", "r") as f_in:
