@@ -558,10 +558,12 @@ public:
         LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
         double max_detajj = -999;
         std::pair<unsigned int, unsigned int> vbsjet_idxs;
-        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        for (unsigned int _jet_i = 0; _jet_i < vbsjet_cand_idxs.size(); ++_jet_i)
         {
-            for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
+            unsigned int jet_i = vbsjet_cand_idxs.at(_jet_i);
+            for (unsigned int _jet_j = _jet_i + 1; _jet_j < vbsjet_cand_idxs.size(); ++_jet_j)
             {
+                unsigned int jet_j = vbsjet_cand_idxs.at(_jet_j);
                 LorentzVector jet1_p4 = good_jet_p4s.at(jet_i);
                 LorentzVector jet2_p4 = good_jet_p4s.at(jet_j);
                 double detajj = fabs(jet1_p4.eta() - jet2_p4.eta());
@@ -636,10 +638,12 @@ public:
         LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
         double max_Mjj = -999;
         std::pair<unsigned int, unsigned int> vbsjet_idxs;
-        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        for (unsigned int _jet_i = 0; _jet_i < vbsjet_cand_idxs.size(); ++_jet_i)
         {
-            for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
+            unsigned int jet_i = vbsjet_cand_idxs.at(_jet_i);
+            for (unsigned int _jet_j = _jet_i + 1; _jet_j < vbsjet_cand_idxs.size(); ++_jet_j)
             {
+                unsigned int jet_j = vbsjet_cand_idxs.at(_jet_j);
                 LorentzVector jet1_p4 = good_jet_p4s.at(jet_i);
                 LorentzVector jet2_p4 = good_jet_p4s.at(jet_j);
                 double Mjj = (jet1_p4 + jet2_p4).M();
