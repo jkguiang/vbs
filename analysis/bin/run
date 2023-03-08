@@ -46,12 +46,13 @@ class VBSOrchestrator(Orchestrator):
         if input_file.split("/")[-1][:7] == "merged_":
             file_info["output_name"] += input_file.split("/")[-1].split("merged")[-1].replace(".root", "")
             # Find companion files and adjust xsec_sf accordingly
-            input_dir = "/".join(input_file.split("/")[:-1])
-            for other_file in self.input_files:
-                if other_file != input_file and "/".join(other_file.split("/")[:-1]) == input_dir:
-                    other_file_info = utils.file_info.parse(input_file=other_file, xsecs_json=self.xsecs_json)
-                    file_info["n_events"] += other_file_info["n_events"]
-            file_info["xsec_sf"] = file_info["xsec"]*1000*file_info["lumi"]/file_info["n_events"]
+            if not file_info["is_data"]:
+                input_dir = "/".join(input_file.split("/")[:-1])
+                for other_file in self.input_files:
+                    if other_file != input_file and "/".join(other_file.split("/")[:-1]) == input_dir:
+                        other_file_info = utils.file_info.parse(input_file=other_file, xsecs_json=self.xsecs_json)
+                        file_info["n_events"] += other_file_info["n_events"]
+                file_info["xsec_sf"] = file_info["xsec"]*1000*file_info["lumi"]/file_info["n_events"]
 
         file_info["output_dir"] = f"{self.output_dir}/{file_info['year']}"
         os.makedirs(file_info["output_dir"], exist_ok=True)
