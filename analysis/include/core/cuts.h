@@ -591,7 +591,7 @@ public:
         // Sort the two VBS jets into leading/trailing
         int ld_vbsjet_idx;
         int tr_vbsjet_idx;
-        if (good_jet_p4s.at(vbsjet_idxs.first).pt() > good_jet_p4s.at(vbsjet_idxs.first).pt())
+        if (good_jet_p4s.at(vbsjet_idxs.first).pt() > good_jet_p4s.at(vbsjet_idxs.second).pt())
         {
             ld_vbsjet_idx = vbsjet_idxs.first;
             tr_vbsjet_idx = vbsjet_idxs.second;
