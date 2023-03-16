@@ -8,5 +8,6 @@
 #include "jets.h"
 #include "btags.h"
 #include "particlenet.h"
+#include "qcd.h"
 
 #endif
