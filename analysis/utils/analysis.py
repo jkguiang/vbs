@@ -716,13 +716,13 @@ class Validation(PandasAnalysis):
             data_df = data_df.query(f"not ({column} >= {blind_low} and {column} < {blind_high})")
 
         # Get bkg MC (denominator)
-        mc_df = self.bkg_df(selection=selection)
+        bkg_df = self.bkg_df(selection=selection)
         sig_df = self.sig_df(selection=selection)
         
         if weights:
             for weight in weights:
                 data_df.event_weight *= data_df[weight]
-                mc_df.event_weight *= mc_df[weight]
+                bkg_df.event_weight *= bkg_df[weight]
                 sig_df.event_weight *= sig_df[weight]
 
         data_hist = yahist.Hist1D(
@@ -732,11 +732,11 @@ class Validation(PandasAnalysis):
             label=f"Data [{len(data_df)} events]",
             color="k"
         )
-        mc_hist = yahist.Hist1D(
-            transf(mc_df[column]),
+        bkg_hist = yahist.Hist1D(
+            transf(bkg_df[column]),
             bins=bins,
-            weights=mc_df.event_weight,
-            label=f"Total MC [{mc_df.event_weight.sum():0.1f} events]",
+            weights=bkg_df.event_weight,
+            label=f"Total MC [{bkg_df.event_weight.sum():0.1f} events]",
             color="k"
         )
         sig_hist = yahist.Hist1D(
@@ -745,40 +745,41 @@ class Validation(PandasAnalysis):
             weights=sig_df.event_weight
         )
 
+        # Get bkg MC bin counts for automatic blinding
+        bkg_counts = bkg_hist.counts.copy()
+        bkg_counts[bkg_counts == 0] = 1e-12
+            
+        # Find bins to automatically blind
+        autoblind_bins = (bkg_counts + sig_hist.counts > bkg_counts + 0.2*bkg_hist.errors)
+
         if norm:
             data_hist = data_hist.normalize()
-            mc_hist = mc_hist.normalize()
-            sig_hist = sig_hist.normalize()
+            bkg_hist = bkg_hist.normalize()
 
-        # Get bkg MC bin counts (for automatic blinding and plotting error hashes)
-        mc_counts = mc_hist.counts.copy()
-        mc_counts[mc_counts == 0] = 1e-12
-            
         # Do automatic blinding
-        autoblind_bins = (mc_counts + sig_hist.counts > mc_counts + 0.2*mc_hist.errors)
         data_hist.counts[autoblind_bins] = 0
 
         # Get stacked backgrounds
         bkg_hists = []
         if stacked:
-            for name in mc_df.name.unique():
-                weights = mc_df.event_weight[mc_df.name == name]
+            for name in bkg_df.name.unique():
+                weights = bkg_df.event_weight[bkg_df.name == name]
                 if norm:
-                    weights /= mc_df.event_weight.sum()
+                    weights /= bkg_df.event_weight.sum()
                 sample_label = self.sample_labels[name] if name in self.sample_labels else name
                 hist = yahist.Hist1D(
-                    transf(mc_df[mc_df.name == name][column]),
+                    transf(bkg_df[bkg_df.name == name][column]),
                     bins=bins,
                     weights=weights,
-                    label=f"{sample_label} [{sum(weights):.1f} events]",
+                    label=f"{sample_label} [{bkg_df.event_weight[bkg_df.name == name].sum():.1f} events]",
                     color=self.bkg_colors[name] if self.bkg_colors else None
                 )
                 bkg_hists.append(hist)
 
         # Get ratio
-        ratio_hist = data_hist/mc_hist
+        ratio_hist = data_hist/bkg_hist
         # Set ratio errors to data relative stat error times the ratio
-        data_counts = data_hist.counts
+        data_counts = data_hist.counts.copy()
         data_counts[data_counts == 0] = 1e-12
         ratio_hist._errors = (data_hist.errors/data_counts)*ratio_hist.counts
 
@@ -788,14 +789,18 @@ class Validation(PandasAnalysis):
             yahist.utils.plot_stack(bkg_hists, ax=hist_axes, histtype="stepfilled")
 
         # Plot hists and ratio
-        mc_hist.plot(ax=hist_axes, alpha=0.5, zorder=1)
+        bkg_hist.plot(ax=hist_axes, alpha=0.5, zorder=1)
         data_hist.plot(ax=hist_axes, errors=True, zorder=1.2)
         ratio_hist.plot(ax=ratio_axes, errors=True, color="k", zorder=1.2)
 
+        # Get bkg MC bin counts for error calculation (again in case of norm)
+        bkg_counts = bkg_hist.counts.copy()
+        bkg_counts[bkg_counts == 0] = 1e-12
+
         # Plot MC relative stat error on unity; this makes no sense, but is LHC common practice
-        err_points = np.repeat(mc_hist.edges, 2)[1:-1]
-        err_high = np.repeat(1 + mc_hist.errors/mc_counts, 2)
-        err_low = np.repeat(1 - mc_hist.errors/mc_counts, 2)
+        err_points = np.repeat(bkg_hist.edges, 2)[1:-1]
+        err_high = np.repeat(1 + bkg_hist.errors/bkg_counts, 2)
+        err_low = np.repeat(1 - bkg_hist.errors/bkg_counts, 2)
         ratio_axes.fill_between(
             err_points, err_high, err_low,
             step="mid",
@@ -808,8 +813,8 @@ class Validation(PandasAnalysis):
         )
 
         # Plot MC error on histogram
-        err_high = np.repeat(mc_counts + mc_hist.errors, 2)
-        err_low = np.repeat(mc_counts - mc_hist.errors, 2)
+        err_high = np.repeat(bkg_counts + bkg_hist.errors, 2)
+        err_low = np.repeat(bkg_counts - bkg_hist.errors, 2)
         hist_axes.fill_between(
             err_points, err_high, err_low,
             step="mid",
@@ -867,7 +872,7 @@ class Validation(PandasAnalysis):
             plt.savefig(plot_file.replace(".pdf", ".png"), bbox_inches="tight")
 
         if return_hists:
-            return hist_axes, ratio_axes, (data_hist, mc_hist, ratio_hist)
+            return hist_axes, ratio_axes, (data_hist, bkg_hist, ratio_hist)
         else:
             return hist_axes, ratio_axes
 
