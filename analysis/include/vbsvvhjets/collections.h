@@ -12,7 +12,6 @@
 #include "vbswh/collections.h"
 #include "vbswh/cuts.h"
 #include "vbsvvhjets/cuts.h"
-// #include "vbsvvhjets/enums.h"
 #include "corrections/all.h"    // PileUpSFs, LeptonSFsTTH/PKU, BTagSFs, JetEnergyScales
 
 namespace VBSVVHJets
@@ -33,11 +32,14 @@ struct Analysis : Core::Analysis
         // W/Z fat jet globals
         cutflow.globals.newVar<LorentzVector>("ld_vqqfatjet_p4");
         cutflow.globals.newVar<LorentzVector>("tr_vqqfatjet_p4");
+        cutflow.globals.newVar<unsigned int>("ld_vqqfatjet_gidx", 999); // idx in 'good' fatjets global vector
+        cutflow.globals.newVar<unsigned int>("tr_vqqfatjet_gidx", 999); // idx in 'good' fatjets global vector
         // W/Z AK4 jet globals
         cutflow.globals.newVar<LorentzVector>("ld_vqqjet_p4");
         cutflow.globals.newVar<LorentzVector>("tr_vqqjet_p4");
         // Hbb jet globals
         cutflow.globals.newVar<LorentzVector>("hbbfatjet_p4");
+        cutflow.globals.newVar<unsigned int>("hbbfatjet_gidx", 999); // idx in 'good' fatjets global vector
 
         // Scale factors
         jes = nullptr;
@@ -89,6 +91,8 @@ struct Analysis : Core::Analysis
         arbol.newBranch<bool>("passes_bveto", false);
         arbol.newBranch<bool>("is_allmerged", false);
         arbol.newBranch<bool>("is_semimerged", false);
+        arbol.newBranch<double>("qcd_xbb_sf", -999);
+        arbol.newBranch<double>("qcd_xvqq_sf", -999);
     };
 
     virtual void initCorrections()
@@ -137,11 +141,26 @@ struct Analysis : Core::Analysis
         Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this, jes);
         cutflow.insert(no_leps, select_fatjets, Right);
 
+        Cut* trigger_plateau = new LambdaCut(
+            "TriggerPlateauCuts",
+            [&]()
+            {
+                LorentzVectors fatjet_p4s = cutflow.globals.getVal<LorentzVectors>("good_fatjet_p4s");
+                double max_fatjet_pt = -999;
+                for (auto fatjet_p4 : fatjet_p4s)
+                {
+                    if (fatjet_p4.pt() > max_fatjet_pt) { max_fatjet_pt = fatjet_p4.pt(); }
+                }
+                return max_fatjet_pt > 550;
+            }
+        );
+        cutflow.insert(select_fatjets, trigger_plateau, Right);
+
         /* ------------------ 3 fatjet channel ------------------ */
         Cut* geq3_fatjets = new LambdaCut(
             "Geq3FatJets", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 3; }
         );
-        cutflow.insert(select_fatjets, geq3_fatjets, Right);
+        cutflow.insert(trigger_plateau, geq3_fatjets, Right);
 
         // VVH fat jet candidate selection
         Cut* allmerged_select_vvh = new SelectVVHFatJets("AllMerged_SelectVVHFatJets", *this, AllMerged);
