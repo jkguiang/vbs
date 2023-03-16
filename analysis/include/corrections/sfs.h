@@ -64,12 +64,12 @@ public:
     double getSF(double x, double y, double z) 
     { 
         assertHist();
-        double x_max = hist->GetXaxis()->GetXmax();
-        x = clip(x, x_max);
-        double y_max = hist->GetYaxis()->GetXmax();
-        y = clip(y, y_max);
-        double z_max = hist->GetZaxis()->GetXmax();
-        y = clip(z, z_max);
+        // double x_max = hist->GetXaxis()->GetXmax();
+        // x = clip(x, x_max);
+        // double y_max = hist->GetYaxis()->GetXmax();
+        // y = clip(y, y_max);
+        // double z_max = hist->GetZaxis()->GetXmax();
+        // y = clip(z, z_max);
         return hist->GetBinContent(hist->FindBin(x, y, z)); 
     };
 
@@ -92,12 +92,12 @@ public:
     double getErr(double x, double y, double z) 
     { 
         assertHist();
-        double x_max = hist->GetXaxis()->GetXmax();
-        x = clip(x, x_max);
-        double y_max = hist->GetYaxis()->GetXmax();
-        y = clip(y, y_max);
-        double z_max = hist->GetZaxis()->GetXmax();
-        y = clip(z, z_max);
+        // double x_max = hist->GetXaxis()->GetXmax();
+        // x = clip(x, x_max);
+        // double y_max = hist->GetYaxis()->GetXmax();
+        // y = clip(y, y_max);
+        // double z_max = hist->GetZaxis()->GetXmax();
+        // y = clip(z, z_max);
         return hist->GetBinError(hist->FindBin(x, y, z)); 
     };
 };
