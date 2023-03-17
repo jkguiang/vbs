@@ -1,4 +1,5 @@
 #include "vbsvvhjets/collections.h"
+#include "corrections/qcd.h"
 // RAPIDO
 #include "arbol.h"
 #include "hepcli.h"
@@ -25,9 +26,12 @@ int main(int argc, char** argv)
     // Initialize Arbol
     Arbol arbol = Arbol(cli);
     arbol.newBranch<double>("reweight_c2v_eq_3", -999);
-    arbol.setLeaf<double>("hbbfatjet_pdfscore");
-    arbol.setLeaf<double>("ld_vqqfatjet_pdfscore");
-    arbol.setLeaf<double>("tr_vqqfatjet_pdfscore");
+    arbol.newBranch<double>("qcd_xbb_sf", -999);
+    arbol.newBranch<double>("qcd_ld_xvqq_sf", -999);
+    arbol.newBranch<double>("qcd_tr_xvqq_sf", -999);
+    arbol.newBranch<double>("hbbfatjet_pdfscore", -999);
+    arbol.newBranch<double>("ld_vqqfatjet_pdfscore", -999);
+    arbol.newBranch<double>("tr_vqqfatjet_pdfscore", -999);
 
     // Initialize Cutflow
     Histflow cutflow = Histflow(cli.output_name + "_Cutflow");
@@ -40,7 +44,8 @@ int main(int argc, char** argv)
 
     TFile* pnet_pdf_file = new TFile("data/vbsvvhjets_sfs/qcd_pnet_pdfs.root");
     TH2D* xbb_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_Xbb_PDF_2D");
-    TH2D* xvqq_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_XVqq_PDF_2D");
+    // TH2D* xvqq_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_XVqq_PDF_2D");
+    TH2D* xvqq_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_XWqq_PDF_2D"); // keeping 'xvqq_pdf' as name to avoid complication below
     Cut* replace_pnets = new LambdaCut(
         "ReplacePNetsQCD",
         [&, xbb_pdf, xvqq_pdf]()
@@ -48,6 +53,8 @@ int main(int argc, char** argv)
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             int bin;
             TH1D* pdf;
+            double max_xbb;
+            double min_xvqq;
             if (file_name.Contains("QCD"))
             {
                 LorentzVector hbbfatjet_p4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
@@ -57,7 +64,7 @@ int main(int argc, char** argv)
                 bin = xbb_pdf->GetXaxis()->FindBin(hbbfatjet_p4.pt());
                 pdf = xbb_pdf->ProjectionY("xbb_projy", bin, bin);
                 pdf->Rebin(10);
-                double max_xbb = -999;
+                max_xbb = -999;
                 for (unsigned int i = 0; i < 3; ++i)
                 {
                     double xbb = pdf->GetRandom();
@@ -71,12 +78,30 @@ int main(int argc, char** argv)
                 bin = xvqq_pdf->GetXaxis()->FindBin(ld_vqqfatjet_p4.pt());
                 pdf = xvqq_pdf->ProjectionY("xvqq_projy1", bin, bin);
                 pdf->Rebin(10);
-                arbol.setLeaf<double>("ld_vqqfatjet_pdfscore", pdf->GetRandom());
+                min_xvqq = 9999;
+                for (unsigned int i = 0; i < 2; ++i)
+                {
+                    double xvqq = pdf->GetRandom();
+                    if (xvqq < min_xvqq)
+                    {
+                        min_xvqq = xvqq;
+                    }
+                }
+                arbol.setLeaf<double>("ld_vqqfatjet_pdfscore", min_xvqq);
                 // Replace trailing Vqq fat jet score
                 bin = xvqq_pdf->GetXaxis()->FindBin(tr_vqqfatjet_p4.pt());
                 pdf = xvqq_pdf->ProjectionY("xvqq_projy2", bin, bin);
                 pdf->Rebin(10);
-                arbol.setLeaf<double>("tr_vqqfatjet_pdfscore", pdf->GetRandom());
+                min_xvqq = 9999;
+                for (unsigned int i = 0; i < 2; ++i)
+                {
+                    double xvqq = pdf->GetRandom();
+                    if (xvqq < min_xvqq)
+                    {
+                        min_xvqq = xvqq;
+                    }
+                }
+                arbol.setLeaf<double>("tr_vqqfatjet_pdfscore", min_xvqq);
             }
             else
             {
@@ -89,12 +114,11 @@ int main(int argc, char** argv)
     );
     cutflow.insert("AllMerged_SelectVVHFatJets", replace_pnets, Right);
 
-    /* "Naive" QCD ParticleNet scale factors: Did not work very well
-    QCDPNetXbbSFs qcd_xbb_sfs = new QCDPNetXbbSFs();
-    QCDPNetXVqqSFs qcd_xvqq_sfs = new QCDPNetXVqqSFs();
+    QCDPNetXbbSFs* qcd_xbb_sfs = new QCDPNetXbbSFs();
+    QCDPNetXVqqSFs* qcd_xvqq_sfs = new QCDPNetXVqqSFs();
     Cut* allmerged_apply_qcd_sfs = new LambdaCut(
         "AllMerged_ApplyQCDSFs",
-        [&]()
+        [&, qcd_xbb_sfs, qcd_xvqq_sfs]()
         {
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             if (file_name.Contains("QCD"))
@@ -107,24 +131,30 @@ int main(int argc, char** argv)
                 double tr_vqqfatjet_score = arbol.getLeaf<double>("tr_vqqfatjet_score");
                 arbol.setLeaf<double>(
                     "qcd_xbb_sf", 
-                    qcd_xbb_sfs->getSF(hbbfatjet_p4.pt(), hbbfatjet_p4.eta(), hbbfatjet_score)
+                    // qcd_xbb_sfs->getSF(hbbfatjet_p4.pt(), hbbfatjet_p4.eta(), hbbfatjet_score)
+                    qcd_xbb_sfs->getSF(hbbfatjet_p4.pt(), hbbfatjet_score)
                 );
                 arbol.setLeaf<double>(
-                    "qcd_xvqq_sf", 
-                    (qcd_xvqq_sfs->getSF(ld_vqqfatjet_p4.pt(), ld_vqqfatjet_p4.eta(), ld_vqqfatjet_score)
-                     *qcd_xvqq_sfs->getSF(tr_vqqfatjet_p4.pt(), tr_vqqfatjet_p4.eta(), tr_vqqfatjet_score))
+                    "qcd_ld_xvqq_sf", 
+                    // qcd_xvqq_sfs->getSF(ld_vqqfatjet_p4.pt(), ld_vqqfatjet_p4.eta(), ld_vqqfatjet_score)
+                    qcd_xvqq_sfs->getSF(ld_vqqfatjet_p4.pt(), ld_vqqfatjet_score)
+                );
+                arbol.setLeaf<double>(
+                    "qcd_tr_xvqq_sf", 
+                    // qcd_xvqq_sfs->getSF(tr_vqqfatjet_p4.pt(), tr_vqqfatjet_p4.eta(), tr_vqqfatjet_score)
+                    qcd_xvqq_sfs->getSF(tr_vqqfatjet_p4.pt(), tr_vqqfatjet_score)
                 );
             }
             else
             {
                 arbol.setLeaf<double>("qcd_xbb_sf", 1.);
-                arbol.setLeaf<double>("qcd_xvqq_sf", 1.);
+                arbol.setLeaf<double>("qcd_ld_xvqq_sf", 1.);
+                arbol.setLeaf<double>("qcd_tr_xvqq_sf", 1.);
             }
             return true;
         }
     );
     cutflow.insert("AllMerged_SelectVVHFatJets", allmerged_apply_qcd_sfs, Right);
-    */
 
     // Run looper
     tqdm bar;
@@ -133,8 +163,9 @@ int main(int argc, char** argv)
         {
             nt.Init(ttree);
             analysis.init();
-            // qcd_xbb_sfs->init(file_name);
-            // qcd_xvqq_sfs->init(file_name);
+            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            qcd_xbb_sfs->init(file_name);
+            qcd_xvqq_sfs->init(file_name);
         },
         [&](int entry) 
         {

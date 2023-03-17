@@ -91,8 +91,6 @@ struct Analysis : Core::Analysis
         arbol.newBranch<bool>("passes_bveto", false);
         arbol.newBranch<bool>("is_allmerged", false);
         arbol.newBranch<bool>("is_semimerged", false);
-        arbol.newBranch<double>("qcd_xbb_sf", -999);
-        arbol.newBranch<double>("qcd_xvqq_sf", -999);
     };
 
     virtual void initCorrections()
