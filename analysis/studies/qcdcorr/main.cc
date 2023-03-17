@@ -1,4 +1,5 @@
 #include "vbsvvhjets/collections.h"
+#include "corrections/qcd.h"
 // RAPIDO
 #include "arbol.h"
 #include "hepcli.h"
@@ -33,7 +34,30 @@ int main(int argc, char** argv)
     analysis.initBranches();
     analysis.initCorrections();
     analysis.initCutflow();
+    
+    // List of cut names to book histograms for
+    std::vector<std::string> cuts_to_book = {"SemiMerged_SelectVBSJets", "AllMerged_SelectVBSJets"};
 
+    QCDPNetXbbSFs* xbb_rwgt = new QCDPNetXbbSFs();
+    if (cli.variation == "apply_xbb_rwgt")
+    {
+        // Create a cut that either applies the Hbb reweighting
+        Cut* apply_xbb_rwgt = new LambdaCut(
+            "SemiMerged_ApplyXbbReweighting",
+            [&]() { return true; },
+            [&, xbb_rwgt]() 
+            { 
+                double pt = arbol.getLeaf<double>("hbbfatjet_pt");
+                double eta = arbol.getLeaf<double>("hbbfatjet_eta");
+                double score = arbol.getLeaf<double>("hbbfatjet_score");
+                return xbb_rwgt->getSF(pt, eta, score);
+            }
+        );
+        cutflow.insert("SemiMerged_SelectVBSJets", apply_xbb_rwgt, Right);
+        cuts_to_book.push_back("SemiMerged_ApplyXbbReweighting");
+    }
+
+    // Define histogram binning
     const int n_ptbins = 12;
     double ptbin_edges[n_ptbins+1] = {300., 310., 320., 340., 360., 400., 450., 500., 600., 700., 800., 900., 1000.};
     const int n_etabins = 5;
@@ -80,7 +104,6 @@ int main(int argc, char** argv)
     for (auto hist : xwqq_hists3D) { hist->Sumw2(); }
 
     // Book histograms
-    std::vector<std::string> cuts_to_book = {"SemiMerged_SelectVBSJets", "AllMerged_SelectVBSJets"};
     for (auto cut_name : cuts_to_book)
     {
         for (unsigned int hist_i = 0; hist_i < xbb_hists3D.size(); ++hist_i)
@@ -92,7 +115,7 @@ int main(int argc, char** argv)
             TH2D* xvqq_hist2D = xvqq_hists2D.at(hist_i);
             TH2D* xwqq_hist2D = xwqq_hists2D.at(hist_i);
             std::string obj_name = std::string(xbb_hist3D->GetTitle());
-            if (cut_name == "SemiMerged_SelectVBSJets" && obj_name == "tr_vqqfatjet") { continue; }
+            if (TString(cut_name).Contains("SemiMerged_") && obj_name == "tr_vqqfatjet") { continue; }
             cutflow.bookHist3D<TH3D>(
                 cut_name, xbb_hist3D, 
                 [&, obj_name]() 
@@ -143,7 +166,7 @@ int main(int argc, char** argv)
                     unsigned int gidx = cutflow.globals.getVal<unsigned int>(obj_name+"_gidx");
                     double pt = arbol.getLeaf<double>(obj_name+"_pt");
                     double score = cutflow.globals.getVal<Doubles>("good_fatjet_xvqqtags").at(gidx);
-                    return std::pair(pt, score);
+                    return std::make_pair(pt, score);
                 }
             );
             cutflow.bookHist2D<TH2D>(
@@ -153,7 +176,7 @@ int main(int argc, char** argv)
                     unsigned int gidx = cutflow.globals.getVal<unsigned int>(obj_name+"_gidx");
                     double pt = arbol.getLeaf<double>(obj_name+"_pt");
                     double score = cutflow.globals.getVal<Doubles>("good_fatjet_xwqqtags").at(gidx);
-                    return std::pair(pt, score);
+                    return std::make_pair(pt, score);
                 }
             );
         }
@@ -162,10 +185,15 @@ int main(int argc, char** argv)
     // Run looper
     tqdm bar;
     looper.run(
-        [&](TTree* ttree)
+        [&, xbb_rwgt](TTree* ttree)
         {
             nt.Init(ttree);
             analysis.init();
+            if (cli.variation == "apply_xbb_rwgt")
+            {
+                TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+                xbb_rwgt->init(file_name);
+            }
         },
         [&](int entry) 
         {
