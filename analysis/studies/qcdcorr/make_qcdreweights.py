@@ -26,7 +26,11 @@ def get_hists(root_files, skip=None):
 
     return hists
 
-babies = glob.glob(f"{sys.argv[1]}/Run2/*.root")
+output_dir = f"studies/qcdcorr/output_{sys.argv[1]}/Run2"
+babies = glob.glob(f"{output_dir}/*.root")
+if not babies:
+    print(f"No ROOT files in {output_dir}")
+    exit()
 sig_babies = [b for b in babies if "VBSVVH" in b]
 qcd_babies = [b for b in babies if "QCD" in b]
 data_babies = [b for b in babies if "data" in b]
@@ -74,6 +78,10 @@ for hist_name in data_hists:
             outname += "_2D"
             ndim = "2D"
 
+        if "3Dalt" in hist_name:
+            outname += "alt"
+            pnet += "alt"
+
         if pnet in hists[ndim]:
             data_hist = data_hists[hist_name].Clone("TEMP__"+hist_name)
             data_hist.Add(other_hists[hist_name], -1)
@@ -86,6 +94,11 @@ for hist_name in data_hists:
 
 for ndim, hists_ndim in hists.items():
     for h in hists_ndim.values():
+        for xbin in range(0, h.GetNbinsX()+2):
+            for ybin in range(0, h.GetNbinsY()+2):
+                for zbin in range(0, h.GetNbinsZ()+2):
+                    if h.GetBinContent(xbin, ybin, zbin) < 0:
+                        h.SetBinContent(xbin, ybin, zbin, 0)
         h.Write()
 
 fh.Close()

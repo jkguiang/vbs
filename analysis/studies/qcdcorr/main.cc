@@ -1,5 +1,4 @@
 #include "vbsvvhjets/collections.h"
-#include "corrections/qcd.h"
 // RAPIDO
 #include "arbol.h"
 #include "hepcli.h"
@@ -37,25 +36,6 @@ int main(int argc, char** argv)
     
     // List of cut names to book histograms for
     std::vector<std::string> cuts_to_book = {"SemiMerged_SelectVBSJets", "AllMerged_SelectVBSJets"};
-
-    QCDPNetXbbSFs* xbb_rwgt = new QCDPNetXbbSFs();
-    if (cli.variation == "apply_xbb_rwgt")
-    {
-        // Create a cut that either applies the Hbb reweighting
-        Cut* apply_xbb_rwgt = new LambdaCut(
-            "SemiMerged_ApplyXbbReweighting",
-            [&]() { return true; },
-            [&, xbb_rwgt]() 
-            { 
-                double pt = arbol.getLeaf<double>("hbbfatjet_pt");
-                double eta = arbol.getLeaf<double>("hbbfatjet_eta");
-                double score = arbol.getLeaf<double>("hbbfatjet_score");
-                return xbb_rwgt->getSF(pt, eta, score);
-            }
-        );
-        cutflow.insert("SemiMerged_SelectVBSJets", apply_xbb_rwgt, Right);
-        cuts_to_book.push_back("SemiMerged_ApplyXbbReweighting");
-    }
 
     // Define histogram binning
     const int n_ptbins = 12;
@@ -102,6 +82,13 @@ int main(int argc, char** argv)
     xwqq_hists3D.push_back(new TH3D("ld_vqqfatjet_xwqqscore3D", "ld_vqqfatjet", n_ptbins, ptbin_edges, n_etabins, etabin_edges, n_scorebins, scorebin_edges));
     xwqq_hists3D.push_back(new TH3D("tr_vqqfatjet_xwqqscore3D", "tr_vqqfatjet", n_ptbins, ptbin_edges, n_etabins, etabin_edges, n_scorebins, scorebin_edges));
     for (auto hist : xwqq_hists3D) { hist->Sumw2(); }
+    const int n_xbbbins = 5;
+    double xbbbin_edges[n_xbbbins+1] = {0, 0.2, 0.4, 0.6, 0.8, 1.0};
+    std::vector<TH3D*> xwqq_hists3Dalt;
+    xwqq_hists3Dalt.push_back(new TH3D("hbbfatjet_xwqqscore3Dalt", "hbbfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
+    xwqq_hists3Dalt.push_back(new TH3D("ld_vqqfatjet_xwqqscore3Dalt", "ld_vqqfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
+    xwqq_hists3Dalt.push_back(new TH3D("tr_vqqfatjet_xwqqscore3Dalt", "tr_vqqfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
+    for (auto hist : xwqq_hists3Dalt) { hist->Sumw2(); }
 
     // Book histograms
     for (auto cut_name : cuts_to_book)
@@ -111,6 +98,7 @@ int main(int argc, char** argv)
             TH3D* xbb_hist3D = xbb_hists3D.at(hist_i);
             TH3D* xvqq_hist3D = xvqq_hists3D.at(hist_i);
             TH3D* xwqq_hist3D = xwqq_hists3D.at(hist_i);
+            TH3D* xwqq_hist3Dalt = xwqq_hists3Dalt.at(hist_i);
             TH2D* xbb_hist2D = xbb_hists2D.at(hist_i);
             TH2D* xvqq_hist2D = xvqq_hists2D.at(hist_i);
             TH2D* xwqq_hist2D = xwqq_hists2D.at(hist_i);
@@ -147,6 +135,17 @@ int main(int argc, char** argv)
                     double eta = fabs(arbol.getLeaf<double>(obj_name+"_eta"));
                     double score = cutflow.globals.getVal<Doubles>("good_fatjet_xwqqtags").at(gidx);
                     return std::make_tuple(pt, eta, score);
+                }
+            );
+            cutflow.bookHist3D<TH3D>(
+                cut_name, xwqq_hist3Dalt, 
+                [&, obj_name]() 
+                {
+                    unsigned int gidx = cutflow.globals.getVal<unsigned int>(obj_name+"_gidx");
+                    double pt = arbol.getLeaf<double>(obj_name+"_pt");
+                    double xbb = cutflow.globals.getVal<Doubles>("good_fatjet_xbbtags").at(gidx);
+                    double xwqq = cutflow.globals.getVal<Doubles>("good_fatjet_xwqqtags").at(gidx);
+                    return std::make_tuple(pt, xbb, xwqq);
                 }
             );
             cutflow.bookHist2D<TH2D>(
@@ -189,11 +188,6 @@ int main(int argc, char** argv)
         {
             nt.Init(ttree);
             analysis.init();
-            if (cli.variation == "apply_xbb_rwgt")
-            {
-                TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-                xbb_rwgt->init(file_name);
-            }
         },
         [&](int entry) 
         {

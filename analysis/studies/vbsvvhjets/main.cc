@@ -1,5 +1,4 @@
 #include "vbsvvhjets/collections.h"
-#include "corrections/qcd.h"
 // RAPIDO
 #include "arbol.h"
 #include "hepcli.h"
@@ -26,12 +25,6 @@ int main(int argc, char** argv)
     // Initialize Arbol
     Arbol arbol = Arbol(cli);
     arbol.newBranch<double>("reweight_c2v_eq_3", -999);
-    arbol.newBranch<double>("qcd_xbb_sf", -999);
-    arbol.newBranch<double>("qcd_ld_xvqq_sf", -999);
-    arbol.newBranch<double>("qcd_tr_xvqq_sf", -999);
-    arbol.newBranch<double>("hbbfatjet_pdfscore", -999);
-    arbol.newBranch<double>("ld_vqqfatjet_pdfscore", -999);
-    arbol.newBranch<double>("tr_vqqfatjet_pdfscore", -999);
 
     // Initialize Cutflow
     Histflow cutflow = Histflow(cli.output_name + "_Cutflow");
@@ -43,118 +36,45 @@ int main(int argc, char** argv)
     analysis.initCutflow();
 
     TFile* pnet_pdf_file = new TFile("data/vbsvvhjets_sfs/qcd_pnet_pdfs.root");
-    TH2D* xbb_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_Xbb_PDF_2D");
-    // TH2D* xvqq_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_XVqq_PDF_2D");
-    TH2D* xvqq_pdf = (TH2D*) pnet_pdf_file->Get("ParticleNet_XWqq_PDF_2D"); // keeping 'xvqq_pdf' as name to avoid complication below
+    TH2D* xbb_pdf2D = (TH2D*) pnet_pdf_file->Get("ParticleNet_Xbb_PDF_2D");
+    TH3D* xwqq_pdf3D = (TH3D*) pnet_pdf_file->Get("ParticleNet_XWqq_PDF_3Dalt");
     Cut* replace_pnets = new LambdaCut(
         "ReplacePNetsQCD",
-        [&, xbb_pdf, xvqq_pdf]()
+        [&, xbb_pdf2D, xwqq_pdf3D]()
         {
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-            int bin;
-            TH1D* pdf;
-            double max_xbb;
-            double min_xvqq;
             if (file_name.Contains("QCD"))
             {
-                LorentzVector hbbfatjet_p4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
-                LorentzVector ld_vqqfatjet_p4 = cutflow.globals.getVal<LorentzVector>("ld_vqqfatjet_p4");
-                LorentzVector tr_vqqfatjet_p4 = cutflow.globals.getVal<LorentzVector>("tr_vqqfatjet_p4");
-                // Replace Hbb fat jet score
-                bin = xbb_pdf->GetXaxis()->FindBin(hbbfatjet_p4.pt());
-                pdf = xbb_pdf->ProjectionY("xbb_projy", bin, bin);
-                pdf->Rebin(10);
-                max_xbb = -999;
-                for (unsigned int i = 0; i < 3; ++i)
+                LorentzVectors fatjet_p4s = cutflow.globals.getVal<LorentzVectors>("good_fatjet_p4s");
+                Doubles fatjet_xbbs;
+                Doubles fatjet_xwqqs;
+                int xbin;
+                int ybin;
+                for (auto fatjet_p4 : fatjet_p4s)
                 {
-                    double xbb = pdf->GetRandom();
-                    if (xbb > max_xbb)
-                    {
-                        max_xbb = xbb;
-                    }
-                }
-                arbol.setLeaf<double>("hbbfatjet_pdfscore", max_xbb);
-                // Replace leading Vqq fat jet score
-                bin = xvqq_pdf->GetXaxis()->FindBin(ld_vqqfatjet_p4.pt());
-                pdf = xvqq_pdf->ProjectionY("xvqq_projy1", bin, bin);
-                pdf->Rebin(10);
-                min_xvqq = 9999;
-                for (unsigned int i = 0; i < 2; ++i)
-                {
-                    double xvqq = pdf->GetRandom();
-                    if (xvqq < min_xvqq)
-                    {
-                        min_xvqq = xvqq;
-                    }
-                }
-                arbol.setLeaf<double>("ld_vqqfatjet_pdfscore", min_xvqq);
-                // Replace trailing Vqq fat jet score
-                bin = xvqq_pdf->GetXaxis()->FindBin(tr_vqqfatjet_p4.pt());
-                pdf = xvqq_pdf->ProjectionY("xvqq_projy2", bin, bin);
-                pdf->Rebin(10);
-                min_xvqq = 9999;
-                for (unsigned int i = 0; i < 2; ++i)
-                {
-                    double xvqq = pdf->GetRandom();
-                    if (xvqq < min_xvqq)
-                    {
-                        min_xvqq = xvqq;
-                    }
-                }
-                arbol.setLeaf<double>("tr_vqqfatjet_pdfscore", min_xvqq);
-            }
-            else
-            {
-                arbol.setLeaf<double>("hbbfatjet_pdfscore", arbol.getLeaf<double>("hbbfatjet_score"));
-                arbol.setLeaf<double>("ld_vqqfatjet_pdfscore", arbol.getLeaf<double>("ld_vqqfatjet_score"));
-                arbol.setLeaf<double>("tr_vqqfatjet_pdfscore", arbol.getLeaf<double>("tr_vqqfatjet_score"));
-            }
-            return true;
-        }
-    );
-    cutflow.insert("AllMerged_SelectVVHFatJets", replace_pnets, Right);
+                    double fatjet_pt = fatjet_p4.pt();
+                    // Generate Hbb fat jet score
+                    xbin = xbb_pdf2D->GetXaxis()->FindBin(fatjet_pt);
+                    TH1D* xbb_pdf1D = xbb_pdf2D->ProjectionY("xbb_projy", xbin, xbin);
+                    xbb_pdf1D->Rebin(10);
+                    double xbb = xbb_pdf1D->GetRandom();
+                    // Generate XWqq fat jet score
+                    xbin = xwqq_pdf3D->GetXaxis()->FindBin(fatjet_pt);
+                    ybin = xwqq_pdf3D->GetYaxis()->FindBin(xbb);
+                    TH1D* xwqq_pdf1D = xwqq_pdf3D->ProjectionZ("xwqq_projz", xbin, xbin, ybin, ybin);
+                    xwqq_pdf1D->Rebin(10);
+                    double xwqq = xwqq_pdf1D->GetRandom();
 
-    QCDPNetXbbSFs* qcd_xbb_sfs = new QCDPNetXbbSFs();
-    QCDPNetXVqqSFs* qcd_xvqq_sfs = new QCDPNetXVqqSFs();
-    Cut* allmerged_apply_qcd_sfs = new LambdaCut(
-        "AllMerged_ApplyQCDSFs",
-        [&, qcd_xbb_sfs, qcd_xvqq_sfs]()
-        {
-            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-            if (file_name.Contains("QCD"))
-            {
-                LorentzVector hbbfatjet_p4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
-                LorentzVector ld_vqqfatjet_p4 = cutflow.globals.getVal<LorentzVector>("ld_vqqfatjet_p4");
-                LorentzVector tr_vqqfatjet_p4 = cutflow.globals.getVal<LorentzVector>("tr_vqqfatjet_p4");
-                double hbbfatjet_score = arbol.getLeaf<double>("hbbfatjet_score");
-                double ld_vqqfatjet_score = arbol.getLeaf<double>("ld_vqqfatjet_score");
-                double tr_vqqfatjet_score = arbol.getLeaf<double>("tr_vqqfatjet_score");
-                arbol.setLeaf<double>(
-                    "qcd_xbb_sf", 
-                    // qcd_xbb_sfs->getSF(hbbfatjet_p4.pt(), hbbfatjet_p4.eta(), hbbfatjet_score)
-                    qcd_xbb_sfs->getSF(hbbfatjet_p4.pt(), hbbfatjet_score)
-                );
-                arbol.setLeaf<double>(
-                    "qcd_ld_xvqq_sf", 
-                    // qcd_xvqq_sfs->getSF(ld_vqqfatjet_p4.pt(), ld_vqqfatjet_p4.eta(), ld_vqqfatjet_score)
-                    qcd_xvqq_sfs->getSF(ld_vqqfatjet_p4.pt(), ld_vqqfatjet_score)
-                );
-                arbol.setLeaf<double>(
-                    "qcd_tr_xvqq_sf", 
-                    // qcd_xvqq_sfs->getSF(tr_vqqfatjet_p4.pt(), tr_vqqfatjet_p4.eta(), tr_vqqfatjet_score)
-                    qcd_xvqq_sfs->getSF(tr_vqqfatjet_p4.pt(), tr_vqqfatjet_score)
-                );
-            }
-            else
-            {
-                arbol.setLeaf<double>("qcd_xbb_sf", 1.);
-                arbol.setLeaf<double>("qcd_ld_xvqq_sf", 1.);
-                arbol.setLeaf<double>("qcd_tr_xvqq_sf", 1.);
+                    fatjet_xbbs.push_back(xbb);
+                    fatjet_xwqqs.push_back(xwqq);
+                }
+                cutflow.globals.setVal<Doubles>("good_fatjet_xbbtags", fatjet_xbbs);
+                cutflow.globals.setVal<Doubles>("good_fatjet_xwqqtags", fatjet_xwqqs);
             }
             return true;
         }
     );
-    cutflow.insert("AllMerged_SelectVVHFatJets", allmerged_apply_qcd_sfs, Right);
+    cutflow.insert("Geq3FatJets", replace_pnets, Right);
 
     // Run looper
     tqdm bar;
@@ -164,8 +84,6 @@ int main(int argc, char** argv)
             nt.Init(ttree);
             analysis.init();
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-            qcd_xbb_sfs->init(file_name);
-            qcd_xvqq_sfs->init(file_name);
         },
         [&](int entry) 
         {
