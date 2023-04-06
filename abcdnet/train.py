@@ -13,8 +13,7 @@ from torch import optim
 import models
 from utils import VBSConfig, print_title
 from losses import DisCoLoss
-from datasets import SingleDisCoDataset
-import ingress
+from datasets import DisCoDataset
 
 def get_outfile(config, epoch=None, tag=None, msg=None):
     outfile = (
@@ -23,6 +22,8 @@ def get_outfile(config, epoch=None, tag=None, msg=None):
         + f"_nhidden{config.model.n_hidden_layers}"
         + f"_hiddensize{config.model.hidden_size}"
         + f"_lr{config.train.learning_rate}"
+        + f"_discotarget{config.train.disco_target}"
+        + f"_discolambda{config.train.disco_lambda}"
     )
     outfile = outfile.replace(".", "p")
 
@@ -91,7 +92,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
 
     print(f"[Epoch {epoch} summary]")
     print(f"runtime: {time.time() - epoch_t0:0.3f}s")
-    print(f"train loss: {loss_sum/n_batches:0.4f}")
+    print(f"train loss: {loss_sum/n_batches:0.6f}")
     return loss_sum/n_batches
 
 def validate(model, device, val_loader, criterion):
@@ -125,7 +126,7 @@ def validate(model, device, val_loader, criterion):
         thresh_sum += opt_thresh
         accs_sum += opt_acc
 
-    print(f"val accuracy: {accs_sum/n_batches:0.4f}")
+    print(f"val accuracy: {accs_sum/n_batches:0.6f}")
     return thresh_sum/n_batches
 
 def test(model, device, test_loader, criterion, thresh=0.5):
@@ -157,8 +158,8 @@ def test(model, device, test_loader, criterion, thresh=0.5):
             loss = criterion(inferences, labels, disco_target, weights)
             loss_sum += loss.item()
 
-    print(f"test loss: {loss_sum/n_batches:0.4f}")
-    print(f"test accuracy: {accs_sum/n_batches:0.4f}")
+    print(f"test loss: {loss_sum/n_batches:0.6f}")
+    print(f"test accuracy: {accs_sum/n_batches:0.6f}")
     return loss_sum/n_batches, accs_sum/n_batches
 
 if __name__ == "__main__":
@@ -208,7 +209,10 @@ if __name__ == "__main__":
     criterion = DisCoLoss.from_config(config)
 
     # Load data
-    data = SingleDisCoDataset.from_config(config)
+    data = DisCoDataset.from_files(
+        DisCoDataset.get_name(config, "*"), 
+        is_single_disco=(config.ingress.get("disco_target", None) != None)
+    )
 
     # Split into test, train, and validation
     train_data, leftover_data = data.split(0.6)
@@ -227,9 +231,12 @@ if __name__ == "__main__":
     output = {"train_loss": [], "test_loss": [], "test_acc": []}
     for epoch in range(1, args.n_epochs + 1):
         print_title(f"Epoch {epoch}")
+        # Run training
         train_loss = train(args, model, device, train_loader, optimizer, criterion, epoch)
+        # Run validation
         thresh = validate(model, device, val_loader, criterion)
-        print(f"optimal threshold: {thresh:0.4f}")
+        print(f"optimal threshold: {thresh:0.6f}")
+        # Run testing
         test_loss, test_acc = test(model, device, test_loader, criterion, thresh=thresh)
         scheduler.step()
 
