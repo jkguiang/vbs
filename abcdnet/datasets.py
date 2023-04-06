@@ -28,23 +28,26 @@ class DisCoDataset(Dataset):
 
         self.weight_norm = len(self)/torch.sum(self.weights)
 
-    @staticmethod
-    def get_name(config, tag):
-        return f"{config.basedir}/{config.name}_{tag}_dataset.pt"
+    def __add__(self, other):
+        return DisCoDataset.__from_tensor(torch.cat((self.data, other.data), dim=1), self.is_single_disco)
 
     def __len__(self):
         return self.data.size()[-1]
 
     def __getitem__(self, idx):
-        if is_single_disco:
+        if self.is_single_disco:
             return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx], self.disco_target[idx]
         else:
             return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx]
 
+    @staticmethod
+    def get_name(config, tag):
+        return f"{config.basedir}/{config.name}_{tag}_dataset.pt"
+
     @classmethod
-    def __from_tensor(cls, data):
+    def __from_tensor(cls, data, is_single_disco):
         data = torch.transpose(data, 0, 1)
-        if self.is_single_disco:
+        if is_single_disco:
             return cls(
                 data[:,:-4],               # features
                 data[:,-4],                # labels
@@ -61,9 +64,22 @@ class DisCoDataset(Dataset):
             )
 
     @classmethod
-    def from_file(cls, pt_file):
+    def from_file(cls, pt_file, is_single_disco=True):
         data = torch.load(pt_file)
-        return cls.__from_tensor(data)
+        return cls.__from_tensor(data, is_single_disco)
+
+    @classmethod
+    def from_files(cls, pt_files, is_single_disco=True):
+        dataset = None
+        if type(pt_files) == str:
+            pt_files = glob.glob(pt_files)
+        for file_i, pt_file in enumerate(pt_files):
+            if file_i == 0:
+                dataset = cls.from_file(pt_file, is_single_disco)
+            else:
+                dataset += cls.from_file(pt_file, is_single_disco)
+
+        return dataset
 
     def save(self, outfile):
         torch.save(self.data, outfile)
@@ -92,6 +108,6 @@ class DisCoDataset(Dataset):
                 right_data = torch.cat((right_data, r_data), dim=1)
 
         return (
-            SingleDisCoDataset.__from_tensor(left_data),
-            SingleDisCoDataset.__from_tensor(right_data)
+            DisCoDataset.__from_tensor(left_data, self.is_single_disco),
+            DisCoDataset.__from_tensor(right_data, self.is_single_disco)
         )
