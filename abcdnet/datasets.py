@@ -3,81 +3,62 @@ import uproot
 import torch
 from torch.utils.data import Dataset
 
-import ingress
-
-class SingleDisCoDataset(Dataset):
-    def __init__(self, features, labels, weights, disco_target, sample_labels):
+class DisCoDataset(Dataset):
+    def __init__(self, features, labels, weights, sample_labels, disco_target=None):
         self.data = torch.cat(
             (
                 features, 
                 labels.unsqueeze(1), 
                 weights.unsqueeze(1), 
-                disco_target.unsqueeze(1), 
                 sample_labels.unsqueeze(1)
             ),
             dim=1
         )
         self.data = torch.transpose(self.data, 0, 1)
-        self.features = self.data[:-4]
-        self.labels = self.data[-4]
-        self.weights = self.data[-3]
-        self.disco_target = self.data[-2]
+        self.features = self.data[:-3]
+        self.labels = self.data[-3]
+        self.weights = self.data[-2]
         self.sample_labels = self.data[-1]
+        if disco_target == None:
+            self.is_single_disco = False
+        else:
+            self.data = torch.cat((self.data, torch.transpose(disco_target.unsqueeze(1), 0, -1)))
+            self.disco_target = self.data[-1]
+            self.is_single_disco = True
+
         self.weight_norm = len(self)/torch.sum(self.weights)
 
+    @staticmethod
+    def get_name(config, tag):
+        return f"{config.basedir}/{config.name}_{tag}_dataset.pt"
+
     def __len__(self):
-        # return len(self.labels)
         return self.data.size()[-1]
 
     def __getitem__(self, idx):
-        return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx], self.disco_target[idx]
-
-    @staticmethod
-    def __ingress_globber(config, tag):
-        return ingress.get_outfile(config, tag).replace("_", "*").replace(".pt", "*.pt")
-
-    @staticmethod
-    def __load(config, tag):
-        tensors = None
-        for file_i, f in enumerate(glob.glob(SingleDisCoDataset.__ingress_globber(config, tag))):
-            tensor = torch.load(f)
-            if file_i == 0:
-                tensors = tensor
-            else:
-                tensors = torch.cat((tensors, tensor))
-
-        return tensors
-
-    @classmethod
-    def from_config(cls, config):
-        sample_labels = None
-        all_features = None
-        for file_i, f in enumerate(glob.glob(cls.__ingress_globber(config, "features"))):
-            features = torch.load(f)
-            sample_label = torch.ones(features.size()[0])*file_i
-            if file_i == 0:
-                all_features = features
-                sample_labels = sample_label
-            else:
-                all_features = torch.cat((all_features, features))
-                sample_labels = torch.cat((sample_labels, sample_label))
-
-        labels = cls.__load(config, "labels")
-        weights = cls.__load(config, "weights")
-        disco_target = cls.__load(config, config.train.disco_target)
-
-        return cls(all_features, labels, weights, disco_target, sample_labels)
+        if is_single_disco:
+            return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx], self.disco_target[idx]
+        else:
+            return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx]
 
     @classmethod
     def __from_tensor(cls, data):
         data = torch.transpose(data, 0, 1)
-        return cls(
-            data[:,:-4],  # features
-            data[:,-4],   # labels
-            data[:,-3],   # weights
-            data[:,-2],   # disco_target
-            data[:,-1]    # sample_labels
-        )
+        if self.is_single_disco:
+            return cls(
+                data[:,:-4],               # features
+                data[:,-4],                # labels
+                data[:,-3],                # weights
+                data[:,-2],                # sample_labels
+                disco_target=data[:,-1]    # disco_target
+            )
+        else:
+            return cls(
+                data[:,:-3],  # features
+                data[:,-3],   # labels
+                data[:,-2],   # weights
+                data[:,-1]    # sample_labels
+            )
 
     @classmethod
     def from_file(cls, pt_file):

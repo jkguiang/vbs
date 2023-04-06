@@ -4,6 +4,7 @@ import uproot
 import torch
 
 from utils import VBSConfig
+from datasets import DisCoDataset
 
 def get_outfile(config, tag, msg=None):
     outfile = f"{config.basedir}/{config.name}_{tag}.pt"
@@ -16,6 +17,11 @@ def ingress(config):
     for file_i, root_file in enumerate(root_files):
         print(f"Loading {root_file}")
         with uproot.open(f"{root_file}:{config.ingress.ttree_name}") as tree:
+
+            # Assuming that files are named SampleName.root (e.g. QCD.root, ttbar1l.root, etc.)
+            sample_name = root_file.split("/")[-1].replace(".root", "")
+            outfile = DisCoDataset.get_name(config, sample_name)
+
             # Load features
             features = []
             for feature_branch in config.ingress.features:
@@ -27,33 +33,40 @@ def ingress(config):
             features /= features.max(1, keepdim=True)[0]
             n_events = features.size()[0]
 
-            # Calculate event weight
-            weights = torch.ones(n_events)
-            for branch_i, weight_branch in enumerate(config.ingress.weights):
-                weights *= torch.tensor(tree[weight_branch].array(), dtype=torch.float)
-
-            # Load extra features (to be used in SingleDisCo)
-            extras = []
-            for extra_branch in config.ingress.extras:
-                extra = torch.tensor(tree[extra_branch].array(), dtype=torch.float)
-                extra -= extra.min()
-                extra /= extra.max()
-                extras.append(extra)
-
             # Set label
             if "VBSVVH" in root_file:
                 labels = torch.ones(n_events)
             else:
                 labels = torch.zeros(n_events)
 
-            fname = root_file.split("/")[-1].replace(".root", "")
-            torch.save(features, get_outfile(config, f"{fname}_features", msg="Writing to {}"))
-            torch.save(weights, get_outfile(config, f"{fname}_weights", msg="Writing to {}"))
-            torch.save(labels, get_outfile(config, f"{fname}_labels", msg="Writing to {}"))
-            for extra_name, extra in zip(config.ingress.extras, extras):
-                torch.save(
-                    extra, get_outfile(config, f"{fname}_{extra_name}", msg="Writing to {}")
+            # Create a unique identifier for this sample (used for splitting evenly)
+            sample_number = torch.ones(n_events)*file_i
+
+            # Calculate event weight
+            weights = torch.ones(n_events)
+            for branch_i, weight_branch in enumerate(config.ingress.weights):
+                weights *= torch.tensor(tree[weight_branch].array(), dtype=torch.float)
+
+            # Load disco target (to be used in SingleDisCo)
+            disco_target = None
+            if config.ingress.get("disco_target", None):
+                disco_target = torch.tensor(
+                    tree[config.ingress.disco_target].array(), 
+                    dtype=torch.float
                 )
+                disco_target -= disco_target.min()
+                disco_target /= disco_target.max()
+
+            # Save dataset
+            data = DisCoDataset(
+                features,
+                labels,
+                weights,
+                sample_number,
+                disco_target=disco_target
+            )
+            data.save(outfile)
+            print(f"Writing to {outfile}")
 
 if __name__ == "__main__":
     config = VBSConfig.from_json("config.json")
