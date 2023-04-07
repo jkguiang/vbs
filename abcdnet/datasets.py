@@ -1,3 +1,4 @@
+import os
 import glob
 import uproot
 import torch
@@ -19,7 +20,7 @@ class DisCoDataset(Dataset):
         self.labels = self.data[-3]
         self.weights = self.data[-2]
         self.sample_labels = self.data[-1]
-        if disco_target == None:
+        if disco_target is None:
             self.is_single_disco = False
         else:
             self.data = torch.cat((self.data, torch.transpose(disco_target.unsqueeze(1), 0, -1)))
@@ -80,6 +81,38 @@ class DisCoDataset(Dataset):
                 dataset += cls.from_file(pt_file, is_single_disco)
 
         return dataset
+
+    def plot(self, config):
+        import matplotlib.pyplot as plt
+        plots_dir = f"{config.basedir}/plots"
+        os.makedirs(plots_dir, exist_ok=True)
+        bins = torch.linspace(0, 1, 101)
+        for feature_i in range(self.features.size()[0]):
+            fig, axes = plt.subplots(figsize=(9, 9))
+            is_signal = (self.labels == 1)
+            axes.hist(
+                self.features[feature_i][~is_signal], 
+                bins=bins,
+                weights=self.weights[~is_signal],
+                histtype="step",
+                color="k",
+                alpha=0.75,
+                label=f"total bkg [{torch.sum(self.weights[~is_signal]).item()}]"
+            )
+            axes.hist(
+                self.features[feature_i][is_signal], 
+                bins=bins,
+                weights=self.weights[is_signal],
+                histtype="step",
+                color="r",
+                label=f"total sig [{torch.sum(self.weights[is_signal]).item()}]"
+            )
+            axes.legend()
+            feature_name = config.ingress.features[feature_i]
+            outname = f"{plots_dir}/{config.name}_{feature_name}.png"
+            plt.savefig(outname, bbox_inches="tight")
+            print(f"Saved {feature_name} histogram to {outname}")
+            plt.close()
 
     def save(self, outfile):
         torch.save(self.data, outfile)
