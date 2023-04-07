@@ -1,0 +1,10 @@
+#!/bin/bash
+#SBATCH --partition=gpu 
+#SBATCH --gpus=1 
+#SBATCH --mem=32gb 
+#SBATCH --constraint=a100 
+#SBATCH --time=4:00:00
+#SBATCH --job-name=ABCDNet
+
+source setup_hpg.sh
+python train.py --log_interval=10 --n_epochs=200

@@ -1,0 +1,6 @@
+#!/bin/bash
+#SBATCH --mem=1gb 
+#SBATCH --job-name=Test
+
+echo "Hello world!"
+echo "$PWD"
