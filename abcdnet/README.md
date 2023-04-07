@@ -30,3 +30,7 @@ sbatch batch/infer.script
 ```
 python infer.py --export
 ```
+7. I have written a handy script to copy the results to the UAFs
+```
+sh export.sh jguiang@uaf-10.t2.ucsd.edu:/ceph/cms/store/user/jguiang/ABCDNet
+```
