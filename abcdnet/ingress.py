@@ -26,11 +26,11 @@ def ingress(config):
             features = []
             for feature_branch in config.ingress.features:
                 feature = torch.tensor(tree[feature_branch].array(), dtype=torch.float)
+                feature -= feature.min()
+                feature /= feature.max()
                 features.append(feature)
 
             features = torch.transpose(torch.stack(features), 0, 1)
-            features -= features.min(1, keepdim=True)[0]
-            features /= features.max(1, keepdim=True)[0]
             n_events = features.size()[0]
 
             # Set label
