@@ -134,7 +134,7 @@ class DisCoDataset(Dataset):
             # Save plot
             outname = f"{plots_dir}/{config.name}_{feature_name}.png"
             plt.savefig(outname, bbox_inches="tight")
-            print(f"Saved {feature_name} histogram to {outname}")
+            print(f"Wrote {outname}")
             plt.close()
 
     def save(self, outfile):
