@@ -22,7 +22,6 @@ def get_outfile(config, epoch=None, tag=None, msg=None):
         + f"_nhidden{config.model.n_hidden_layers}"
         + f"_hiddensize{config.model.hidden_size}"
         + f"_lr{config.train.learning_rate}"
-        + f"_discotarget{config.train.disco_target}"
         + f"_discolambda{config.train.disco_lambda}"
     )
     outfile = outfile.replace(".", "p")
@@ -49,7 +48,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
         # Log start
         if do_logging:
             batch_t0 = time.time()
-            print(f"[Epoch {epoch}, {batch_i+1}/{n_batches} ({100*batch_i/n_batches:.2g}%)]")
+            print(f"[Epoch {epoch}, {batch_i+1}/{n_batches} ({100*batch_i/n_batches:.2g}%)]", flush=True)
 
         # Load data
         features = features.to(device)
@@ -88,11 +87,11 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
         # Log end
         if do_logging:
             batch_t1 = time.time()
-            print(f"Finished batch in {batch_t1 - batch_t0:0.3f}s")
+            print(f"Finished batch in {batch_t1 - batch_t0:0.3f}s", flush=True)
 
-    print(f"[Epoch {epoch} summary]")
-    print(f"runtime: {time.time() - epoch_t0:0.3f}s")
-    print(f"train loss: {loss_sum/n_batches:0.6f}")
+    print(f"[Epoch {epoch} summary]", flush=True)
+    print(f"runtime: {time.time() - epoch_t0:0.3f}s", flush=True)
+    print(f"train loss: {loss_sum/n_batches:0.6f}", flush=True)
     return loss_sum/n_batches
 
 def validate(model, device, val_loader, criterion):
@@ -209,14 +208,20 @@ if __name__ == "__main__":
     criterion = DisCoLoss.from_config(config)
 
     # Load data
+    print_title("Input data")
     data = DisCoDataset.from_files(
         DisCoDataset.get_name(config, "*"), 
         is_single_disco=(config.ingress.get("disco_target", None) != None)
     )
+    data.plot(config)
+    print(f"{len(data)} total:")
 
     # Split into test, train, and validation
-    train_data, leftover_data = data.split(0.6)
-    test_data, val_data = leftover_data.split(0.9)
+    train_data, leftover_data = data.split(config.train.train_frac)
+    print(f"{len(train_data)} training events")
+    test_data, val_data = leftover_data.split(config.train.test_frac/(1 - config.train.train_frac))
+    print(f"{len(test_data)} testing events")
+    print(f"{len(val_data)} validation events")
 
     # Save datasets
     train_data.save(f"{models_dir}/{get_outfile(config, tag='train_dataset')}")

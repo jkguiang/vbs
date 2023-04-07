@@ -29,11 +29,12 @@
             "pu_sf",
             "prefire_sf"
         ],
-        "extras": [
-            "abs_deta_jj"
-        ]
+        "disco_target": "abs_deta_jj"
     },
     "train": {
+        "train_frac": 0.7,
+        "test_frac": 0.2,
+        "val_frac": 0.1,
         "train_batch_size": 10000,
         "test_batch_size": 100000,
         "val_batch_size": 10000,
@@ -44,7 +45,6 @@
             "step_size": 25,
             "gamma": 0.7
         },
-        "disco_target": "abs_deta_jj",
-        "disco_lambda": 100
+        "disco_lambda": 0
     }
 }
