@@ -82,7 +82,7 @@ class DisCoDataset(Dataset):
 
         return dataset
 
-    def plot(self, config):
+    def plot(self, config, norm=True):
         import matplotlib.pyplot as plt
         plots_dir = f"{config.basedir}/plots"
         os.makedirs(plots_dir, exist_ok=True)
@@ -90,25 +90,48 @@ class DisCoDataset(Dataset):
         for feature_i in range(self.features.size()[0]):
             fig, axes = plt.subplots(figsize=(9, 9))
             is_signal = (self.labels == 1)
+
+            # Plot background
+            bkg_weights = self.weights[~is_signal]
+            n_bkg = torch.sum(bkg_weights).item()
+            if norm:
+                bkg_weights /= n_bkg
             axes.hist(
                 self.features[feature_i][~is_signal], 
                 bins=bins,
-                weights=self.weights[~is_signal],
+                weights=bkg_weights,
                 histtype="step",
                 color="k",
                 alpha=0.75,
-                label=f"total bkg [{torch.sum(self.weights[~is_signal]).item()}]"
+                label=f"total bkg [{n_bkg:0.1f} events]"
             )
+
+            # Plot signal
+            sig_weights = self.weights[is_signal]
+            n_sig = torch.sum(sig_weights).item()
+            if norm:
+                sig_weights /= n_sig
             axes.hist(
                 self.features[feature_i][is_signal], 
                 bins=bins,
-                weights=self.weights[is_signal],
+                weights=sig_weights,
                 histtype="step",
                 color="r",
-                label=f"total sig [{torch.sum(self.weights[is_signal]).item()}]"
+                label=f"total sig [{n_sig:0.1f} events]"
             )
+
+            # Format axes
             axes.legend()
+            axes.set_ylim([0, 0.2])
+            if norm:
+                axes.set_ylabel("a.u.")
+            else:
+                axes.set_ylabel("Events")
+
             feature_name = config.ingress.features[feature_i]
+            axes.set_title(feature_name)
+
+            # Save plot
             outname = f"{plots_dir}/{config.name}_{feature_name}.png"
             plt.savefig(outname, bbox_inches="tight")
             print(f"Saved {feature_name} histogram to {outname}")
@@ -133,7 +156,7 @@ class DisCoDataset(Dataset):
             # Collect data right of split
             r_idxs = idxs[splt:]
             r_data = self.data[:,is_sample][:,r_idxs]
-            if s == 0:
+            if left_data is None and right_data is None:
                 left_data = l_data.clone()
                 right_data = r_data.clone()
             else:
