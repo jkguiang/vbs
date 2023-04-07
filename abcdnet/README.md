@@ -25,7 +25,7 @@ python infer.py
 ```
 sbatch batch/infer.script
 ```
-5. You can make performance plots on via the HPG [JupyterHub](https://jhub.rc.ufl.edu)
+5. You can make performance plots via the HPG [JupyterHub](https://jhub.rc.ufl.edu)
 6. Otherwise, you can export the scores back to the input baby ROOT files using the `infer.py` script:
 ```
 python infer.py --export
