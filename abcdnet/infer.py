@@ -10,10 +10,11 @@ from torch.utils.data import DataLoader
 import models
 from utils import VBSConfig
 from train import get_outfile
-from datasets import SingleDisCoDataset
+from datasets import DisCoDataset
 
 def infer(model, device, loader, output_csv):
-    csv_rows = ["idx,truth,score"]
+    f = open(output_csv, "w")
+    f.write("idx,truth,score\n")
     times = []
     for event_i, (features, labels, weights, disco_target) in enumerate(loader):
         # Load data
@@ -28,11 +29,10 @@ def infer(model, device, loader, output_csv):
         times.append(end - start)
 
         for truth, score in zip(labels, inferences):
-            csv_rows.append(f"{event_i},{int(truth)},{float(score)}")
+            f.write(f"{event_i},{int(truth)},{float(score)}\n")
 
-    with open(output_csv, "w") as f:
-        f.write("\n".join(csv_rows))
-        print(f"Wrote {output_csv}")
+    f.close()
+    print(f"Wrote {output_csv}")
 
     return times
 
@@ -58,13 +58,13 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(saved_model))
     model.eval()
 
-    test_data = SingleDisCoDataset.from_file(f"{models_dir}/{get_outfile(config, tag='test_dataset')}")
+    test_data = DisCoDataset.from_file(f"{models_dir}/{get_outfile(config, tag='test_dataset')}")
     test_loader = DataLoader(test_data)
     times = infer(
         model, device, test_loader, 
         f"{infers_dir}/{get_outfile(config, epoch=args.epoch, tag='test').replace('.pt', '.csv')}"
     )
-    train_data = SingleDisCoDataset.from_file(f"{models_dir}/{get_outfile(config, tag='train_dataset')}")
+    train_data = DisCoDataset.from_file(f"{models_dir}/{get_outfile(config, tag='train_dataset')}")
     train_loader = DataLoader(train_data)
     times += infer(
         model, device, train_loader, 
