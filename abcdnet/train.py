@@ -17,14 +17,13 @@ from datasets import DisCoDataset
 
 def get_outfile(config, epoch=None, tag=None, msg=None):
     outfile = (
-        config.name
+        f"{config.basedir}/trained_models/{config.name}"
         + f"_model{config.model.name}"
         + f"_nhidden{config.model.n_hidden_layers}"
         + f"_hiddensize{config.model.hidden_size}"
         + f"_lr{config.train.learning_rate}"
         + f"_discolambda{config.train.disco_lambda}"
     )
-    outfile = outfile.replace(".", "p")
 
     if epoch:
         outfile += f"_epoch{epoch}"
@@ -183,6 +182,9 @@ if __name__ == "__main__":
     models_dir = f"{config.basedir}/trained_models"
     os.makedirs(models_dir, exist_ok=True)
 
+    print_title("Configuration")
+    print(config)
+
     print_title("Initialization")
     torch.manual_seed(config.train.seed)
     print(f"seed: {config.train.seed}")
@@ -214,19 +216,19 @@ if __name__ == "__main__":
         is_single_disco=(config.ingress.get("disco_target", None) != None)
     )
     data.plot(config)
-    print(f"{len(data)} total:")
+    print(f"{len(data)} ({data.n_label(0)} bkg, {data.n_label(1)} sig) total:")
 
     # Split into test, train, and validation
     train_data, leftover_data = data.split(config.train.train_frac)
-    print(f"{len(train_data)} training events")
+    print(f"{len(train_data)} training events ({train_data.n_label(0)} bkg, {train_data.n_label(1)} sig)")
     test_data, val_data = leftover_data.split(config.train.test_frac/(1 - config.train.train_frac))
-    print(f"{len(test_data)} testing events")
-    print(f"{len(val_data)} validation events")
+    print(f"{len(test_data)} training events ({test_data.n_label(0)} bkg, {test_data.n_label(1)} sig)")
+    print(f"{len(val_data)} training events ({val_data.n_label(0)} bkg, {val_data.n_label(1)} sig)")
 
     # Save datasets
-    train_data.save(f"{models_dir}/{get_outfile(config, tag='train_dataset')}")
-    test_data.save(f"{models_dir}/{get_outfile(config, tag='test_dataset')}")
-    val_data.save(f"{models_dir}/{get_outfile(config, tag='val_dataset')}")
+    train_data.save(get_outfile(config, tag="train_dataset", msg="Wrote {}"))
+    test_data.save(get_outfile(config, tag="test_dataset", msg="Wrote {}"))
+    val_data.save(get_outfile(config, tag="val_dataset", msg="Wrote {}"))
 
     # Initialize loaders
     train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
@@ -246,16 +248,15 @@ if __name__ == "__main__":
         scheduler.step()
 
         if epoch % 5 == 0:
-            torch.save(
-                model.state_dict(), 
-                f"{models_dir}/{get_outfile(config, epoch=epoch, tag='model')}"
-            )
+            torch.save(model.state_dict(), get_outfile(config, epoch=epoch, tag="model", msg="Wrote {}"))
 
         output["train_loss"].append(train_loss)
         output["test_loss"].append(test_loss)
         output["test_acc"].append(test_acc)
 
-    with open(f"{models_dir}/{config.name}_history.json", "w") as f_out:
+    history_json = get_outfile(config, epoch=epoch, tag="history").replace(".pt", ".json")
+    with open(history_json, "w") as f_out:
         json.dump(output, f_out)
+    print(f"Wrote {history_json}")
 
     print(output)
