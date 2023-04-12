@@ -10,7 +10,7 @@ ABCDNAME=$(echo $ABCDNAME | awk '{print $1}')
 
 TARBALL=tarballs/${ABCDNAME}.tar.gz
 echo "Creating ${TARBALL}..."
-tar -zcvf $TARBALL $INPUTDIR/*_abcdnet.root
+tar -zcvf $TARBALL $INPUTDIR/*_abcdnet.root $INPUTDIR/data.root
 echo "Done"
 
 scp $TARBALL $1
