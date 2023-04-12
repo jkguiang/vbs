@@ -118,7 +118,7 @@ if __name__ == "__main__":
     else:
         csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPACE").replace('.pt', '.csv')
         # Write testing inferences
-        test_data = DisCoDataset.from_file(f"{models_dir}/{tran.get_outfile(config, tag='test_dataset')}")
+        test_data = DisCoDataset.from_file(f"{models_dir}/{train.get_outfile(config, tag='test_dataset')}")
         test_loader = DataLoader(test_data)
         test_csv = f"{infers_dir}/{csv_name.replace('REPLACE', 'test')}"
         times = infer(model, device, test_loader, OutputCSV(test_csv))
