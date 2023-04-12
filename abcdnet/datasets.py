@@ -82,42 +82,68 @@ class DisCoDataset(Dataset):
 
         return dataset
 
+    def n_label(self, label):
+        return torch.sum(self.labels == label).item()
+
     def plot(self, config, norm=True):
         import matplotlib.pyplot as plt
         plots_dir = f"{config.basedir}/plots"
         os.makedirs(plots_dir, exist_ok=True)
-        bins = torch.linspace(0, 1, 101)
         for feature_i in range(self.features.size()[0]):
             fig, axes = plt.subplots(figsize=(9, 9))
             is_signal = (self.labels == 1)
+            sig_vals = self.features[feature_i][is_signal]
+            sig_wgts = self.weights[is_signal]
+            bkg_vals = self.features[feature_i][~is_signal]
+            bkg_wgts = self.weights[~is_signal]
 
-            # Plot background
-            bkg_weights = self.weights[~is_signal]
-            n_bkg = torch.sum(bkg_weights).item()
+            # Compute binning
+            sig_max = sig_vals.abs().max().item()
+            bkg_max = bkg_vals.abs().max().item()
+            bin_max = max(sig_max, bkg_max)
+            bin_width = round(bin_max/100) if bin_max >= 100 else bin_max/100
+
+            if torch.all(sig_vals >= 0) and torch.all(bkg_vals >= 0):
+                bins = torch.linspace(0, 100*bin_width, 101)
+            else:
+                bins = torch.linspace(-100*bin_width, 100*bin_width, 201)
+
+            centers = 0.5*(bins[1:] + bins[:-1])
+
+            # Clip values s.t. first bin is underflow and last bin is overflow
+            sig_vals = sig_vals.clamp(min=centers[0], max=centers[-1])
+            bkg_vals = bkg_vals.clamp(min=centers[0], max=centers[-1])
+
+            # Get bkg histogram counts
+            bkg_events = torch.sum(bkg_wgts).item()
+            bkg_counts, _ = torch.histogram(bkg_vals, bins=bins, weight=bkg_wgts)
             if norm:
-                bkg_weights /= n_bkg
+                bkg_counts /= torch.sum(bkg_counts)
+
+            # Plot bkg histogram
             axes.hist(
-                self.features[feature_i][~is_signal], 
-                bins=bins,
-                weights=bkg_weights,
-                histtype="step",
+                centers, 
+                bins=bins, 
+                weights=bkg_counts,
                 color="k",
                 alpha=0.75,
-                label=f"total bkg [{n_bkg:0.1f} events]"
+                label=f"total bkg [{bkg_events:0.1f} events]"
             )
 
-            # Plot signal
-            sig_weights = self.weights[is_signal]
-            n_sig = torch.sum(sig_weights).item()
+            # Get sig histogram counts
+            sig_events = bkg_wgts.sum().item()
+            sig_counts, _ = torch.histogram(sig_vals, bins=bins, weight=sig_wgts)
             if norm:
-                sig_weights /= n_sig
+                sig_counts /= sig_counts.sum()
+
+            # Plot sig histogram
             axes.hist(
-                self.features[feature_i][is_signal], 
+                centers,
                 bins=bins,
-                weights=sig_weights,
+                weights=sig_counts,
                 histtype="step",
                 color="r",
-                label=f"total sig [{n_sig:0.1f} events]"
+                label=f"total sig [{sig_events:0.1f} events]"
             )
 
             # Format axes
