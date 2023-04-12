@@ -12,8 +12,23 @@ def get_outfile(config, tag, msg=None):
         print(msg.format(outfile))
     return outfile
 
+def transform(feature, transf):
+    if transf == None:
+        return feature
+    elif transf == "rescale":
+        return (feature - feature.min())/(feature.max() - feature.min())
+    elif transf == "log":
+        return torch.log(feature)
+    elif transf == "log2":
+        return torch.log2(feature)
+    elif transf == "log10":
+        return torch.log10(feature)
+    else:
+        raise ValueError(f"transformation '{transf}' not supported")
+
 def ingress(config):
     root_files = [f for f in glob.glob(f"{config.ingress.input_dir}/*.root") if "data.root" not in f]
+    transforms = config.ingress.get("transforms", {})
     for file_i, root_file in enumerate(root_files):
         print(f"Loading {root_file}")
         with uproot.open(f"{root_file}:{config.ingress.ttree_name}") as tree:
@@ -26,8 +41,7 @@ def ingress(config):
             features = []
             for feature_branch in config.ingress.features:
                 feature = torch.tensor(tree[feature_branch].array(), dtype=torch.float)
-                feature -= feature.min()
-                feature /= feature.max()
+                feature = transform(feature, transforms.get(feature_branch, None))
                 features.append(feature)
 
             features = torch.transpose(torch.stack(features), 0, 1)
@@ -54,8 +68,7 @@ def ingress(config):
                     tree[config.ingress.disco_target].array(), 
                     dtype=torch.float
                 )
-                disco_target -= disco_target.min()
-                disco_target /= disco_target.max()
+                disco_target = transform(disco_target, transforms.get(config.ingress.disco_target, None))
 
             # Save dataset
             data = DisCoDataset(
