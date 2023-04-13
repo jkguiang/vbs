@@ -90,7 +90,7 @@ class DisCoDataset(Dataset):
         plots_dir = f"{config.basedir}/plots"
         os.makedirs(plots_dir, exist_ok=True)
         for feature_i in range(self.features.size()[0]):
-            fig, axes = plt.subplots(figsize=(9, 9))
+            fig, axes = plt.subplots(figsize=(10, 10))
             is_signal = (self.labels == 1)
             sig_vals = self.features[feature_i][is_signal]
             sig_wgts = self.weights[is_signal]
@@ -98,15 +98,13 @@ class DisCoDataset(Dataset):
             bkg_wgts = self.weights[~is_signal]
 
             # Compute binning
-            sig_max = sig_vals.abs().max().item()
-            bkg_max = bkg_vals.abs().max().item()
-            bin_max = max(sig_max, bkg_max)
+            bin_max = self.features[feature_i].abs().max().item()
             bin_width = round(bin_max/100) if bin_max >= 100 else bin_max/100
 
             if torch.all(sig_vals >= 0) and torch.all(bkg_vals >= 0):
                 bins = torch.linspace(0, 100*bin_width, 101)
             else:
-                bins = torch.linspace(-100*bin_width, 100*bin_width, 201)
+                bins = torch.linspace(-100*bin_width, 100*bin_width, 101)
 
             centers = 0.5*(bins[1:] + bins[:-1])
 
@@ -148,7 +146,7 @@ class DisCoDataset(Dataset):
 
             # Format axes
             axes.legend()
-            axes.set_ylim([0, 0.2])
+            axes.autoscale()
             if norm:
                 axes.set_ylabel("a.u.")
             else:
