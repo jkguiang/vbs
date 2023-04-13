@@ -28,10 +28,11 @@ class OutputVBS:
 class OutputCSV(OutputVBS):
     def __init__(self, file_name):
         super().__init__(file_name)
-        self.__f = open(outname, "w")
+        self.__f = open(file_name, "w")
+        self.__f.write("idx,truth,score,weight\n")
 
-    def write(self, idx, truth, score):
-        self.__f.write(f"{idx},{int(truth)},{float(score)}\n")
+    def write(self, idx, truth, score, weight):
+        self.__f.write(f"{idx},{int(truth)},{float(score)},{float(weight)}\n")
 
     def close(self):
         self.__f.close()
@@ -44,7 +45,7 @@ class OutputROOT(OutputVBS):
         self.__new_baby = new_baby
         self.__ttree_name = ttree_name
 
-    def write(self, idx, truth, score):
+    def write(self, idx, truth, score, weight):
         self.__scores.append(score.item())
 
     def close(self):
@@ -73,8 +74,8 @@ def infer(model, device, loader, output):
         end = time()
         times.append(end - start)
 
-        for truth, score in zip(labels, inferences):
-            output.write(event_i, truth, score)
+        for truth, score, weight in zip(labels, inferences, weights):
+            output.write(event_i, truth, score, weight)
 
     output.close()
     print(f"Wrote {output.file_name}")
@@ -84,6 +85,7 @@ def infer(model, device, loader, output):
 if __name__ == "__main__":
     # CLI
     parser = argparse.ArgumentParser(description="Run GNN inference")
+    parser.add_argument("config_json", type=str, help="config JSON")
     parser.add_argument(
         "--epoch", type=int, default=50, metavar="N",
         help="training epoch of model to use for inference (default: 50)"
@@ -94,14 +96,14 @@ if __name__ == "__main__":
     )
     args = parser.parse_args()
 
-    config = VBSConfig.from_json("config.json")
+    config = VBSConfig.from_json(args.config_json)
     models_dir = f"{config.basedir}/trained_models"
     infers_dir = f"{config.basedir}/inferences"
     os.makedirs(infers_dir, exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    saved_model = f"{models_dir}/{train.get_outfile(config, epoch=args.epoch, tag='model')}"
+    saved_model = train.get_outfile(config, epoch=args.epoch, tag="model")
     Model = getattr(models, config.model.name)
     model = Model.from_config(config).to(device)
     model.load_state_dict(torch.load(saved_model))
@@ -116,16 +118,21 @@ if __name__ == "__main__":
             new_baby = old_baby.replace(".root", "_abcdnet.root")
             times += infer(model, device, loader, OutputROOT(old_baby, new_baby))
     else:
-        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPACE").replace('.pt', '.csv')
+        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE").replace('.pt', '.csv')
         # Write testing inferences
-        test_data = DisCoDataset.from_file(f"{models_dir}/{train.get_outfile(config, tag='test_dataset')}")
+        test_data = DisCoDataset.from_file(train.get_outfile(config, tag="test_dataset"))
         test_loader = DataLoader(test_data)
-        test_csv = f"{infers_dir}/{csv_name.replace('REPLACE', 'test')}"
+        test_csv = csv_name.replace("trained_models", "inferences").replace("REPLACE", "test")
         times = infer(model, device, test_loader, OutputCSV(test_csv))
         # Write training inferences
-        train_data = DisCoDataset.from_file(f"{models_dir}/{train.get_outfile(config, tag='train_dataset')}")
+        train_data = DisCoDataset.from_file(train.get_outfile(config, tag="train_dataset"))
         train_loader = DataLoader(train_data)
-        train_csv = f"{infers_dir}/{csv_name.replace('REPLACE', 'train')}"
-        times += infer(model, device, test_loader, OutputCSV(train_csv))
+        train_csv = csv_name.replace("trained_models", "inferences").replace("REPLACE", "train")
+        times += infer(model, device, train_loader, OutputCSV(train_csv))
+        # Write validation inferences
+        val_data = DisCoDataset.from_file(train.get_outfile(config, tag="val_dataset"))
+        val_loader = DataLoader(val_data)
+        val_csv = csv_name.replace("trained_models", "inferences").replace("REPLACE", "val")
+        times += infer(model, device, val_loader, OutputCSV(val_csv))
 
     print(f"Avg. inference time: {sum(times)/len(times)}s")

@@ -1,0 +1,33 @@
+{
+    "basedir": "/blue/p.chang/jguiang/data/vbsvvh",
+    "name": "Gaussians3D_noDisCo",
+    "model": {
+        "name": "NeuralNetwork",
+        "n_hidden_layers": 4,
+        "hidden_size": 128
+    },
+    "ingress": {
+        "input_dir": "gaussians",
+        "signal_file": "sig.root",
+        "ttree_name": "tree", 
+        "features": ["X1", "X2"],
+        "transforms": {},
+        "disco_target": "X0"
+    },
+    "train": {
+        "train_frac": 0.68,
+        "test_frac": 0.30,
+        "val_frac": 0.02,
+        "train_batch_size": 17000,
+        "test_batch_size": 3000,
+        "val_batch_size": 5000,
+        "learning_rate": 0.001,
+        "seed": 1234,
+        "scheduler_name": "StepLR",
+        "scheduler_kwargs": {
+            "step_size": 25,
+            "gamma": 0.7
+        },
+        "disco_lambda": 0
+    }
+}

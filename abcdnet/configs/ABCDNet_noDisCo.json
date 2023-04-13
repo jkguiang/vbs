@@ -1,6 +1,6 @@
 {
     "basedir": "/blue/p.chang/jguiang/data/vbsvvh",
-    "name": "ABCDNet_betterNorms",
+    "name": "ABCDNet_noDisCo",
     "model": {
         "name": "NeuralNetwork",
         "n_hidden_layers": 3,
@@ -8,6 +8,7 @@
     },
     "ingress": {
         "input_dir": "output_pnetfix/Run2",
+        "signal_file": "VBSVVH.root",
         "ttree_name": "tree", 
         "features": [
             "hbbfatjet_pt",
@@ -54,6 +55,6 @@
             "step_size": 25,
             "gamma": 0.7
         },
-        "disco_lambda": 1
+        "disco_lambda": 0
     }
 }

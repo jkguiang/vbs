@@ -1,13 +1,15 @@
 import glob
 import os
+import argparse
+
 import uproot
 import torch
 
 from utils import VBSConfig
 from datasets import DisCoDataset
 
-def get_outfile(config, tag, msg=None):
-    outfile = f"{config.basedir}/{config.name}_{tag}.pt"
+def get_outfile(config, tag, ext="pt", msg=None):
+    outfile = f"{config.basedir}/{config.name}_{tag}.{ext}"
     if msg:
         print(msg.format(outfile))
     return outfile
@@ -48,18 +50,26 @@ def ingress(config):
             n_events = features.size()[0]
 
             # Set label
-            if "VBSVVH" in root_file:
-                labels = torch.ones(n_events)
+            is_signal = False
+            if config.ingress.get("signal_file", None):
+                if len(config.ingress.signal_file.split("/")) == 1:
+                    is_signal = (root_file.split("/")[-1] == config.ingress.signal_file)
+                else:
+                    is_signal = (root_file == config.ingress.signal_file)
+                labels = torch.ones(n_events)*is_signal
+            elif config.ingress.get("label", None):
+                labels = torch.tensor(tree[config.ingress.label].array(), dtype=torch.float)
             else:
-                labels = torch.zeros(n_events)
+                raise Exception("No signal file name or label branch provided")
 
             # Create a unique identifier for this sample (used for splitting evenly)
             sample_number = torch.ones(n_events)*file_i
 
             # Calculate event weight
             weights = torch.ones(n_events)
-            for branch_i, weight_branch in enumerate(config.ingress.weights):
-                weights *= torch.tensor(tree[weight_branch].array(), dtype=torch.float)
+            if config.ingress.get("weights", None):
+                for branch_i, weight_branch in enumerate(config.ingress.weights):
+                    weights *= torch.tensor(tree[weight_branch].array(), dtype=torch.float)
 
             # Load disco target (to be used in SingleDisCo)
             disco_target = None
@@ -82,6 +92,10 @@ def ingress(config):
             print(f"Writing to {outfile}")
 
 if __name__ == "__main__":
-    config = VBSConfig.from_json("config.json")
+    parser = argparse.ArgumentParser(description="Ingress data")
+    parser.add_argument("config_json", type=str, help="config JSON")
+    args = parser.parse_args()
+
+    config = VBSConfig.from_json(args.config_json)
     os.makedirs(config.basedir, exist_ok=True)
     ingress(config)
