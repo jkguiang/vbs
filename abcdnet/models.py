@@ -10,12 +10,14 @@ class NeuralNetwork(nn.Module):
 
         hidden_layers = []
         for layer_i in range(n_hidden_layers):
-            hidden_layers.append(nn.Linear(hidden_size, hidden_size))
-            hidden_layers.append(nn.ReLU())
+            if layer_i == 0:
+                hidden_layers.append(nn.Linear(input_size, hidden_size))
+                hidden_layers.append(nn.ReLU())
+            else:
+                hidden_layers.append(nn.Linear(hidden_size, hidden_size))
+                hidden_layers.append(nn.ReLU())
 
         self.layers = nn.Sequential(
-            nn.Linear(input_size, hidden_size),
-            nn.ReLU(),
             *hidden_layers,
             nn.Linear(hidden_size, 1),
             nn.Sigmoid()
