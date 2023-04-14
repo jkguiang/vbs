@@ -16,17 +16,17 @@
     },
     "train": {
         "train_frac": 0.68,
-        "test_frac": 0.30,
-        "val_frac": 0.02,
-        "train_batch_size": 17000,
-        "test_batch_size": 3000,
-        "val_batch_size": 5000,
+        "test_frac": 0.12,
+        "val_frac": 0.2,
+        "train_batch_size": 34000,
+        "test_batch_size": 6000,
+        "val_batch_size": 10000,
         "learning_rate": 0.001,
         "seed": 1234,
         "scheduler_name": "StepLR",
         "scheduler_kwargs": {
             "step_size": 25,
-            "gamma": 0.7
+            "gamma": 0.5
         },
         "disco_lambda": 1000
     }
