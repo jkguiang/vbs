@@ -223,8 +223,8 @@ if __name__ == "__main__":
     train_data, leftover_data = data.split(config.train.train_frac)
     print(f"{len(train_data)} training events ({train_data.n_label(0)} bkg, {train_data.n_label(1)} sig)")
     test_data, val_data = leftover_data.split(config.train.test_frac/(1 - config.train.train_frac))
-    print(f"{len(test_data)} training events ({test_data.n_label(0)} bkg, {test_data.n_label(1)} sig)")
-    print(f"{len(val_data)} training events ({val_data.n_label(0)} bkg, {val_data.n_label(1)} sig)")
+    print(f"{len(test_data)} testing events ({test_data.n_label(0)} bkg, {test_data.n_label(1)} sig)")
+    print(f"{len(val_data)} validation events ({val_data.n_label(0)} bkg, {val_data.n_label(1)} sig)")
 
     # Save datasets
     train_data.save(get_outfile(config, tag="train_dataset", msg="Wrote {}"))
