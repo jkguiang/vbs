@@ -106,7 +106,7 @@ if __name__ == "__main__":
     saved_model = train.get_outfile(config, epoch=args.epoch, tag="model")
     Model = getattr(models, config.model.name)
     model = Model.from_config(config).to(device)
-    model.load_state_dict(torch.load(saved_model))
+    model.load_state_dict(torch.load(saved_model, map_location=device))
     model.eval()
 
     if args.export:
