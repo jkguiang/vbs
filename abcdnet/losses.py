@@ -55,5 +55,5 @@ class DisCoLoss(nn.Module):
 
     def forward(self, inferences, labels, disco_target, weights):
         BCE = F.binary_cross_entropy(inferences, labels, reduction="mean", weight=weights)
-        dCorr2 = self.dCorr(inferences, disco_target, weights, power=2)
+        dCorr2 = self.dCorr(inferences[labels == 0], disco_target[labels == 0], weights[labels == 0], power=2)
         return BCE + self.disco_lambda*dCorr2
