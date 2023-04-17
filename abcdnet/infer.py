@@ -3,7 +3,7 @@
 import os
 import glob
 import argparse
-from time import time
+import time
 
 import uproot
 import numpy as np
@@ -69,9 +69,9 @@ def infer(model, device, loader, output):
         weights = weights.to(device)
         disco_target = disco_target.to(device)
 
-        start = time()
+        start = time.time()
         inferences = model(features)
-        end = time()
+        end = time.time()
         times.append(end - start)
 
         for truth, score, weight in zip(labels, inferences, weights):

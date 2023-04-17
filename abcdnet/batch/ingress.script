@@ -1,0 +1,9 @@
+#!/bin/bash
+#SBATCH --ntasks=1 
+#SBATCH --cpus-per-task=1 
+#SBATCH --mem=4gb 
+#SBATCH --time=4:00:00
+#SBATCH --job-name=ABCDNet_ingress
+
+source setup_hpg.sh
+python ingress.py $1
