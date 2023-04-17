@@ -3,9 +3,12 @@ from types import SimpleNamespace
 
 class VBSConfig(SimpleNamespace):
     @classmethod
-    def from_json(cls, config_json):
+    def from_json(cls, config_json, extra={}):
         with open(config_json, "r") as f:
-            return json.load(f, object_hook=lambda d: cls(**d))
+            d = json.load(f)
+            d["name"] = config_json.split("/")[-1].replace(".json", "")
+            d.update(extra)
+            return json.loads(json.dumps(d), object_hook=lambda d: cls(**d))
 
     def get(self, key, default=None):
         return self.__dict__.get(key, default)
