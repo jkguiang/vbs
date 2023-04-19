@@ -11,13 +11,14 @@ from torch.utils.data import DataLoader
 from torch import optim
 
 import models
+import ingress
 from utils import VBSConfig, print_title
 from losses import DisCoLoss
 from datasets import DisCoDataset
 
 def get_outfile(config, epoch=None, tag=None, ext="pt", msg=None):
     outfile = (
-        f"{config.basedir}/trained_models/{config.name}"
+        f"{config.basedir}/{config.name}/{config.name}"
         + f"_model{config.model.name}"
         + f"_nhidden{config.model.n_hidden_layers}"
         + f"_hiddensize{config.model.hidden_size}"
@@ -38,7 +39,7 @@ def get_outfile(config, epoch=None, tag=None, ext="pt", msg=None):
 
 def train(args, model, device, train_loader, optimizer, criterion, epoch):
     model.train()
-    epoch_t0 = time.time()
+    train_t0 = time.time()
     loss_sum = 0
     n_batches = len(train_loader)
     for batch_i, (features, labels, weights, disco_target) in enumerate(train_loader):
@@ -89,7 +90,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
             print(f"Finished batch in {batch_t1 - batch_t0:0.3f}s", flush=True)
 
     print(f"[Epoch {epoch} summary]", flush=True)
-    print(f"runtime: {time.time() - epoch_t0:0.3f}s", flush=True)
+    print(f"train runtime: {time.time() - train_t0:0.3f}s", flush=True)
     print(f"train loss: {loss_sum/n_batches:0.6f}", flush=True)
     return loss_sum/n_batches
 
@@ -180,8 +181,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
-    models_dir = f"{config.basedir}/trained_models"
-    os.makedirs(models_dir, exist_ok=True)
+    os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
 
     print_title("Configuration")
     print(config)
@@ -213,7 +213,7 @@ if __name__ == "__main__":
     # Load data
     print_title("Input data")
     data = DisCoDataset.from_files(
-        DisCoDataset.get_name(config, "*"), 
+        ingress.get_outfile(config, tag="*", msg="Loading files {}"), 
         is_single_disco=(config.ingress.get("disco_target", None) != None)
     )
     data.plot(config)
@@ -221,15 +221,18 @@ if __name__ == "__main__":
 
     # Split into test, train, and validation
     train_data, leftover_data = data.split(config.train.train_frac)
-    print(f"{len(train_data)} training events ({train_data.n_label(0)} bkg, {train_data.n_label(1)} sig)")
+    # print(f"{len(train_data)} training events ({train_data.n_label(0)} bkg, {train_data.n_label(1)} sig)")
+    print(train_data)
     test_data, val_data = leftover_data.split(config.train.test_frac/(1 - config.train.train_frac))
-    print(f"{len(test_data)} testing events ({test_data.n_label(0)} bkg, {test_data.n_label(1)} sig)")
-    print(f"{len(val_data)} validation events ({val_data.n_label(0)} bkg, {val_data.n_label(1)} sig)")
+    print(test_data)
+    # print(f"{len(test_data)} testing events ({test_data.n_label(0)} bkg, {test_data.n_label(1)} sig)")
+    print(val_data)
+    # print(f"{len(val_data)} validation events ({val_data.n_label(0)} bkg, {val_data.n_label(1)} sig)")
 
     # Save datasets
-    train_data.save(get_outfile(config, tag="train_dataset", msg="Wrote {}"))
-    test_data.save(get_outfile(config, tag="test_dataset", msg="Wrote {}"))
-    val_data.save(get_outfile(config, tag="val_dataset", msg="Wrote {}"))
+    train_data.save(ingress.get_outfile(config, tag="train", msg="Wrote {}"))
+    test_data.save(ingress.get_outfile(config, tag="test", msg="Wrote {}"))
+    val_data.save(ingress.get_outfile(config, tag="val", msg="Wrote {}"))
 
     # Initialize loaders
     train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
@@ -238,6 +241,7 @@ if __name__ == "__main__":
 
     output = {"train_loss": [], "test_loss": [], "test_acc": []}
     for epoch in range(1, args.n_epochs + 1):
+        epoch_t0 = time.time()
         print_title(f"Epoch {epoch}")
         # Run training
         train_loss = train(args, model, device, train_loader, optimizer, criterion, epoch)
@@ -254,6 +258,7 @@ if __name__ == "__main__":
         output["train_loss"].append(train_loss)
         output["test_loss"].append(test_loss)
         output["test_acc"].append(test_acc)
+        print(f"total runtime: {time.time() - epoch_t0:0.3f}s", flush=True)
 
     with open(get_outfile(config, tag="history", ext="json", msg="Wrote {}"), "w") as f_out:
         json.dump(output, f_out)

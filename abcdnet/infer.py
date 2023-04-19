@@ -97,9 +97,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
-    models_dir = f"{config.basedir}/trained_models"
-    infers_dir = f"{config.basedir}/inferences"
-    os.makedirs(infers_dir, exist_ok=True)
+    os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -111,28 +109,31 @@ if __name__ == "__main__":
 
     if args.export:
         times = []
-        for pt_file in glob.glob(DisCoDataset.get_name(config, "*")): 
+        for pt_file in glob.glob(ingress.get_outfile(config, tag="*", msg="Loading files {}")): 
             loader = DataLoader(DisCoDataset.from_file(pt_file))
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0]
             old_baby = f"{config.ingress.input_dir}/{name}.root"
             new_baby = old_baby.replace(".root", "_abcdnet.root")
             times += infer(model, device, loader, OutputROOT(old_baby, new_baby))
     else:
-        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE").replace('.pt', '.csv')
+        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext=".csv")
         # Write testing inferences
-        test_data = DisCoDataset.from_file(train.get_outfile(config, tag="test_dataset"))
+        test_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="test"), norm=False)
+        print(test_data)
         test_loader = DataLoader(test_data)
-        test_csv = csv_name.replace("trained_models", "inferences").replace("REPLACE", "test")
+        test_csv = csv_name.replace("REPLACE", "test")
         times = infer(model, device, test_loader, OutputCSV(test_csv))
         # Write training inferences
-        train_data = DisCoDataset.from_file(train.get_outfile(config, tag="train_dataset"))
+        train_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="train"), norm=False)
+        print(train_data)
         train_loader = DataLoader(train_data)
-        train_csv = csv_name.replace("trained_models", "inferences").replace("REPLACE", "train")
+        train_csv = csv_name.replace("REPLACE", "train")
         times += infer(model, device, train_loader, OutputCSV(train_csv))
         # Write validation inferences
-        val_data = DisCoDataset.from_file(train.get_outfile(config, tag="val_dataset"))
+        val_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="val"), norm=False)
+        print(val_data)
         val_loader = DataLoader(val_data)
-        val_csv = csv_name.replace("trained_models", "inferences").replace("REPLACE", "val")
+        val_csv = csv_name.replace("REPLACE", "val")
         times += infer(model, device, val_loader, OutputCSV(val_csv))
 
     print(f"Avg. inference time: {sum(times)/len(times)}s")

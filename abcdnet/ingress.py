@@ -9,7 +9,7 @@ from utils import VBSConfig
 from datasets import DisCoDataset
 
 def get_outfile(config, tag, ext="pt", msg=None):
-    outfile = f"{config.basedir}/{config.name}_{tag}.{ext}"
+    outfile = f"{config.basedir}/{config.name}/datasets/{config.name}_{tag}.{ext}"
     if msg:
         print(msg.format(outfile))
     return outfile
@@ -48,7 +48,6 @@ def ingress(config):
 
             # Assuming that files are named SampleName.root (e.g. QCD.root, ttbar1l.root, etc.)
             sample_name = root_file.split("/")[-1].replace(".root", "")
-            outfile = DisCoDataset.get_name(config, sample_name)
 
             # Load features
             features = []
@@ -96,8 +95,7 @@ def ingress(config):
                 sample_number,
                 disco_target=disco_target
             )
-            data.save(outfile)
-            print(f"Writing to {outfile}")
+            data.save(get_outfile(config, tag=sample_name, msg="Writing to {}"))
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ingress data")
@@ -105,5 +103,6 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
-    os.makedirs(config.basedir, exist_ok=True)
+    os.makedirs(f"{config.basedir}/{config.name}/datasets", exist_ok=True)
+
     ingress(config)
