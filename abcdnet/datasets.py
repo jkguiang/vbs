@@ -5,7 +5,7 @@ import torch
 from torch.utils.data import Dataset
 
 class DisCoDataset(Dataset):
-    def __init__(self, features, labels, weights, sample_labels, disco_target=None):
+    def __init__(self, features, labels, weights, sample_labels, disco_target=None, norm=True):
         self.data = torch.cat(
             (
                 features, 
@@ -27,7 +27,21 @@ class DisCoDataset(Dataset):
             self.disco_target = self.data[-1]
             self.is_single_disco = True
 
-        self.weight_norm = len(self)/torch.sum(self.weights)
+        self.norm = norm
+        self.weight_norm = torch.ones(self.labels.size())
+        self.labels_norm = torch.ones(self.labels.size())
+        if self.norm:
+            self.weight_norm[self.labels == 0] = torch.sum(self.labels == 0)/torch.sum(self.weights[self.labels == 0])
+            self.weight_norm[self.labels == 1] = torch.sum(self.labels == 1)/torch.sum(self.weights[self.labels == 1])
+            self.labels_norm[self.labels == 1] = torch.sum(self.labels == 0)/torch.sum(self.labels == 1)
+
+    def __str__(self):
+        n_sig = torch.sum(self.weight_norm[self.labels == 1]*self.labels_norm[self.labels == 1]*self.weights[self.labels == 1])
+        n_bkg = torch.sum(self.weight_norm[self.labels == 0]*self.labels_norm[self.labels == 0]*self.weights[self.labels == 0])
+        if self.norm:
+            return f"DisCoDataset: {n_sig:0.1f} sig, {n_bkg:0.1f} bkg (normed)"
+        else:
+            return f"DisCoDataset: {n_sig:0.1f} sig, {n_bkg:0.1f} bkg"
 
     def __add__(self, other):
         return DisCoDataset.__from_tensor(torch.cat((self.data, other.data), dim=1), self.is_single_disco)
@@ -37,16 +51,12 @@ class DisCoDataset(Dataset):
 
     def __getitem__(self, idx):
         if self.is_single_disco:
-            return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx], self.disco_target[idx]
+            return self.features[:,idx], self.labels[idx], self.labels_norm[idx]*self.weight_norm[idx]*self.weights[idx], self.disco_target[idx]
         else:
-            return self.features[:,idx], self.labels[idx], self.weight_norm*self.weights[idx]
-
-    @staticmethod
-    def get_name(config, tag):
-        return f"{config.basedir}/{config.name}_{tag}_dataset.pt"
+            return self.features[:,idx], self.labels[idx], self.labels_norm[idx]*self.weight_norm[idx]*self.weights[idx]
 
     @classmethod
-    def __from_tensor(cls, data, is_single_disco):
+    def __from_tensor(cls, data, is_single_disco, **kwargs):
         data = torch.transpose(data, 0, 1)
         if is_single_disco:
             return cls(
@@ -54,31 +64,33 @@ class DisCoDataset(Dataset):
                 data[:,-4],                # labels
                 data[:,-3],                # weights
                 data[:,-2],                # sample_labels
-                disco_target=data[:,-1]    # disco_target
+                disco_target=data[:,-1],   # disco_target
+                **kwargs
             )
         else:
             return cls(
                 data[:,:-3],  # features
                 data[:,-3],   # labels
                 data[:,-2],   # weights
-                data[:,-1]    # sample_labels
+                data[:,-1],   # sample_labels
+                **kwargs
             )
 
     @classmethod
-    def from_file(cls, pt_file, is_single_disco=True):
+    def from_file(cls, pt_file, is_single_disco=True, **kwargs):
         data = torch.load(pt_file)
-        return cls.__from_tensor(data, is_single_disco)
+        return cls.__from_tensor(data, is_single_disco, **kwargs)
 
     @classmethod
-    def from_files(cls, pt_files, is_single_disco=True):
+    def from_files(cls, pt_files, is_single_disco=True, **kwargs):
         dataset = None
         if type(pt_files) == str:
             pt_files = glob.glob(pt_files)
         for file_i, pt_file in enumerate(pt_files):
             if file_i == 0:
-                dataset = cls.from_file(pt_file, is_single_disco)
+                dataset = cls.from_file(pt_file, is_single_disco, **kwargs)
             else:
-                dataset += cls.from_file(pt_file, is_single_disco)
+                dataset += cls.from_file(pt_file, is_single_disco, **kwargs)
 
         return dataset
 
@@ -87,7 +99,7 @@ class DisCoDataset(Dataset):
 
     def plot(self, config, norm=True):
         import matplotlib.pyplot as plt
-        plots_dir = f"{config.basedir}/plots"
+        plots_dir = f"{config.basedir}/{config.name}/plots"
         os.makedirs(plots_dir, exist_ok=True)
         for feature_i in range(self.features.size()[0]):
             fig, axes = plt.subplots(figsize=(10, 10))
