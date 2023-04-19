@@ -116,7 +116,7 @@ if __name__ == "__main__":
             new_baby = old_baby.replace(".root", "_abcdnet.root")
             times += infer(model, device, loader, OutputROOT(old_baby, new_baby))
     else:
-        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext=".csv")
+        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv")
         # Write testing inferences
         test_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="test"), norm=False)
         print(test_data)
