@@ -2,8 +2,8 @@ import torch
 import torch.nn as nn
 import torch.nn.functional as F
 
-class DisCoLoss(nn.Module):
-    def __init__(self, disco_lambda, device=None):
+class SingleDisCoLoss(nn.Module):
+    def __init__(self, disco_lambda):
         super().__init__()
         self.disco_lambda = disco_lambda
 
@@ -57,3 +57,10 @@ class DisCoLoss(nn.Module):
         BCE = F.binary_cross_entropy(inferences, labels, reduction="mean", weight=weights)
         dCorr2 = self.dCorr(inferences[labels == 0], disco_target[labels == 0], weights[labels == 0], power=2)
         return BCE + self.disco_lambda*dCorr2
+
+class DoubleDisCoLoss(SingleDisCoLoss):
+    def forward(self, inferences_1, inferences_2, labels, weights):
+        BCE_1 = F.binary_cross_entropy(inferences_1, labels, reduction="mean", weight=weights)
+        BCE_2 = F.binary_cross_entropy(inferences_2, labels, reduction="mean", weight=weights)
+        dCorr2 = self.dCorr(inferences_1[labels == 0], inferences_2[labels == 0], weights[labels == 0], power=2)
+        return BCE_1 + BCE_2 + self.disco_lambda*dCorr2

@@ -34,6 +34,14 @@ class VBSConfig(SimpleNamespace):
     def __getitem__(self, key):
         return self.get(key)
 
+class VBSOutput:
+    def __init__(self, file_name):
+        self.file_name = file_name
+    def write(self):
+        raise NotImplementedError()
+    def close(self):
+        raise NotImplementedError()
+
 def print_title(text):
     text = f" {text} "
     print(f"{text:-^50}", flush=True)

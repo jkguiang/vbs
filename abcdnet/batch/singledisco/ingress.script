@@ -6,4 +6,4 @@
 #SBATCH --job-name=ABCDNet_ingress
 
 source setup_hpg.sh
-python ingress.py $1
+python python/ingress.py $1

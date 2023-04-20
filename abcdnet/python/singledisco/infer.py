@@ -14,18 +14,10 @@ from tqdm import tqdm
 import models
 import ingress
 import train
-from utils import VBSConfig
+from utils import VBSConfig, VBSOutput
 from datasets import DisCoDataset
 
-class OutputVBS:
-    def __init__(self, file_name):
-        self.file_name = file_name
-    def write(self):
-        raise NotImplementedError()
-    def close(self):
-        raise NotImplementedError()
-
-class OutputCSV(OutputVBS):
+class OutputCSV(VBSOutput):
     def __init__(self, file_name):
         super().__init__(file_name)
         self.__f = open(file_name, "w")
@@ -37,7 +29,7 @@ class OutputCSV(OutputVBS):
     def close(self):
         self.__f.close()
 
-class OutputROOT(OutputVBS):
+class OutputROOT(VBSOutput):
     def __init__(self, old_baby, new_baby, ttree_name="tree"):
         super().__init__(new_baby)
         self.__scores = []
@@ -84,7 +76,7 @@ def infer(model, device, loader, output):
 
 if __name__ == "__main__":
     # CLI
-    parser = argparse.ArgumentParser(description="Run GNN inference")
+    parser = argparse.ArgumentParser(description="Run inference")
     parser.add_argument("config_json", type=str, help="config JSON")
     parser.add_argument(
         "--epoch", type=int, default=50, metavar="N",
@@ -118,22 +110,22 @@ if __name__ == "__main__":
     else:
         csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv")
         # Write testing inferences
-        test_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="test"), norm=False)
+        test_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="test", msg="Loading {}"), norm=False)
         print(test_data)
         test_loader = DataLoader(test_data)
-        test_csv = csv_name.replace("REPLACE", "test")
-        times = infer(model, device, test_loader, OutputCSV(test_csv))
+        test_csv = OutputCSV(csv_name.replace("REPLACE", "test"))
+        times = infer(model, device, test_loader, test_csv)
         # Write training inferences
-        train_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="train"), norm=False)
+        train_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="train", msg="Loading {}"), norm=False)
         print(train_data)
         train_loader = DataLoader(train_data)
-        train_csv = csv_name.replace("REPLACE", "train")
-        times += infer(model, device, train_loader, OutputCSV(train_csv))
+        train_csv = OutputCSV(csv_name.replace("REPLACE", "train"))
+        times += infer(model, device, train_loader, train_csv)
         # Write validation inferences
-        val_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="val"), norm=False)
+        val_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="val", msg="Loading {}"), norm=False)
         print(val_data)
         val_loader = DataLoader(val_data)
-        val_csv = csv_name.replace("REPLACE", "val")
-        times += infer(model, device, val_loader, OutputCSV(val_csv))
+        val_csv = OutputCSV(csv_name.replace("REPLACE", "val"))
+        times += infer(model, device, val_loader, val_csv)
 
     print(f"Avg. inference time: {sum(times)/len(times)}s")

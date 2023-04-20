@@ -7,4 +7,4 @@
 #SBATCH --job-name=ABCDNet_infer
 
 source setup_hpg.sh
-python infer.py $@
+python python/singledisco/infer.py $@

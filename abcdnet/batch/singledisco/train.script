@@ -7,4 +7,4 @@
 #SBATCH --job-name=ABCDNet_train
 
 source setup_hpg.sh
-python train.py $1 --log_interval=10 --n_epochs=200
+python python/singledisco/train.py $1 --log_interval=10 --n_epochs=200
