@@ -29,7 +29,10 @@ def transform(feature, transf):
         raise ValueError(f"transformation '{transf}' not supported")
 
 def ingress(config):
-    root_files = [f for f in glob.glob(f"{config.ingress.input_dir}/*.root") if "data.root" not in f]
+    root_files = filter(
+        lambda f: "data.root" not in f and "abcdnet" not in f,
+        glob.glob(f"{config.ingress.input_dir}/*.root")
+    )
     transforms = config.ingress.get("transforms", {})
     for file_i, root_file in enumerate(root_files):
         print(f"Loading {root_file}")
