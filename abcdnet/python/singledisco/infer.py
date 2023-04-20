@@ -91,6 +91,7 @@ if __name__ == "__main__":
 
     config = VBSConfig.from_json(args.config_json)
     os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
+    os.makedirs(f"{config.ingress.input_dir}/{config.name}", exist_ok=True)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -102,6 +103,7 @@ if __name__ == "__main__":
 
     if args.export:
         times = []
+        # Process MC
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", msg="Globbing {}")): 
             if "test.pt" in pt_file or "train.pt" in pt_file or "val.pt" in pt_file:
                 continue
@@ -109,8 +111,13 @@ if __name__ == "__main__":
             loader = DataLoader(DisCoDataset.from_file(pt_file, norm=False))
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
             old_baby = f"{config.ingress.input_dir}/{name}.root"
-            new_baby = old_baby.replace(".root", "_abcdnet.root")
+            new_baby = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
             times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=config.ingress.get("selection", None)))
+        # Run inference on data
+        loader = DataLoader(ingress.ingress_file(config, f"{config.ingress.input_dir}/data.root", -1, save=False))
+        old_baby = f"{config.ingress.input_dir}/data.root"
+        new_baby = f"{config.ingress.input_dir}/{config.name}/data_abcdnet.root"
+        times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=config.ingress.get("selection", None)))
     else:
         csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv")
         # Write testing inferences

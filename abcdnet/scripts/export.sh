@@ -4,6 +4,8 @@ if [[ "$1" == "" || "$2" == "" ]]; then
 fi
 mkdir -p tarballs
 
+CWD=$PWD
+
 INPUTDIR=$(cat $1 | grep -o '"input_dir": "[^"]*"' | sed 's/"input_dir": "//' | sed 's/"//' | awk '{print $1}')
 ABCDNAME=$(basename $1)
 ABCDNAME=${ABCDNAME%%.*}
@@ -17,9 +19,14 @@ if [[ "$ABCDNAME" == "" ]]; then
     exit 1
 fi
 
-TARBALL=tarballs/${ABCDNAME}.tar.gz
+TARBALL=$CWD/tarballs/${ABCDNAME}.tar.gz
 echo "Creating ${TARBALL}..."
-tar -zcvf $TARBALL $INPUTDIR/*_abcdnet.root $INPUTDIR/data.root
+
+cd $INPUTDIR/$ABCDNAME
+# tar -zcvf $TARBALL $INPUTDIR/$ABCDNAME/*_abcdnet.root $INPUTDIR/data.root
+tar -zcvf $TARBALL *_abcdnet.root
+cd $CWD
+
 echo "Done"
 
 scp $TARBALL $2
