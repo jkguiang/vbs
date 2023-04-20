@@ -32,7 +32,7 @@ python python/singledisco/infer.py --export configs/CONFIG.json
 ```
 7. I have written a handy script to copy the results to the UAFs
 ```
-sh scripts/export.sh jguiang@uaf-10.t2.ucsd.edu:/ceph/cms/store/user/jguiang/ABCDNet
+sh scripts/export.sh configs/CONFIG.json jguiang@uaf-10.t2.ucsd.edu:/ceph/cms/store/user/jguiang/ABCDNet
 ```
 8. There is also a batch script for running the entire workflow:
 ```
