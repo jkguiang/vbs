@@ -30,12 +30,13 @@ class OutputCSV(VBSOutput):
         self.__f.close()
 
 class OutputROOT(VBSOutput):
-    def __init__(self, old_baby, new_baby, ttree_name="tree"):
+    def __init__(self, old_baby, new_baby, selection=None, ttree_name="tree"):
         super().__init__(new_baby)
         self.__scores = []
         self.__old_baby = old_baby
         self.__new_baby = new_baby
         self.__ttree_name = ttree_name
+        self.__selection = selection
 
     def write(self, idx, truth, score, weight):
         self.__scores.append(score.item())
@@ -44,7 +45,7 @@ class OutputROOT(VBSOutput):
         # Open the existing ROOT file
         with uproot.open(self.__old_baby) as old_baby:
             # Copy the existing TTree
-            tree = old_baby[self.__ttree_name].arrays()
+            tree = old_baby[self.__ttree_name].arrays(cut=self.__selection)
             # Add the new branch to the copy
             tree["abcdnet_score"] = np.array(self.__scores)
             # Write the updated TTree to a new ROOT file
@@ -101,12 +102,15 @@ if __name__ == "__main__":
 
     if args.export:
         times = []
-        for pt_file in glob.glob(ingress.get_outfile(config, tag="*", msg="Loading files {}")): 
-            loader = DataLoader(DisCoDataset.from_file(pt_file))
-            name = pt_file.split(config.name+"_")[-1].split("_dataset")[0]
+        for pt_file in glob.glob(ingress.get_outfile(config, tag="*", msg="Globbing {}")): 
+            if "test.pt" in pt_file or "train.pt" in pt_file or "val.pt" in pt_file:
+                continue
+            print(f"Loading {pt_file}")
+            loader = DataLoader(DisCoDataset.from_file(pt_file, norm=False))
+            name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
             old_baby = f"{config.ingress.input_dir}/{name}.root"
             new_baby = old_baby.replace(".root", "_abcdnet.root")
-            times += infer(model, device, loader, OutputROOT(old_baby, new_baby))
+            times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=config.ingress.get("selection", None)))
     else:
         csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv")
         # Write testing inferences
