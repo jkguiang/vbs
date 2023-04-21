@@ -11,7 +11,8 @@ class SingleDisCoLoss(nn.Module):
     def from_config(cls, config):
         return cls(config.train.get("disco_lambda", 0))
 
-    def dCorr(self, var_1, var_2, normed_weight, power=1):
+    @staticmethod
+    def dCorr(var_1, var_2, normed_weight, power=1):
         """
         Stolen from https://github.com/gkasieczka/DisCo/blob/master/Disco.py
         var_1: First variable to decorrelate (eg mass)
