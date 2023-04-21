@@ -130,8 +130,8 @@ def validate(model, device, val_loader, criterion):
         thresh_sum += opt_thresh
         accs_sum += opt_acc
 
-    print(f"val loss:     {loss_sum/n_batches:0.6f}")
-    print(f"val accuracy: {accs_sum/n_batches:0.6f}")
+    print(f"val loss:      {loss_sum/n_batches:0.6f}")
+    print(f"val accuracy:  {accs_sum/n_batches:0.6f}")
     return thresh_sum/n_batches
 
 def test(model, device, test_loader, criterion, thresh=0.5):
@@ -242,7 +242,12 @@ if __name__ == "__main__":
     test_loader = DataLoader(test_data, batch_size=config.train.test_batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=config.train.val_batch_size, shuffle=True)
 
-    output = {"train_loss": [], "test_loss": [], "test_acc": []}
+    output = {
+        "train_loss": [], 
+        "test_loss": [], 
+        "test_acc": [], 
+        "slurm_id": os.environ.get("SLURM_JOB_ID", "local")
+    }
     for epoch in range(1, args.n_epochs + 1):
         epoch_t0 = time.time()
         print_title(f"Epoch {epoch}")
