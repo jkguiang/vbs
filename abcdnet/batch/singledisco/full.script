@@ -8,5 +8,5 @@
 
 source setup_hpg.sh
 python python/ingress.py $1
-python python/singledisco/train.py $1 --log_interval=10 --n_epochs=200
+python python/singledisco/train.py $1 --log_interval=10
 python python/singledisco/infer.py $1 --epoch=100
