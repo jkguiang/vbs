@@ -10,6 +10,10 @@ class VBSConfig(SimpleNamespace):
             d.update(extra)
             return json.loads(json.dumps(d), object_hook=lambda d: cls(**d))
 
+    def write(self, outfile):
+        with open(outfile, "w") as f:
+            json.dump(self.__recursive_get_json(self.__dict__), f, indent=4)
+
     def get(self, key, default=None):
         return self.__dict__.get(key, default)
 
@@ -19,17 +23,17 @@ class VBSConfig(SimpleNamespace):
     def items(self):
         return self.__dict__.items()
 
-    def __get_json(self, d):
+    def __recursive_get_json(self, d):
         json = {}
         for key, val in d.items():
             if type(val) == type(self):
-                json[key] = self.__get_json(val)
+                json[key] = self.__recursive_get_json(val)
             else:
                 json[key] = val
         return json
 
     def __str__(self):
-        return json.dumps(self.__get_json(self.__dict__), indent=4)
+        return json.dumps(self.__recursive_get_json(self.__dict__), indent=4)
 
     def __getitem__(self, key):
         return self.get(key)
