@@ -95,7 +95,7 @@ if __name__ == "__main__":
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
-    saved_model = train.get_outfile(config, epoch=args.epoch, tag="model")
+    saved_model = train.get_outfile(config, epoch=args.epoch, tag="model", subdir="models")
     Model = getattr(models, config.model.name)
     model = Model.from_config(config).to(device)
     model.load_state_dict(torch.load(saved_model, map_location=device))
@@ -104,7 +104,8 @@ if __name__ == "__main__":
     if args.export:
         times = []
         # Process MC
-        for pt_file in glob.glob(ingress.get_outfile(config, tag="*", msg="Globbing {}")): 
+        selection = config.ingress.get("selection", None)
+        for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
             if "test.pt" in pt_file or "train.pt" in pt_file or "val.pt" in pt_file:
                 continue
             print(f"Loading {pt_file}")
@@ -112,28 +113,37 @@ if __name__ == "__main__":
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
             old_baby = f"{config.ingress.input_dir}/{name}.root"
             new_baby = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
-            times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=config.ingress.get("selection", None)))
+            times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=selection))
         # Run inference on data
         loader = DataLoader(ingress.ingress_file(config, f"{config.ingress.input_dir}/data.root", -1, save=False))
         old_baby = f"{config.ingress.input_dir}/data.root"
         new_baby = f"{config.ingress.input_dir}/{config.name}/data_abcdnet.root"
-        times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=config.ingress.get("selection", None)))
+        times += infer(model, device, loader, OutputROOT(old_baby, new_baby, selection=selection))
     else:
-        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv")
+        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv", subdir="inferences")
         # Write testing inferences
-        test_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="test", msg="Loading {}"), norm=False)
+        test_data = DisCoDataset.from_file(
+            ingress.get_outfile(config, tag="test", subdir="datasets", msg="Loading {}"), 
+            norm=False
+        )
         print(test_data)
         test_loader = DataLoader(test_data)
         test_csv = OutputCSV(csv_name.replace("REPLACE", "test"))
         times = infer(model, device, test_loader, test_csv)
         # Write training inferences
-        train_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="train", msg="Loading {}"), norm=False)
+        train_data = DisCoDataset.from_file(
+            ingress.get_outfile(config, tag="train", subdir="datasets", msg="Loading {}"), 
+            norm=False
+        )
         print(train_data)
         train_loader = DataLoader(train_data)
         train_csv = OutputCSV(csv_name.replace("REPLACE", "train"))
         times += infer(model, device, train_loader, train_csv)
         # Write validation inferences
-        val_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="val", msg="Loading {}"), norm=False)
+        val_data = DisCoDataset.from_file(
+            ingress.get_outfile(config, tag="val", subdir="datasets", msg="Loading {}"), 
+            norm=False
+        )
         print(val_data)
         val_loader = DataLoader(val_data)
         val_csv = OutputCSV(csv_name.replace("REPLACE", "val"))

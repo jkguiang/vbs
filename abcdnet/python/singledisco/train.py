@@ -16,9 +16,14 @@ from utils import VBSConfig, print_title
 from losses import SingleDisCoLoss
 from datasets import DisCoDataset
 
-def get_outfile(config, epoch=None, tag=None, ext="pt", msg=None):
+def get_outfile(config, epoch=None, tag=None, ext="pt", subdir=None, msg=None):
+    outdir = f"{config.basedir}/{config.name}"
+    if subdir:
+        outdir = f"{outdir}/{subdir}"
+
+    os.makedirs(outdir, exist_ok=True)
     outfile = (
-        f"{config.basedir}/{config.name}/{config.name}"
+        f"{outdir}/{config.name}"
         + f"_model{config.model.name}"
         + f"_nhidden{config.model.n_hidden_layers}"
         + f"_hiddensize{config.model.hidden_size}"
@@ -174,20 +179,20 @@ if __name__ == "__main__":
         help="disables CUDA training"
     )
     parser.add_argument(
-        "--n_epochs", type=int, default=50, metavar="N",
-        help="number of epochs to train"
-    )
-    parser.add_argument(
         "--log_interval", type=int, default=100, metavar="N",
         help="how many batches to wait before logging training status"
     )
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
-    os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
 
     print_title("Configuration")
     print(config)
+
+    # Write copy of config
+    config.write(
+        ingress.get_outfile(config, tag=os.environ.get("SLURM_JOB_ID", "local")+"_config", ext="json")
+    )
 
     print_title("Initialization")
     torch.manual_seed(config.train.seed)
@@ -216,7 +221,7 @@ if __name__ == "__main__":
     # Load data
     print_title("Input data")
     data = DisCoDataset.from_files(
-        ingress.get_outfile(config, tag="*", msg="Loading files {}"), 
+        ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
         is_single_disco=(config.ingress.get("disco_target", None) != None),
         norm=config.ingress.get("weight_norm", True)
     )
@@ -233,22 +238,24 @@ if __name__ == "__main__":
     print(f"{val_data} (val)")
 
     # Save datasets
-    train_data.save(ingress.get_outfile(config, tag="train", msg="Wrote {}"))
-    test_data.save(ingress.get_outfile(config, tag="test", msg="Wrote {}"))
-    val_data.save(ingress.get_outfile(config, tag="val", msg="Wrote {}"))
+    train_data.save(ingress.get_outfile(config, tag="train", subdir="datasets", msg="Wrote {}"))
+    test_data.save(ingress.get_outfile(config, tag="test", subdir="datasets", msg="Wrote {}"))
+    val_data.save(ingress.get_outfile(config, tag="val", subdir="datasets", msg="Wrote {}"))
 
     # Initialize loaders
     train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
     test_loader = DataLoader(test_data, batch_size=config.train.test_batch_size, shuffle=True)
     val_loader = DataLoader(val_data, batch_size=config.train.val_batch_size, shuffle=True)
 
-    output = {
+    history_json = get_outfile(config, tag="history", ext="json")
+    history = {
         "train_loss": [], 
         "test_loss": [], 
         "test_acc": [], 
         "slurm_id": os.environ.get("SLURM_JOB_ID", "local")
     }
-    for epoch in range(1, args.n_epochs + 1):
+    n_epochs = config.train.get("n_epochs", 200)
+    for epoch in range(1, n_epochs + 1):
         epoch_t0 = time.time()
         print_title(f"Epoch {epoch}")
         # Run training
@@ -260,15 +267,22 @@ if __name__ == "__main__":
         test_loss, test_acc = test(model, device, test_loader, criterion, thresh=thresh)
         scheduler.step()
 
-        if epoch % 5 == 0:
-            torch.save(model.state_dict(), get_outfile(config, epoch=epoch, tag="model", msg="Wrote {}"))
+        # Save model
+        if epoch % 5 == 0 or epoch == n_epochs:
+            torch.save(
+                model.state_dict(), 
+                get_outfile(config, epoch=epoch, tag="model", subdir="models", msg="Wrote {}")
+            )
 
-        output["train_loss"].append(train_loss)
-        output["test_loss"].append(test_loss)
-        output["test_acc"].append(test_acc)
+        # Save history
+        history["train_loss"].append(train_loss)
+        history["test_loss"].append(test_loss)
+        history["test_acc"].append(test_acc)
+        if epoch % 100 == 0 or epoch == n_epochs:
+            with open(history_json, "w") as f:
+                json.dump(history, f)
+                print(f"Wrote {history_json}")
+
         print(f"total runtime: {time.time() - epoch_t0:0.3f}s", flush=True)
 
-    with open(get_outfile(config, tag="history", ext="json", msg="Wrote {}"), "w") as f_out:
-        json.dump(output, f_out)
-
-    print(output)
+    print(history)
