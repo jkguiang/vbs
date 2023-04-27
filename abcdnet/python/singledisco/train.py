@@ -27,7 +27,7 @@ def get_outfile(config, epoch=None, tag=None, ext="pt", subdir=None, msg=None):
         + f"_model{config.model.name}"
         + f"_nhidden{config.model.n_hidden_layers}"
         + f"_hiddensize{config.model.hidden_size}"
-        + f"_lr{config.train.learning_rate}"
+        + f"_lr{config.train.scheduler_name}{config.train.learning_rate}"
         + f"_discolambda{config.train.disco_lambda}"
     )
 
@@ -45,7 +45,7 @@ def get_outfile(config, epoch=None, tag=None, ext="pt", subdir=None, msg=None):
 def train(args, model, device, train_loader, optimizer, criterion, epoch):
     model.train()
     train_t0 = time.time()
-    loss_sum = 0
+    loss_sum, bce_sum, disco_sum = 0, 0, 0
     n_batches = len(train_loader)
     for batch_i, (features, labels, weights, disco_target) in enumerate(train_loader):
         do_logging = (batch_i % args.log_interval == 0 or batch_i == n_batches - 1)
@@ -72,9 +72,12 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
                 + f"\nmax(features) = {features.max()}"
                 + f"\nmin(features) = {features.min()}"
             )
+            torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
+            torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
+            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
 
         # Calculate loss
-        loss = criterion(inferences, labels, disco_target, weights)
+        loss, bce, disco = criterion(inferences, labels, disco_target, weights)
         if torch.isnan(loss):
             raise ValueError(
                 f"Loss is NaN!"
@@ -83,11 +86,17 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
                 + f"\nmax(disco_target) = {disco_target.max()}"
                 + f"\nmin(disco_target) = {disco_target.min()}"
             )
+            torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
+            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
+            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
+            torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
 
         # Wrap up
         loss.backward()
         optimizer.step()
         loss_sum += loss.item()
+        bce_sum += bce.item()
+        disco_sum += disco.item()
 
         # Log end
         if do_logging:
@@ -97,7 +106,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
     print(f"[Epoch {epoch} summary]", flush=True)
     print(f"train runtime: {time.time() - train_t0:0.3f}s", flush=True)
     print(f"train loss:    {loss_sum/n_batches:0.6f}", flush=True)
-    return loss_sum/n_batches
+    return loss_sum/n_batches, bce_sum/n_batches, disco_sum/n_batches
 
 def roc_numbers(labels, inferences, thresh):
     TP = torch.sum((labels == 1) & (inferences >= thresh)).item()
@@ -119,7 +128,8 @@ def validate(model, device, val_loader, criterion):
         disco_target = disco_target.to(device)
 
         inferences = model(features).squeeze(1)
-        loss_sum += criterion(inferences, labels, disco_target, weights)
+        loss, bce, disco = criterion(inferences, labels, disco_target, weights)
+        loss_sum += loss.item()
 
         # define optimal threshold (thresh) where TPR = TNR
         diff, opt_thresh, opt_acc = 100, 0, 0
@@ -143,7 +153,7 @@ def test(model, device, test_loader, criterion, thresh=0.5):
     model.eval()
     n_batches = len(train_loader)
     losses, accs = [], []
-    loss_sum = 0
+    loss_sum, bce_sum, disco_sum = 0, 0, 0
     accs_sum = 0
     with torch.no_grad():
         for batch_i, (features, labels, weights, disco_target) in enumerate(train_loader):
@@ -162,12 +172,14 @@ def test(model, device, test_loader, criterion, thresh=0.5):
             accs_sum += acc
 
             # Compute loss
-            loss = criterion(inferences, labels, disco_target, weights)
+            loss, bce, disco = criterion(inferences, labels, disco_target, weights)
             loss_sum += loss.item()
+            bce_sum += bce.item()
+            disco_sum += disco.item()
 
     print(f"test loss:     {loss_sum/n_batches:0.6f}")
     print(f"test accuracy: {accs_sum/n_batches:0.6f}")
-    return loss_sum/n_batches, accs_sum/n_batches
+    return loss_sum/n_batches, bce_sum/n_batches, disco_sum/n_batches, accs_sum/n_batches
 
 if __name__ == "__main__":
     # CLI
@@ -250,7 +262,11 @@ if __name__ == "__main__":
     history_json = get_outfile(config, tag="history", ext="json")
     history = {
         "train_loss": [], 
+        "train_bce": [], 
+        "train_disco": [], 
         "test_loss": [], 
+        "test_bce": [], 
+        "test_disco": [], 
         "test_acc": [], 
         "slurm_id": os.environ.get("SLURM_JOB_ID", "local")
     }
@@ -259,12 +275,12 @@ if __name__ == "__main__":
         epoch_t0 = time.time()
         print_title(f"Epoch {epoch}")
         # Run training
-        train_loss = train(args, model, device, train_loader, optimizer, criterion, epoch)
+        train_loss, train_bce, train_disco = train(args, model, device, train_loader, optimizer, criterion, epoch)
         # Run validation
         thresh = validate(model, device, val_loader, criterion)
         print(f"optimal threshold: {thresh:0.6f}")
         # Run testing
-        test_loss, test_acc = test(model, device, test_loader, criterion, thresh=thresh)
+        test_loss, test_bce, test_disco, test_acc = test(model, device, test_loader, criterion, thresh=thresh)
         scheduler.step()
 
         # Save model
@@ -276,7 +292,11 @@ if __name__ == "__main__":
 
         # Save history
         history["train_loss"].append(train_loss)
+        history["train_bce"].append(train_bce)
+        history["train_disco"].append(train_disco)
         history["test_loss"].append(test_loss)
+        history["test_bce"].append(test_bce)
+        history["test_disco"].append(test_disco)
         history["test_acc"].append(test_acc)
         if epoch % 100 == 0 or epoch == n_epochs:
             with open(history_json, "w") as f:
