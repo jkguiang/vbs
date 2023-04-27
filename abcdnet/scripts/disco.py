@@ -11,7 +11,7 @@ from losses import SingleDisCoLoss
 from utils import VBSConfig
 from datasets import DisCoDataset
 
-def disco(loader):
+def disco(loader, disco_lambda):
     discos = []
     for batch_i, (features, labels, weights, disco_target) in enumerate(tqdm(loader)):
         # Load data
@@ -20,14 +20,9 @@ def disco(loader):
         weights = weights.to(device)
         disco_target = disco_target.to(device)
 
-        inferences = model(features)
+        inferences = model(features).squeeze(1)
 
-        disco = SingleDisCoLoss.dCorr(
-            inferences[labels == 0], 
-            disco_target[labels == 0], 
-            weights[labels == 0], 
-            power=2
-        )
+        disco = disco_lambda*SingleDisCoLoss.dCorr(inferences[labels == 0], disco_target[labels == 0], weights[labels == 0], power=2)
         discos.append(disco)
     
     return sum(discos)/len(discos)
@@ -43,6 +38,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
+    disco_lambda = config.train.get("disco_lambda", 0)
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
@@ -52,9 +48,18 @@ if __name__ == "__main__":
     model.load_state_dict(torch.load(saved_model, map_location=device))
     model.eval()
 
+    train_data = DisCoDataset.from_file(
+        ingress.get_outfile(config, tag="train", subdir="datasets", msg="Loading {}"), 
+        norm=True
+    )
+    print(train_data)
+    train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
+    print(f"Train disco: {disco(train_loader, disco_lambda):0.3f}")
+
     test_data = DisCoDataset.from_file(
         ingress.get_outfile(config, tag="test", subdir="datasets", msg="Loading {}"), 
-        norm=False
+        norm=True
     )
-    test_loader = DataLoader(test_data, batch_size=config.train.test_batch_size)
-    print(f"Test disco: {disco(test_loader):0.3f}")
+    print(test_data)
+    test_loader = DataLoader(test_data, batch_size=config.train.test_batch_size, shuffle=True)
+    print(f"Test disco: {disco(test_loader, disco_lambda):0.3f}")
