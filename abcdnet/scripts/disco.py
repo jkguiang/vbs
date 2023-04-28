@@ -49,7 +49,7 @@ if __name__ == "__main__":
     model.eval()
 
     train_data = DisCoDataset.from_file(
-        ingress.get_outfile(config, tag="train", subdir="datasets", msg="Loading {}"), 
+        ingress.get_outfile(config, tag="train", subdir="inputs", msg="Loading {}"), 
         norm=True
     )
     print(train_data)
@@ -57,7 +57,7 @@ if __name__ == "__main__":
     print(f"Train disco: {disco(train_loader, disco_lambda):0.3f}")
 
     test_data = DisCoDataset.from_file(
-        ingress.get_outfile(config, tag="test", subdir="datasets", msg="Loading {}"), 
+        ingress.get_outfile(config, tag="test", subdir="inputs", msg="Loading {}"), 
         norm=True
     )
     print(test_data)

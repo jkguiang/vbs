@@ -106,8 +106,6 @@ if __name__ == "__main__":
         # Process MC
         selection = config.ingress.get("selection", None)
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
-            if "test.pt" in pt_file or "train.pt" in pt_file or "val.pt" in pt_file:
-                continue
             print(f"Loading {pt_file}")
             loader = DataLoader(DisCoDataset.from_file(pt_file, norm=False))
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
@@ -123,7 +121,7 @@ if __name__ == "__main__":
         csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv", subdir="inferences")
         # Write testing inferences
         test_data = DisCoDataset.from_file(
-            ingress.get_outfile(config, tag="test", subdir="datasets", msg="Loading {}"), 
+            ingress.get_outfile(config, tag="test", subdir="inputs", msg="Loading {}"), 
             norm=False
         )
         print(test_data)
@@ -132,7 +130,7 @@ if __name__ == "__main__":
         times = infer(model, device, test_loader, test_csv)
         # Write training inferences
         train_data = DisCoDataset.from_file(
-            ingress.get_outfile(config, tag="train", subdir="datasets", msg="Loading {}"), 
+            ingress.get_outfile(config, tag="train", subdir="inputs", msg="Loading {}"), 
             norm=False
         )
         print(train_data)
@@ -141,7 +139,7 @@ if __name__ == "__main__":
         times += infer(model, device, train_loader, train_csv)
         # Write validation inferences
         val_data = DisCoDataset.from_file(
-            ingress.get_outfile(config, tag="val", subdir="datasets", msg="Loading {}"), 
+            ingress.get_outfile(config, tag="val", subdir="inputs", msg="Loading {}"), 
             norm=False
         )
         print(val_data)

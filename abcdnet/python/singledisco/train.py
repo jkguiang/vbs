@@ -83,8 +83,13 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
                 f"Loss is NaN!"
                 + f"\ninferences = {inferences}"
                 + f"\ndisco_target = {disco_target}"
+                + f"\nweights = {weights}"
+                + f"\nmax(inferences) = {inferences.max()}"
+                + f"\nmin(inferences) = {inferences.min()}"
                 + f"\nmax(disco_target) = {disco_target.max()}"
                 + f"\nmin(disco_target) = {disco_target.min()}"
+                + f"\nmax(weights) = {weights.max()}"
+                + f"\nmin(weights) = {weights.min()}"
             )
             torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
@@ -134,7 +139,7 @@ def validate(model, device, val_loader, criterion):
         # define optimal threshold (thresh) where TPR = TNR
         diff, opt_thresh, opt_acc = 100, 0, 0
         best_tpr, best_tnr = 0, 0
-        for thresh in np.arange(0.001, 0.5, 0.001):
+        for thresh in np.arange(0.001, 0.999, 0.001):
             TP, TN, FP, FN = roc_numbers(labels, inferences, thresh)
             acc = (TP+TN)/(TP+TN+FP+FN)
             TPR, TNR = TP/(TP+FN), TN/(TN+FP)
@@ -250,9 +255,9 @@ if __name__ == "__main__":
     print(f"{val_data} (val)")
 
     # Save datasets
-    train_data.save(ingress.get_outfile(config, tag="train", subdir="datasets", msg="Wrote {}"))
-    test_data.save(ingress.get_outfile(config, tag="test", subdir="datasets", msg="Wrote {}"))
-    val_data.save(ingress.get_outfile(config, tag="val", subdir="datasets", msg="Wrote {}"))
+    train_data.save(ingress.get_outfile(config, tag="train", subdir="inputs", msg="Wrote {}"))
+    test_data.save(ingress.get_outfile(config, tag="test", subdir="inputs", msg="Wrote {}"))
+    val_data.save(ingress.get_outfile(config, tag="val", subdir="inputs", msg="Wrote {}"))
 
     # Initialize loaders
     train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
@@ -278,7 +283,7 @@ if __name__ == "__main__":
         train_loss, train_bce, train_disco = train(args, model, device, train_loader, optimizer, criterion, epoch)
         # Run validation
         thresh = validate(model, device, val_loader, criterion)
-        print(f"optimal threshold: {thresh:0.6f}")
+        print(f"best thresh:   {thresh:0.6f}")
         # Run testing
         test_loss, test_bce, test_disco, test_acc = test(model, device, test_loader, criterion, thresh=thresh)
         scheduler.step()
