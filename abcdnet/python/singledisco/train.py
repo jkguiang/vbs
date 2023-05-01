@@ -260,9 +260,12 @@ if __name__ == "__main__":
     val_data.save(ingress.get_outfile(config, tag="val", subdir="inputs", msg="Wrote {}"))
 
     # Initialize loaders
-    train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
-    test_loader = DataLoader(test_data, batch_size=config.train.test_batch_size, shuffle=True)
-    val_loader = DataLoader(val_data, batch_size=config.train.val_batch_size, shuffle=True)
+    train_batch_size = round(len(train_data)/config.train.n_batches_train)
+    train_loader = DataLoader(train_data, batch_size=train_batch_size, shuffle=True, drop_last=True)
+    test_batch_size = round(len(test_data)/config.train.n_batches_test)
+    test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, drop_last=True)
+    val_batch_size = round(len(val_data)/config.train.n_batches_val)
+    val_loader = DataLoader(val_data, batch_size=val_batch_size, shuffle=True, drop_last=True)
 
     history_json = get_outfile(config, tag="history", ext="json")
     history = {

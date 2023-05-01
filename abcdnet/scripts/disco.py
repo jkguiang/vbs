@@ -53,7 +53,8 @@ if __name__ == "__main__":
         norm=True
     )
     print(train_data)
-    train_loader = DataLoader(train_data, batch_size=config.train.train_batch_size, shuffle=True)
+    train_batch_size = round(len(train_data)/config.train.n_batches_train)
+    train_loader = DataLoader(train_data, batch_size=train_batch_size, shuffle=True, drop_last=True)
     print(f"Train disco: {disco(train_loader, disco_lambda):0.3f}")
 
     test_data = DisCoDataset.from_file(
@@ -61,5 +62,6 @@ if __name__ == "__main__":
         norm=True
     )
     print(test_data)
-    test_loader = DataLoader(test_data, batch_size=config.train.test_batch_size, shuffle=True)
+    test_batch_size = round(len(test_data)/config.train.n_batches_test)
+    test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, drop_last=True)
     print(f"Test disco: {disco(test_loader, disco_lambda):0.3f}")
