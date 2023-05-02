@@ -110,21 +110,11 @@ if __name__ == "__main__":
         print(train_data)
         train_loader = DataLoader(train_data)
         train_csv = OutputCSV(csv_name.replace("REPLACE", "train"))
-        # Write validation inferences
-        val_data = DisCoDataset.from_file(
-            ingress.get_outfile(config, tag="val", subdir="inputs", msg="Loading {}"), 
-            norm=False
-        )
-        print(val_data)
-        val_loader = DataLoader(val_data)
-        val_csv = OutputCSV(csv_name.replace("REPLACE", "val"))
         if discotype == "singledisco":
             times += infer(model, device, test_loader, test_csv)
             times += infer(model, device, train_loader, train_csv)
-            times += infer(model, device, val_loader, val_csv)
         elif discotype == "doubledisco":
             times += infer(model1, model2, device, test_loader, test_csv)
             times += infer(model1, model2, device, train_loader, train_csv)
-            times += infer(model1, model2, device, val_loader, val_csv)
 
     print(f"Avg. inference time: {sum(times)/len(times)}s")
