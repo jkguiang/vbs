@@ -119,26 +119,21 @@ if __name__ == "__main__":
     print(f"Before norm: {data.n_label(0)} bkg, {data.n_label(1)} sig (total raw)")
 
     # Split into test, train, and validation
-    train_data, leftover_data = data.split(config.train.train_frac)
-    test_data, val_data = leftover_data.split(config.train.test_frac/(1 - config.train.train_frac))
+    train_data, test_data = data.split(config.train.train_frac)
     print("After norm:")
     print(f"{data} (total)")
     print(f"{train_data} (train)")
     print(f"{test_data} (test)")
-    print(f"{val_data} (val)")
 
     # Save datasets
     train_data.save(ingress.get_outfile(config, tag="train", subdir="inputs", msg="Wrote {}"))
     test_data.save(ingress.get_outfile(config, tag="test", subdir="inputs", msg="Wrote {}"))
-    val_data.save(ingress.get_outfile(config, tag="val", subdir="inputs", msg="Wrote {}"))
 
     # Initialize loaders
     train_batch_size = round(len(train_data)/config.train.n_batches_train)
     train_loader = DataLoader(train_data, batch_size=train_batch_size, shuffle=True, drop_last=True)
     test_batch_size = round(len(test_data)/config.train.n_batches_test)
     test_loader = DataLoader(test_data, batch_size=test_batch_size, shuffle=True, drop_last=True)
-    val_batch_size = round(len(val_data)/config.train.n_batches_val)
-    val_loader = DataLoader(val_data, batch_size=val_batch_size, shuffle=True, drop_last=True)
 
     history_json = get_outfile(config, tag="history", ext="json")
     history = {
