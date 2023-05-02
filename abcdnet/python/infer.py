@@ -72,7 +72,9 @@ if __name__ == "__main__":
         selection = config.ingress.get("selection", None)
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
             print(f"Loading {pt_file}")
-            loader = DataLoader(DisCoDataset.from_file(pt_file, norm=False))
+            data = DisCoDataset.from_file(pt_file, norm=False)
+            print(data)
+            loader = DataLoader(data)
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
             old_baby = f"{config.ingress.input_dir}/{name}.root"
             new_baby = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"

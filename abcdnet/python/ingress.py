@@ -102,6 +102,7 @@ def ingress_file(config, root_file, file_i, save=True):
         )
         if save:
             data.save(get_outfile(config, tag=sample_name, subdir="datasets", msg="Writing to {}"))
+            print(data)
         else:
             return data
 
