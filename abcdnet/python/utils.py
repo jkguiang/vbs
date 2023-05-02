@@ -1,6 +1,8 @@
 import json
 from types import SimpleNamespace
 
+import torch
+
 class VBSConfig(SimpleNamespace):
     @classmethod
     def from_json(cls, config_json, extra={}):
@@ -49,3 +51,10 @@ class VBSOutput:
 def print_title(text):
     text = f" {text} "
     print(f"{text:-^50}", flush=True)
+
+def roc_numbers(labels, inferences, thresh):
+    TP = torch.sum((labels == 1) & (inferences >= thresh)).item()
+    TN = torch.sum((labels == 0) & (inferences <  thresh)).item()
+    FP = torch.sum((labels == 0) & (inferences >= thresh)).item()
+    FN = torch.sum((labels == 1) & (inferences <  thresh)).item()
+    return TP, TN, FP, FN

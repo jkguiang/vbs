@@ -5,6 +5,8 @@
 #SBATCH --constraint=a100 
 #SBATCH --time=4:00:00
 #SBATCH --job-name=ABCDNet_infer
+#SBATCH --account avery 
+#SBATCH --qos avery
 
 source setup_hpg.sh
-python python/singledisco/infer.py $@
+python python/infer.py $@

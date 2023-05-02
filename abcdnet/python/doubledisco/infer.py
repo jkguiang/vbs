@@ -1,21 +1,12 @@
 #!/bin/env python
 
-import os
-import glob
-import argparse
 import time
 
 import uproot
 import numpy as np
-import torch
-from torch.utils.data import DataLoader
 from tqdm import tqdm
 
-import models
-import ingress
-import train
-from utils import VBSConfig, VBSOutput
-from datasets import DisCoDataset
+from infer import VBSOutput
 
 class OutputCSV(VBSOutput):
     def __init__(self, file_name):
@@ -54,7 +45,6 @@ class OutputROOT(VBSOutput):
             with uproot.recreate(self.__new_baby) as new_baby:
                 new_baby[self.__ttree_name] = tree
 
-
 def infer(model_1, model_2, device, loader, output):
     times = []
     for event_i, (features, labels, weights) in enumerate(tqdm(loader)):
@@ -80,62 +70,3 @@ def infer(model_1, model_2, device, loader, output):
     print(f"Wrote {output.file_name}")
 
     return times
-
-if __name__ == "__main__":
-    # CLI
-    parser = argparse.ArgumentParser(description="Run inference")
-    parser.add_argument("config_json", type=str, help="config JSON")
-    parser.add_argument(
-        "--epoch", type=int, default=50, metavar="N",
-        help="training epoch of model to use for inference (default: 50)"
-    )
-    parser.add_argument(
-        "--export", action="store_true",
-        help="write copy of input babies with 'abcdnet_score' branch"
-    )
-    args = parser.parse_args()
-
-    config = VBSConfig.from_json(args.config_json)
-    os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
-
-    device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
-
-    saved_model_1 = train.get_outfile(config, epoch=args.epoch, tag="model1")
-    saved_model_2 = train.get_outfile(config, epoch=args.epoch, tag="model2")
-    Model = getattr(models, config.model.name)
-    model_1 = Model.from_config(config).to(device)
-    model_2 = Model.from_config(config).to(device)
-    model_1.load_state_dict(torch.load(saved_model_1, map_location=device))
-    model_2.load_state_dict(torch.load(saved_model_2, map_location=device))
-    model.eval()
-
-    if args.export:
-        times = []
-        for pt_file in glob.glob(ingress.get_outfile(config, tag="*", msg="Loading files {}")): 
-            loader = DataLoader(DisCoDataset.from_file(pt_file))
-            name = pt_file.split(config.name+"_")[-1].split("_dataset")[0]
-            old_baby = f"{config.ingress.input_dir}/{name}.root"
-            new_baby = old_baby.replace(".root", "_abcdnet.root")
-            times += infer(model_1, model_2, device, loader, OutputROOT(old_baby, new_baby))
-    else:
-        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv")
-        # Write testing inferences
-        test_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="test", msg="Loading {}"), norm=False)
-        print(test_data)
-        test_loader = DataLoader(test_data)
-        test_csv = OutputCSV(csv_name.replace("REPLACE", "test"))
-        times = infer(model_1, model_2, device, test_loader, test_csv)
-        # Write training inferences
-        train_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="train", msg="Loading {}"), norm=False)
-        print(train_data)
-        train_loader = DataLoader(train_data)
-        train_csv = OutputCSV(csv_name.replace("REPLACE", "train"))
-        times += infer(model_1, model_2, device, train_loader, train_csv)
-        # Write validation inferences
-        val_data = DisCoDataset.from_file(ingress.get_outfile(config, tag="val", msg="Loading {}"), norm=False)
-        print(val_data)
-        val_loader = DataLoader(val_data)
-        val_csv = OutputCSV(csv_name.replace("REPLACE", "val"))
-        times += infer(model_1, model_2, device, val_loader, val_csv)
-
-    print(f"Avg. inference time: {sum(times)/len(times)}s")
