@@ -1,12 +1,13 @@
 #!/bin/env python
 
+import os
 import time
 
 import uproot
 import numpy as np
-from tqdm import tqdm
 
 from infer import VBSOutput
+from utils import SimpleProgress
 
 class OutputCSV(VBSOutput):
     def __init__(self, file_name):
@@ -45,7 +46,7 @@ class OutputROOT(VBSOutput):
 
 def infer(model, device, loader, output):
     times = []
-    for event_i, (features, labels, weights, disco_target) in enumerate(tqdm(loader)):
+    for event_i, (features, labels, weights, disco_target) in enumerate(SimpleProgress(loader)):
         # Load data
         features = features.to(device)
         labels = labels.to(device)

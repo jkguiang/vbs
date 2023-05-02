@@ -1,8 +1,6 @@
 import json
 from types import SimpleNamespace
 
-import torch
-
 class VBSConfig(SimpleNamespace):
     @classmethod
     def from_json(cls, config_json, extra={}):
@@ -48,13 +46,30 @@ class VBSOutput:
     def close(self):
         raise NotImplementedError()
 
+class SimpleProgress:
+    def __init__(self, iterable, n_checkpoints=10):
+        self.__iterable = list(iterable)
+        self.total = len(self.__iterable)
+        self.n_checkpoints = n_checkpoints
+        self.n_reports = 0
+        self.check = 0
+
+    def __iter__(self):
+        return self
+
+    def __next__(self):
+        if self.check >= self.n_reports*self.total/self.n_checkpoints:
+            self.n_reports += 1
+            print(f"{100*self.check/self.total:0.1f}% complete")
+
+        if self.check >= self.total:
+            raise StopIteration
+
+        item = self.__iterable[self.check]
+        self.check += 1
+
+        return item
+
 def print_title(text):
     text = f" {text} "
     print(f"{text:-^50}", flush=True)
-
-def roc_numbers(labels, inferences, thresh):
-    TP = torch.sum((labels == 1) & (inferences >= thresh)).item()
-    TN = torch.sum((labels == 0) & (inferences <  thresh)).item()
-    FP = torch.sum((labels == 0) & (inferences >= thresh)).item()
-    FN = torch.sum((labels == 1) & (inferences <  thresh)).item()
-    return TP, TN, FP, FN
