@@ -1,26 +1,12 @@
-import os
-import json
 import time
-import argparse
 
-import numpy as np
 import torch
-import torch.optim.lr_scheduler as lr_schedulers
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from torch import optim
-
-import models
-import ingress
-from utils import VBSConfig, print_title
-from losses import DoubleDisCoLoss
-from datasets import DisCoDataset
 
 def train(args, model1, model2, device, train_loader, optimizer, criterion, epoch):
     model1.train()
     model2.train()
     train_t0 = time.time()
-    loss_sum = 0
+    loss_sum, bce_sum, disco_sum = 0, 0, 0
     n_batches = len(train_loader)
     for batch_i, (features, labels, weights) in enumerate(train_loader):
         do_logging = (batch_i % args.log_interval == 0 or batch_i == n_batches - 1)
@@ -39,30 +25,50 @@ def train(args, model1, model2, device, train_loader, optimizer, criterion, epoc
         optimizer.zero_grad()
         inferences1 = model1(features).squeeze(1)
         inferences2 = model2(features).squeeze(1)
-        if torch.any(torch.isnan(inferences)):
+        if torch.any(torch.isnan(inferences1)) or torch.any(torch.isnan(inferences2)):
             raise ValueError(
-                f"Output contains NaN values!"
-                + f"\ninferences = {inferences}"
+                f"Some (or all) inferences are NaN(s)!"
+                + f"\ninferences1 = {inferences1}"
+                + f"\ninferences2 = {inferences2}"
                 + f"\nfeatures = {features}"
                 + f"\nmax(features) = {features.max()}"
                 + f"\nmin(features) = {features.min()}"
             )
+            torch.save(inferences1, get_outfile(config, tag="DEBUG_INFERENCES1"))
+            torch.save(inferences2, get_outfile(config, tag="DEBUG_INFERENCES2"))
+            torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
+            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
 
         # Calculate loss
-        loss = criterion(inferences1, inferences2, labels, weights)
+        loss, bce, disco = criterion(inferences1, inferences2, labels, weights)
         if torch.isnan(loss):
             raise ValueError(
                 f"Loss is NaN!"
-                + f"\ninferences = {inferences}"
+                + f"\ninferences1 = {inferences1}"
+                + f"\ninferences2 = {inferences2}"
                 + f"\ndisco_target = {disco_target}"
+                + f"\nweights = {weights}"
+                + f"\nmax(inferences1) = {inferences1.max()}"
+                + f"\nmin(inferences1) = {inferences1.min()}"
+                + f"\nmax(inferences2) = {inferences2.max()}"
+                + f"\nmin(inferences2) = {inferences2.min()}"
                 + f"\nmax(disco_target) = {disco_target.max()}"
                 + f"\nmin(disco_target) = {disco_target.min()}"
+                + f"\nmax(weights) = {weights.max()}"
+                + f"\nmin(weights) = {weights.min()}"
             )
+            torch.save(inferences1, get_outfile(config, tag="DEBUG_INFERENCES1"))
+            torch.save(inferences2, get_outfile(config, tag="DEBUG_INFERENCES2"))
+            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
+            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
+            torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
 
         # Wrap up
         loss.backward()
         optimizer.step()
         loss_sum += loss.item()
+        bce_sum += bce.item()
+        disco_sum += disco.item()
 
         # Log end
         if do_logging:
@@ -72,13 +78,13 @@ def train(args, model1, model2, device, train_loader, optimizer, criterion, epoc
     print(f"[Epoch {epoch} summary]", flush=True)
     print(f"train runtime: {time.time() - train_t0:0.3f}s", flush=True)
     print(f"train loss:    {loss_sum/n_batches:0.6f}", flush=True)
-    return loss_sum/n_batches
+    return loss_sum/n_batches, bce_sum/n_batches, disco_sum/n_batches
 
 def test(model1, model2, device, test_loader, criterion):
     model1.eval()
     model2.eval()
     n_batches = len(test_loader)
-    loss_sum = 0
+    loss_sum, bce_sum, disco_sum = 0, 0, 0
     with torch.no_grad():
         for batch_i, (features, labels, weights) in enumerate(test_loader):
             # Load data
@@ -91,8 +97,10 @@ def test(model1, model2, device, test_loader, criterion):
             inferences2 = model2(features).squeeze(1)
 
             # Compute loss
-            loss = criterion(inferences1, inferences2, labels, weights)
+            loss, bce, disco = criterion(inferences1, inferences2, labels, weights)
             loss_sum += loss.item()
+            bce_sum += bce.item()
+            disco_sum += disco.item()
 
     print(f"test loss:     {loss_sum/n_batches:0.6f}")
-    return loss_sum/n_batches
+    return loss_sum/n_batches, bce_sum/n_batches, disco_sum/n_batches

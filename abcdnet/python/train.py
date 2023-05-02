@@ -87,18 +87,23 @@ if __name__ == "__main__":
     if discotype == "singledisco":
         model = Model.from_config(config).to(device)
         total_trainable_params = sum(p.numel() for p in model.parameters())
+        optimizer = optim.Adam(
+            model.parameters(), 
+            lr=config.train.get("learning_rate", 0.001), 
+            weight_decay=config.train.get("weight_decay", 0)
+        )
     elif discotype == "doubledisco":
         model1 = Model.from_config(config).to(device)
         model2 = Model.from_config(config).to(device)
-        total_trainable_params = 2*sum(p.numel() for p in model.parameters())
+        total_trainable_params = 2*sum(p.numel() for p in model1.parameters())
+        optimizer = optim.Adam(
+            list(model1.parameters()) + list(model2.parameters()), 
+            lr=config.train.get("learning_rate", 0.001), 
+            weight_decay=config.train.get("weight_decay", 0)
+        )
 
     print(f"total trainable params: {total_trainable_params}")
 
-    optimizer = optim.Adam(
-        model.parameters(), 
-        lr=config.train.get("learning_rate", 0.001), 
-        weight_decay=config.train.get("weight_decay", 0)
-    )
     Scheduler = getattr(lr_schedulers, config.train.scheduler_name)
     scheduler = Scheduler(optimizer, **config.train.scheduler_kwargs)
 
