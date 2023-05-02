@@ -23,7 +23,6 @@ TARBALL=$CWD/tarballs/${ABCDNAME}.tar.gz
 echo "Creating ${TARBALL}..."
 
 cd $INPUTDIR/$ABCDNAME
-# tar -zcvf $TARBALL $INPUTDIR/$ABCDNAME/*_abcdnet.root $INPUTDIR/data.root
 tar -zcvf $TARBALL *_abcdnet.root
 cd $CWD
 

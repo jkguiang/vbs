@@ -112,7 +112,6 @@ def ingress(config, save=True):
         lambda f: "data.root" not in f and "abcdnet" not in f,
         glob.glob(f"{config.ingress.input_dir}/*.root")
     )
-    # transforms = config.ingress.get("transforms", {})
     for file_i, root_file in enumerate(root_files):
         ingress_file(config, root_file, file_i, save=True)
 
