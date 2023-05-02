@@ -1,20 +1,6 @@
-import os
-import json
 import time
-import argparse
 
-import numpy as np
 import torch
-import torch.optim.lr_scheduler as lr_schedulers
-import torch.nn.functional as F
-from torch.utils.data import DataLoader
-from torch import optim
-
-import models
-import ingress
-from utils import VBSConfig, print_title, roc_numbers
-from losses import SingleDisCoLoss
-from datasets import DisCoDataset
 
 def train(args, model, device, train_loader, optimizer, criterion, epoch):
     model.train()
@@ -40,7 +26,7 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
         inferences = model(features).squeeze(1)
         if torch.any(torch.isnan(inferences)):
             raise ValueError(
-                f"Output contains NaN values!"
+                f"Some (or all) inferences are NaN(s)!"
                 + f"\ninferences = {inferences}"
                 + f"\nfeatures = {features}"
                 + f"\nmax(features) = {features.max()}"
