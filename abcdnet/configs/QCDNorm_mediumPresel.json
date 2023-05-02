@@ -1,0 +1,12 @@
+{
+    "ingress": {
+        "input_dir": "output_pnetfix/Run2",
+        "ttree_name": "tree", 
+        "selection": "(hbbfatjet_xbb > 0.5) & (ld_vqqfatjet_xwqq > 0.3) & (tr_vqqfatjet_xwqq > 0.3)",
+        "weights": [
+            "xsec_sf",
+            "pu_sf",
+            "prefire_sf"
+        ]
+    }
+}
