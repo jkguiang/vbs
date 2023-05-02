@@ -51,15 +51,15 @@ if __name__ == "__main__":
 
     Model = getattr(models, config.model.name)
     if discotype == "singledisco":
-        saved_model = train.get_outfile(config, epoch=args.epoch, tag="model", subdir="models", msg="Loading {}")
         model = Model.from_config(config).to(device)
+        saved_model = train.get_outfile(config, epoch=args.epoch, tag="model", subdir="models", msg="Loading {}")
         model.load_state_dict(torch.load(saved_model, map_location=device))
         model.eval()
     elif discotype == "doubledisco":
-        saved_model1 = train.get_outfile(config, epoch=args.epoch, tag="model1", subdir="models", msg="Loading {}")
-        saved_model2 = train.get_outfile(config, epoch=args.epoch, tag="model2", subdir="models", msg="Loading {}")
         model1 = Model.from_config(config).to(device)
         model2 = Model.from_config(config).to(device)
+        saved_model1 = train.get_outfile(config, epoch=args.epoch, tag="model1", subdir="models", msg="Loading {}")
+        saved_model2 = train.get_outfile(config, epoch=args.epoch, tag="model2", subdir="models", msg="Loading {}")
         model1.load_state_dict(torch.load(saved_model1, map_location=device))
         model2.load_state_dict(torch.load(saved_model2, map_location=device))
         model1.eval()
@@ -72,7 +72,7 @@ if __name__ == "__main__":
         selection = config.ingress.get("selection", None)
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
             print(f"Loading {pt_file}")
-            data = DisCoDataset.from_file(pt_file, norm=False)
+            data = DisCoDataset.from_file(pt_file, is_single_disco=(discotype == "singledisco"), norm=False)
             print(data)
             loader = DataLoader(data)
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
@@ -91,12 +91,13 @@ if __name__ == "__main__":
         if discotype == "singledisco":
             times += infer(model, device, loader, output)
         elif discotype == "doubledisco":
-            times += infer(model, device, loader, output)
+            times += infer(model1, model2, device, loader, output)
     else:
         csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv", subdir="inferences")
         # Write testing inferences
         test_data = DisCoDataset.from_file(
             ingress.get_outfile(config, tag="test", subdir="inputs", msg="Loading {}"), 
+            is_single_disco=(discotype == "singledisco"),
             norm=False
         )
         print(test_data)
@@ -105,6 +106,7 @@ if __name__ == "__main__":
         # Write training inferences
         train_data = DisCoDataset.from_file(
             ingress.get_outfile(config, tag="train", subdir="inputs", msg="Loading {}"), 
+            is_single_disco=(discotype == "singledisco"),
             norm=False
         )
         print(train_data)
