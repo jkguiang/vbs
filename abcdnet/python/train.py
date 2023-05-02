@@ -117,7 +117,7 @@ if __name__ == "__main__":
     print_title("Input data")
     data = DisCoDataset.from_files(
         ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
-        is_single_disco=(config.ingress.get("disco_target", None) != None),
+        is_single_disco=(discotype == "singledisco"),
         norm=config.ingress.get("weight_norm", True)
     )
     data.plot(config)
