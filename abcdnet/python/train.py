@@ -118,7 +118,7 @@ if __name__ == "__main__":
     data = DisCoDataset.from_files(
         ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
         is_single_disco=(discotype == "singledisco"),
-        norm=config.ingress.get("weight_norm", True)
+        norm=config.train.get("weight_norm", True)
     )
     data.plot(config)
     print(f"Before norm: {data.n_label(0)} bkg, {data.n_label(1)} sig (total raw)")
