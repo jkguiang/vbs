@@ -1,6 +1,6 @@
 import os
 import glob
-import uproot
+import matplotlib.pyplot as plt
 import torch
 from torch.utils.data import Dataset
 
@@ -44,7 +44,14 @@ class DisCoDataset(Dataset):
             return f"DisCoDataset: {n_sig:0.1f} sig, {n_bkg:0.1f} bkg"
 
     def __add__(self, other):
-        return DisCoDataset.__from_tensor(torch.cat((self.data, other.data), dim=1), self.is_single_disco)
+        if self.norm != other.norm:
+            raise ValueError(f"Inconsistent normalization schemes between {self} and {other}")
+        
+        return DisCoDataset.__from_tensor(
+            torch.cat((self.data, other.data), dim=1), 
+            self.is_single_disco,
+            norm=self.norm
+        )
 
     def __len__(self):
         return self.data.size()[-1]
@@ -97,81 +104,98 @@ class DisCoDataset(Dataset):
     def n_label(self, label):
         return torch.sum(self.labels == label).item()
 
+    def __plot(self, config, values, name, plots_dir, norm=True):
+        fig, axes = plt.subplots(figsize=(10, 10))
+        is_signal = (self.labels == 1)
+        sig_vals = values[is_signal]
+        sig_wgts = self.weights[is_signal]
+        bkg_vals = values[~is_signal]
+        bkg_wgts = self.weights[~is_signal]
+
+        # Compute binning
+        bin_max = values.abs().max().item()
+        bin_width = round(bin_max/100) if bin_max >= 100 else bin_max/100
+
+        if torch.any(values < 0):
+            bins = torch.linspace(-100*bin_width, 100*bin_width, 101)
+        else:
+            bins = torch.linspace(0, 100*bin_width, 101)
+
+        centers = 0.5*(bins[1:] + bins[:-1])
+
+        # Clamp values s.t. first bin is underflow and last bin is overflow
+        sig_vals = sig_vals.clamp(min=centers[0], max=centers[-1])
+        bkg_vals = bkg_vals.clamp(min=centers[0], max=centers[-1])
+
+        # Get bkg histogram counts
+        bkg_events = torch.sum(bkg_wgts).item()
+        bkg_counts, _ = torch.histogram(bkg_vals, bins=bins, weight=bkg_wgts)
+        if norm:
+            bkg_counts /= torch.sum(bkg_counts)
+
+        # Plot bkg histogram
+        axes.hist(
+            centers, 
+            bins=bins, 
+            weights=bkg_counts,
+            color="k",
+            alpha=0.75,
+            label=f"total bkg [{bkg_events:0.1f} events]"
+        )
+
+        # Get sig histogram counts
+        sig_events = bkg_wgts.sum().item()
+        sig_counts, _ = torch.histogram(sig_vals, bins=bins, weight=sig_wgts)
+        if norm:
+            sig_counts /= sig_counts.sum()
+
+        # Plot sig histogram
+        axes.hist(
+            centers,
+            bins=bins,
+            weights=sig_counts,
+            histtype="step",
+            color="r",
+            label=f"total sig [{sig_events:0.1f} events]"
+        )
+
+        # Format axes
+        axes.legend()
+        axes.autoscale()
+        if norm:
+            axes.set_ylabel("a.u.")
+        else:
+            axes.set_ylabel("Events")
+
+        axes.set_xlabel(name)
+
+        # Save plot
+        outname = f"{plots_dir}/{config.name}_{name}.png"
+        plt.savefig(outname, bbox_inches="tight")
+        print(f"Wrote {outname}")
+        plt.close()
+
     def plot(self, config, norm=True):
-        import matplotlib.pyplot as plt
         plots_dir = f"{config.basedir}/{config.name}/plots"
         os.makedirs(plots_dir, exist_ok=True)
-        for feature_i in range(self.features.size()[0]):
-            fig, axes = plt.subplots(figsize=(10, 10))
-            is_signal = (self.labels == 1)
-            sig_vals = self.features[feature_i][is_signal]
-            sig_wgts = self.weights[is_signal]
-            bkg_vals = self.features[feature_i][~is_signal]
-            bkg_wgts = self.weights[~is_signal]
-
-            # Compute binning
-            bin_max = self.features[feature_i].abs().max().item()
-            bin_width = round(bin_max/100) if bin_max >= 100 else bin_max/100
-
-            if torch.all(sig_vals >= 0) and torch.all(bkg_vals >= 0):
-                bins = torch.linspace(0, 100*bin_width, 101)
-            else:
-                bins = torch.linspace(-100*bin_width, 100*bin_width, 101)
-
-            centers = 0.5*(bins[1:] + bins[:-1])
-
-            # Clip values s.t. first bin is underflow and last bin is overflow
-            sig_vals = sig_vals.clamp(min=centers[0], max=centers[-1])
-            bkg_vals = bkg_vals.clamp(min=centers[0], max=centers[-1])
-
-            # Get bkg histogram counts
-            bkg_events = torch.sum(bkg_wgts).item()
-            bkg_counts, _ = torch.histogram(bkg_vals, bins=bins, weight=bkg_wgts)
-            if norm:
-                bkg_counts /= torch.sum(bkg_counts)
-
-            # Plot bkg histogram
-            axes.hist(
-                centers, 
-                bins=bins, 
-                weights=bkg_counts,
-                color="k",
-                alpha=0.75,
-                label=f"total bkg [{bkg_events:0.1f} events]"
+        # Plot features
+        for feature_i in range(len(self.features)):
+            self.__plot(
+                config,
+                self.features[feature_i],
+                config.ingress.features[feature_i],
+                plots_dir,
+                norm=norm
             )
-
-            # Get sig histogram counts
-            sig_events = bkg_wgts.sum().item()
-            sig_counts, _ = torch.histogram(sig_vals, bins=bins, weight=sig_wgts)
-            if norm:
-                sig_counts /= sig_counts.sum()
-
-            # Plot sig histogram
-            axes.hist(
-                centers,
-                bins=bins,
-                weights=sig_counts,
-                histtype="step",
-                color="r",
-                label=f"total sig [{sig_events:0.1f} events]"
+        # Plot DisCo target
+        if self.is_single_disco:
+            self.__plot(
+                config,
+                self.disco_target,
+                config.ingress.disco_target,
+                plots_dir,
+                norm=norm
             )
-
-            # Format axes
-            axes.legend()
-            axes.autoscale()
-            if norm:
-                axes.set_ylabel("a.u.")
-            else:
-                axes.set_ylabel("Events")
-
-            feature_name = config.ingress.features[feature_i]
-            axes.set_title(feature_name)
-
-            # Save plot
-            outname = f"{plots_dir}/{config.name}_{feature_name}.png"
-            plt.savefig(outname, bbox_inches="tight")
-            print(f"Wrote {outname}")
-            plt.close()
 
     def save(self, outfile):
         torch.save(self.data, outfile)
@@ -200,6 +224,6 @@ class DisCoDataset(Dataset):
                 right_data = torch.cat((right_data, r_data), dim=1)
 
         return (
-            DisCoDataset.__from_tensor(left_data, self.is_single_disco),
-            DisCoDataset.__from_tensor(right_data, self.is_single_disco)
+            DisCoDataset.__from_tensor(left_data, self.is_single_disco, norm=self.norm),
+            DisCoDataset.__from_tensor(right_data, self.is_single_disco, norm=self.norm)
         )
