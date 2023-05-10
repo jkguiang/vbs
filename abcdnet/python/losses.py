@@ -3,13 +3,17 @@ import torch.nn as nn
 import torch.nn.functional as F
 
 class SingleDisCoLoss(nn.Module):
-    def __init__(self, disco_lambda):
+    def __init__(self, disco_lambda, dCorr_power=2):
         super().__init__()
         self.disco_lambda = disco_lambda
+        self.dCorr_power = dCorr_power
 
     @classmethod
     def from_config(cls, config):
-        return cls(config.train.get("disco_lambda", 0))
+        return cls(
+            config.train.get("disco_lambda", 0),
+            dCorr_power=config.train.get("disco_power", 2)
+        )
 
     @staticmethod
     def dCorr(var_1, var_2, normed_weight, power=1):
@@ -56,12 +60,12 @@ class SingleDisCoLoss(nn.Module):
 
     def forward(self, inferences, labels, disco_target, weights):
         BCE = F.binary_cross_entropy(inferences, labels, reduction="mean", weight=weights)
-        dCorr2 = self.dCorr(inferences[labels == 0], disco_target[labels == 0], weights[labels == 0], power=2)
-        return BCE + self.disco_lambda*dCorr2, BCE, self.disco_lambda*dCorr2
+        dCorr = self.dCorr(inferences[labels == 0], disco_target[labels == 0], weights[labels == 0], power=self.dCorr_power)
+        return BCE + self.disco_lambda*dCorr, BCE, self.disco_lambda*dCorr
 
 class DoubleDisCoLoss(SingleDisCoLoss):
     def forward(self, inferences_1, inferences_2, labels, weights):
         BCE_1 = F.binary_cross_entropy(inferences_1, labels, reduction="mean", weight=weights)
         BCE_2 = F.binary_cross_entropy(inferences_2, labels, reduction="mean", weight=weights)
-        dCorr2 = self.dCorr(inferences_1[labels == 0], inferences_2[labels == 0], weights[labels == 0], power=2)
-        return BCE_1 + BCE_2 + self.disco_lambda*dCorr2, BCE_1 + BCE_2, self.disco_lambda*dCorr2
+        dCorr = self.dCorr(inferences_1[labels == 0], inferences_2[labels == 0], weights[labels == 0], power=self.dCorr_power)
+        return BCE_1 + BCE_2 + self.disco_lambda*dCorr, BCE_1 + BCE_2, self.disco_lambda*dCorr
