@@ -6,7 +6,7 @@
         "hidden_size": 64
     },
     "ingress": {
-        "input_dir": "output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm",
+        "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm",
         "signal_file": "VBSVVH.root",
         "ttree_name": "tree", 
         "selection": "(hbbfatjet_xbb > 0.5) & (ld_vqqfatjet_xwqq > 0.3) & (tr_vqqfatjet_xwqq > 0.3)",
@@ -23,15 +23,20 @@
             "tr_vqqfatjet_eta",
             "tr_vqqfatjet_phi",
             "tr_vqqfatjet_mass", 
-            "M_jj",
-            "abs_deta_jj"
+            "M_jj"
         ],
         "transforms": {
             "hbbfatjet_pt": "log",
-            "hbbfatjet_mass": "rescale",
             "ld_vqqfatjet_pt": "log",
-            "ld_vqqfatjet_mass": "rescale",
             "tr_vqqfatjet_pt": "log",
+            "hbbfatjet_eta": "rescale",
+            "ld_vqqfatjet_eta": "rescale",
+            "tr_vqqfatjet_eta": "rescale",
+            "hbbfatjet_phi": "rescale",
+            "ld_vqqfatjet_phi": "rescale",
+            "tr_vqqfatjet_phi": "rescale",
+            "hbbfatjet_mass": "rescale",
+            "ld_vqqfatjet_mass": "rescale",
             "tr_vqqfatjet_mass": "rescale",
             "M_jj": "rescale"
         },
@@ -40,7 +45,8 @@
             "pu_sf",
             "prefire_sf",
             "qcdnorm_sf"
-        ]
+        ],
+        "disco_target": "abs_deta_jj"
     },
     "train": {
         "train_frac": 0.8,
@@ -52,7 +58,8 @@
         "scheduler_kwargs": {
             "factor": 1.0
         },
-        "disco_lambda": 100,
-        "n_epochs": 1500
+        "disco_lambda": 30,
+        "disco_power": 1,
+        "n_epochs": 1000
     }
 }
