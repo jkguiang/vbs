@@ -113,7 +113,7 @@ def ingress(config, save=True):
         glob.glob(f"{config.ingress.input_dir}/*.root")
     )
     for file_i, root_file in enumerate(root_files):
-        ingress_file(config, root_file, file_i, save=True)
+        ingress_file(config, root_file, file_i, save=save)
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ingress data")
