@@ -2,7 +2,9 @@ import time
 
 import torch
 
-def train(args, model, device, train_loader, optimizer, criterion, epoch):
+from train import get_outfile
+
+def train(args, config, model, device, train_loader, optimizer, criterion, epoch):
     model.train()
     train_t0 = time.time()
     loss_sum, bce_sum, disco_sum = 0, 0, 0
@@ -25,6 +27,9 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
         optimizer.zero_grad()
         inferences = model(features).squeeze(1)
         if torch.any(torch.isnan(inferences)):
+            torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
+            torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
+            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
             raise ValueError(
                 f"Some (or all) inferences are NaN(s)!"
                 + f"\ninferences = {inferences}"
@@ -32,13 +37,14 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
                 + f"\nmax(features) = {features.max()}"
                 + f"\nmin(features) = {features.min()}"
             )
-            torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
-            torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
-            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
 
         # Calculate loss
         loss, bce, disco = criterion(inferences, labels, disco_target, weights)
         if torch.isnan(loss):
+            torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
+            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
+            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
+            torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
             raise ValueError(
                 f"Loss is NaN!"
                 + f"\ninferences = {inferences}"
@@ -51,10 +57,6 @@ def train(args, model, device, train_loader, optimizer, criterion, epoch):
                 + f"\nmax(weights) = {weights.max()}"
                 + f"\nmin(weights) = {weights.min()}"
             )
-            torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
-            torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
-            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
-            torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
 
         # Wrap up
         loss.backward()
