@@ -156,12 +156,12 @@ if __name__ == "__main__":
         print_title(f"Epoch {epoch}")
         if discotype == "singledisco":
             # Run training
-            train_results = train(args, model, device, train_loader, optimizer, criterion, epoch)
+            train_results = train(args, config, model, device, train_loader, optimizer, criterion, epoch)
             # Run testing
             test_results = test(model, device, test_loader, criterion)
         elif discotype == "doubledisco":
             # Run training
-            train_results = train(args, model1, model2, device, train_loader, optimizer, criterion, epoch)
+            train_results = train(args, config, model1, model2, device, train_loader, optimizer, criterion, epoch)
             # Run testing
             test_results = test(model1, model2, device, test_loader, criterion)
 
