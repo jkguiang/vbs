@@ -63,6 +63,7 @@ int main(int argc, char** argv)
     cutflow.globals.newVar<Integers>("veto_lep_pdgIDs", {});
     cutflow.globals.newVar<Integers>("tight_lep_pdgIDs", {});
     cutflow.globals.newVar<LorentzVectors>("jet_p4s", {});
+    cutflow.globals.newVar<double>("ht_ak8", -999);
 
     Core::Skimmer skimmer = Core::Skimmer(arbusto, nt, cli, cutflow);
 
@@ -78,7 +79,7 @@ int main(int argc, char** argv)
         "NoVetoLeptons", 
         [&]() 
         { 
-            return cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s").size() == 0; 
+            return (cutflow.globals.getVal<LorentzVectors>("veto_lep_p4s").size() == 0);
         }
     );
     cutflow.insert(find_leps, no_leps, Right);
@@ -88,6 +89,7 @@ int main(int argc, char** argv)
         [&]() 
         { 
             LorentzVectors fatjet_p4s = {};
+            double ht = 0.;
             for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); fatjet_i++)
             {
                 LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
@@ -98,19 +100,23 @@ int main(int argc, char** argv)
                     && nt.FatJet_jetId().at(fatjet_i) > 0)
                 {
                     fatjet_p4s.push_back(fatjet_p4);
+                    ht += fatjet_p4.pt();
                 }
             }
-            if (fatjet_p4s.size() >= 2)
-            {
-                return true;
-            }
-            else
-            {
-                return false;
-            }
+            cutflow.globals.setVal<double>("ht_ak8", ht);
+            return (fatjet_p4s.size() >= 2);
         }
     );
     cutflow.insert(no_leps, geq2_fatjets, Right);
+
+    Cut* htgt1100 = new LambdaCut(
+        "AK8HTgt1100", 
+        [&]() 
+        { 
+            return (cutflow.globals.getVal<double>("ht_ak8") > 1100);
+        }
+    );
+    cutflow.insert(geq2_fatjets, htgt1100, Right);
 
     Cut* geq2_jets = new LambdaCut(
         "Geq2Jets",
@@ -133,7 +139,7 @@ int main(int argc, char** argv)
             return (jet_p4s.size() >= 2);
         }
     );
-    cutflow.insert(geq2_fatjets, geq2_jets, Right);
+    cutflow.insert(htgt1100, geq2_jets, Right);
 
     Cut* find_vbsjets = new LambdaCut(
         "FindVBSJetPairs", 
@@ -180,7 +186,8 @@ int main(int argc, char** argv)
                 cutflow.globals.resetVars();
                 // Run cutflow
                 nt.GetEntry(entry);
-                bool passed = cutflow.run("FindVBSJetPairs");
+                // bool passed = cutflow.run("FindVBSJetPairs"); // v2
+                bool passed = cutflow.run("AK8HTgt1100");
                 if (passed) { arbusto.fill(entry); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
