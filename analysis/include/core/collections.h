@@ -122,6 +122,7 @@ struct Analysis
         arbol.newBranch<double>("puid_sf_up", -999);
         arbol.newBranch<double>("puid_sf_dn", -999);
         // Jet (AK8) branches
+        arbol.newBranch<double>("HT_fat", -999);
         arbol.newBranch<int>("n_fatjets", -999);
         // VBS jet branches
         arbol.newBranch<double>("ld_vbsjet_pt", -999);
@@ -131,6 +132,9 @@ struct Analysis
         arbol.newBranch<double>("tr_vbsjet_eta", -999);
         arbol.newBranch<double>("tr_vbsjet_phi", -999);
         arbol.newBranch<double>("M_jj", -999);
+        arbol.newBranch<double>("pt_jj", -999);
+        arbol.newBranch<double>("eta_jj", -999);
+        arbol.newBranch<double>("phi_jj", -999);
         arbol.newBranch<double>("deta_jj", -999);
         arbol.newBranch<double>("abs_deta_jj", 999);
         arbol.newBranch<double>("dR_jj", -999);
