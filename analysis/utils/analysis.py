@@ -21,12 +21,15 @@ def clip(np_array, bins):
 class PandasAnalysis:
     def __init__(self, sig_root_files=None, bkg_root_files=None, data_root_files=None, 
                  ttree_name="Events", weight_columns=None, reweight_column=None, 
-                 plots_dir=None, sample_labels={}, drop_columns=[], lumi=138):
+                 plots_dir=None, sample_labels={}, drop_columns=[], lumi=138, 
+                 cms_label="Preliminary", cms_size=None):
 
         if reweight_column:
             drop_columns.append(reweight_column)
 
         self.lumi = lumi
+        self.cms_label = cms_label
+        self.cms_size = cms_size
         dfs = []
         self.sig_reweights = None
         # Load signal
@@ -233,6 +236,15 @@ class PandasAnalysis:
         df = self.data_df(selection=selection)
         return np.sqrt(len(df))
 
+    def sample_count(self, name, selection=None, raw=False):
+        df = self.sample_df(name, selection=selection)
+        return len(df) if raw else df.event_weight.sum()
+
+    def sample_error(self, name, selection=None, raw=False):
+        df = self.sample_df(name, selection=selection)
+        weights = np.ones(len(df)) if raw else df.event_weight
+        return np.sqrt(np.sum(weights**2))
+
     def dump_plots(self, plots_yaml):
         return
 
@@ -298,7 +310,7 @@ class PandasAnalysis:
         elif typ == "sig":
             hist.plot(ax=axes, linewidth=2, log=logy)
 
-        hep.cms.label("Preliminary", data=False, lumi=self.lumi, loc=0, ax=axes)
+        hep.cms.label(self.cms_label, data=(self.cms_label != "Preliminary"), lumi=self.lumi, loc=0, ax=axes, fontsize=self.cms_size)
         
         axes.set_xlabel(x_label)
         if not logy:
@@ -374,6 +386,11 @@ class Optimization(PandasAnalysis):
 
     def plot_correlation(self, column, bins, weights=None, base_selection=None, selections=None, x_label="", 
                          logy=False, norm=True, transf=lambda x: x):
+
+        markers = ["s", "o", "^", "v", "<", ">", "+", "*"]
+        if len(selections) + 1 > len(markers):
+            raise Exception(f"no more than {len(markers)} selections are supported")
+
         fig = plt.figure()
         gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
         hist_axes = fig.add_subplot(gs[0])
@@ -396,7 +413,8 @@ class Optimization(PandasAnalysis):
         if norm:
             denom = denom.normalize()
 
-        denom.plot(ax=hist_axes, label="before", color="k")
+        denom.plot(ax=hist_axes, color="k")
+        denom.plot(ax=hist_axes, label="before", color="k", alpha=0.15, histtype="stepfilled")
 
         for selection_i, selection in enumerate(selections):
             numer_df = self.bkg_df(selection=f"({base_selection}) and ({selection})")
@@ -412,16 +430,11 @@ class Optimization(PandasAnalysis):
             if norm:
                 numer = numer.normalize()
 
-            numer.plot(ax=hist_axes, label=f"after {selection}")
+            numer.plot(ax=hist_axes)
+            numer.plot(ax=hist_axes, errors=True, label=f"after {selection}", fmt=markers[selection_i])
             (numer/denom).plot(ax=ratio_axes, errors=True)
             
-        hep.cms.label(
-            "Preliminary",
-            data=False,
-            lumi=self.lumi,
-            loc=0,
-            ax=hist_axes,
-        )
+        hep.cms.label(self.cms_label, data=(self.cms_label != "Preliminary"), lumi=self.lumi, loc=0, ax=hist_axes, fontsize=self.cms_size)
 
         hist_axes.legend(fontsize=14)
         if norm:
@@ -513,34 +526,6 @@ class Optimization(PandasAnalysis):
         if norm:
             bkg_hist = bkg_hist.normalize()
             sig_hist = sig_hist.normalize()
-            
-        # DEBUG DEBUG
-        # bkg_counts = bkg_hist.counts.copy()
-        # bkg_counts[bkg_counts == 0] = 1e-12
-        # # blinded_bins = (sig_hist.counts/bkg_counts > 0.005)
-        # blinded_bins = (bkg_counts + sig_hist.counts > bkg_counts + 0.1*bkg_hist.errors)
-        # bkg_hist.counts[blinded_bins] = 0
-        # blind_boxes = zip(
-        #     bkg_hist.bin_centers[blinded_bins] - bkg_hist.bin_widths[blinded_bins]/2,
-        #     bkg_hist.bin_centers[blinded_bins] + bkg_hist.bin_widths[blinded_bins]/2
-        # )
-        # for box_i, (blind_low, blind_high) in enumerate(blind_boxes):
-        #     if box_i == 0:
-        #         axes.hist(
-        #             [],
-        #             facecolor="whitesmoke",
-        #             edgecolor="lightgrey",
-        #             hatch="//////",
-        #             label="Blinded"
-        #         )
-        #     axes.axvspan(
-        #         blind_low, blind_high,
-        #         facecolor="whitesmoke",
-        #         edgecolor="lightgrey",
-        #         hatch="//////",
-        #         zorder=1.9
-        #     )
-        # DEBUG DEBUG
 
         # Plot everything
         if bkg_hists:
@@ -567,7 +552,7 @@ class Optimization(PandasAnalysis):
             label=u"Background unc. [stat]"
         )
 
-        hep.cms.label("Preliminary", data=False, lumi=self.lumi, loc=0, ax=axes)
+        hep.cms.label(self.cms_label, data=(self.cms_label != "Preliminary"), lumi=self.lumi, loc=0, ax=axes, fontsize=self.cms_size)
         
         axes.set_xlabel(x_label)
         if not logy:
@@ -695,9 +680,9 @@ class Validation(PandasAnalysis):
                 zorder=1.9
             )
 
-    def plot_data_vs_mc(self, column, bins, weights=None, blinded_range=None, blinded_box=True, 
-                        selection="", x_label="", logy=False, transf=lambda x: x, norm=False, 
-                        stacked=False, axes=None, return_hists=False, legend_loc="best"):
+    def plot_data_vs_mc(self, column, bins, weights=None, blinded_range=None, blinded_box=True, autoblind=True,
+                        sig_scale=0, selection="", x_label="", logy=False, transf=lambda x: x, norm=False, 
+                        stacked=False, axes=None, return_hists=False, legend_loc="best", ratio_ylim=[0, 2]):
         if not axes:
             fig = plt.figure()
             gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
@@ -719,30 +704,37 @@ class Validation(PandasAnalysis):
         bkg_df = self.bkg_df(selection=selection)
         sig_df = self.sig_df(selection=selection)
         
+        data_weights = data_df.event_weight.copy()
+        bkg_weights = bkg_df.event_weight.copy()
+        sig_weights = sig_df.event_weight.copy()
+        
         if weights:
             for weight in weights:
-                data_df.event_weight *= data_df[weight]
-                bkg_df.event_weight *= bkg_df[weight]
-                sig_df.event_weight *= sig_df[weight]
+                data_weights *= data_df[weight]
+                bkg_weights *= bkg_df[weight]
+                sig_weights *= sig_df[weight]
 
         data_hist = yahist.Hist1D(
             transf(data_df[column]),
             bins=bins,
-            weights=data_df.event_weight,
+            weights=data_weights,
             label=f"Data [{len(data_df)} events]",
             color="k"
         )
         bkg_hist = yahist.Hist1D(
             transf(bkg_df[column]),
             bins=bins,
-            weights=bkg_df.event_weight,
-            label=f"Total MC [{bkg_df.event_weight.sum():0.1f} events]",
+            weights=bkg_weights,
+            label=f"Total background [{bkg_df.event_weight.sum():0.1f} events]",
             color="k"
         )
+
         sig_hist = yahist.Hist1D(
             transf(sig_df[column]),
             bins=bins,
-            weights=sig_df.event_weight
+            weights=sig_weights,
+            label=f"Total signal [{sig_df.event_weight.sum():0.1f} events]",
+            color="r"
         )
 
         # Get bkg MC bin counts for automatic blinding
@@ -757,7 +749,8 @@ class Validation(PandasAnalysis):
             bkg_hist = bkg_hist.normalize()
 
         # Do automatic blinding
-        data_hist.counts[autoblind_bins] = 0
+        if autoblind:
+            data_hist.counts[autoblind_bins] = 0
 
         # Get stacked backgrounds
         bkg_hists = []
@@ -792,6 +785,12 @@ class Validation(PandasAnalysis):
         bkg_hist.plot(ax=hist_axes, alpha=0.5, zorder=1)
         data_hist.plot(ax=hist_axes, errors=True, zorder=1.2)
         ratio_hist.plot(ax=ratio_axes, errors=True, color="k", zorder=1.2)
+
+        if sig_scale > 0:
+            if sig_scale != 1:
+                sig_hist *= sig_scale
+                sig_hist.metadata["label"] = f"Total signal (x{sig_scale}) [{np.sum(sig_hist.counts):0.1f} events]"
+            sig_hist.plot(ax=hist_axes, linewidth=2)
 
         # Get bkg MC bin counts for error calculation (again in case of norm)
         bkg_counts = bkg_hist.counts.copy()
@@ -837,9 +836,9 @@ class Validation(PandasAnalysis):
         ratio_axes.legend().remove()
         ratio_axes.set_xlabel(x_label)
         ratio_axes.set_ylabel("data/MC")
-        ratio_axes.set_ylim([0, 2])
+        ratio_axes.set_ylim(ratio_ylim)
 
-        hep.cms.label("Preliminary", data=True, lumi=self.lumi, loc=0, ax=hist_axes)
+        hep.cms.label(self.cms_label, data=True, lumi=self.lumi, loc=0, ax=hist_axes, fontsize=self.cms_size)
 
         if stacked:
             hist_axes.legend(fontsize=14, loc=legend_loc).set_zorder(101)
@@ -900,7 +899,7 @@ class Extrapolation(PandasAnalysis):
         where Region D is the signal region, and Regions A, B, and C are control regions 
         such that the yield in Region D can be estimated from data as follows: 
 
-            Prediceted Region D = (Region C)*(Region A)/(Region B)
+            Predicted Region D = (Region C)*(Region A)/(Region B)
 
         Returns the predicted yield in Region D with the statistical and systematic 
         percent errors when possible. 

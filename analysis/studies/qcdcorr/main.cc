@@ -89,6 +89,11 @@ int main(int argc, char** argv)
     xwqq_hists3Dalt.push_back(new TH3D("ld_vqqfatjet_xwqqscore3Dalt", "ld_vqqfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
     xwqq_hists3Dalt.push_back(new TH3D("tr_vqqfatjet_xwqqscore3Dalt", "tr_vqqfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
     for (auto hist : xwqq_hists3Dalt) { hist->Sumw2(); }
+    std::vector<TH3D*> xvqq_hists3Dalt;
+    xvqq_hists3Dalt.push_back(new TH3D("hbbfatjet_xvqqscore3Dalt", "hbbfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
+    xvqq_hists3Dalt.push_back(new TH3D("ld_vqqfatjet_xvqqscore3Dalt", "ld_vqqfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
+    xvqq_hists3Dalt.push_back(new TH3D("tr_vqqfatjet_xvqqscore3Dalt", "tr_vqqfatjet", n_ptbins, ptbin_edges, n_xbbbins, xbbbin_edges, n_scorebins, scorebin_edges));
+    for (auto hist : xvqq_hists3Dalt) { hist->Sumw2(); }
 
     // Book histograms
     for (auto cut_name : cuts_to_book)
@@ -99,6 +104,7 @@ int main(int argc, char** argv)
             TH3D* xvqq_hist3D = xvqq_hists3D.at(hist_i);
             TH3D* xwqq_hist3D = xwqq_hists3D.at(hist_i);
             TH3D* xwqq_hist3Dalt = xwqq_hists3Dalt.at(hist_i);
+            TH3D* xvqq_hist3Dalt = xvqq_hists3Dalt.at(hist_i);
             TH2D* xbb_hist2D = xbb_hists2D.at(hist_i);
             TH2D* xvqq_hist2D = xvqq_hists2D.at(hist_i);
             TH2D* xwqq_hist2D = xwqq_hists2D.at(hist_i);
@@ -148,6 +154,17 @@ int main(int argc, char** argv)
                     return std::make_tuple(pt, xbb, xwqq);
                 }
             );
+            cutflow.bookHist3D<TH3D>(
+                cut_name, xvqq_hist3Dalt, 
+                [&, obj_name]() 
+                {
+                    unsigned int gidx = cutflow.globals.getVal<unsigned int>(obj_name+"_gidx");
+                    double pt = arbol.getLeaf<double>(obj_name+"_pt");
+                    double xbb = cutflow.globals.getVal<Doubles>("good_fatjet_xbbtags").at(gidx);
+                    double xvqq = cutflow.globals.getVal<Doubles>("good_fatjet_xvqqtags").at(gidx);
+                    return std::make_tuple(pt, xbb, xvqq);
+                }
+            );
             cutflow.bookHist2D<TH2D>(
                 cut_name, xbb_hist2D, 
                 [&, obj_name]() 
@@ -184,7 +201,7 @@ int main(int argc, char** argv)
     // Run looper
     tqdm bar;
     looper.run(
-        [&, xbb_rwgt](TTree* ttree)
+        [&](TTree* ttree)
         {
             nt.Init(ttree);
             analysis.init();
