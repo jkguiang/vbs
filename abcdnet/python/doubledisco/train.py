@@ -28,10 +28,16 @@ def train(args, config, model1, model2, device, train_loader, optimizer, criteri
         inferences1 = model1(features).squeeze(1)
         inferences2 = model2(features).squeeze(1)
         if torch.any(torch.isnan(inferences1)) or torch.any(torch.isnan(inferences2)):
+            torch.save(
+                model.state_dict(), 
+                get_outfile(config, epoch=epoch, tag="DEBUG_MODEL")
+            )
             torch.save(inferences1, get_outfile(config, tag="DEBUG_INFERENCES1"))
             torch.save(inferences2, get_outfile(config, tag="DEBUG_INFERENCES2"))
             torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
+            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
+            torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
             raise ValueError(
                 f"Some (or all) inferences are NaN(s)!"
                 + f"\ninferences1 = {inferences1}"
@@ -44,8 +50,13 @@ def train(args, config, model1, model2, device, train_loader, optimizer, criteri
         # Calculate loss
         loss, bce, disco = criterion(inferences1, inferences2, labels, weights)
         if torch.isnan(loss):
+            torch.save(
+                model.state_dict(), 
+                get_outfile(config, epoch=epoch, tag="DEBUG_MODEL")
+            )
             torch.save(inferences1, get_outfile(config, tag="DEBUG_INFERENCES1"))
             torch.save(inferences2, get_outfile(config, tag="DEBUG_INFERENCES2"))
+            torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
             torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
             torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))

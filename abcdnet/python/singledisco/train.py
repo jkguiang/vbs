@@ -27,9 +27,15 @@ def train(args, config, model, device, train_loader, optimizer, criterion, epoch
         optimizer.zero_grad()
         inferences = model(features).squeeze(1)
         if torch.any(torch.isnan(inferences)):
+            torch.save(
+                model.state_dict(), 
+                get_outfile(config, epoch=epoch, tag="DEBUG_MODEL")
+            )
             torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
             torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
+            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
+            torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
             raise ValueError(
                 f"Some (or all) inferences are NaN(s)!"
                 + f"\ninferences = {inferences}"
@@ -41,7 +47,12 @@ def train(args, config, model, device, train_loader, optimizer, criterion, epoch
         # Calculate loss
         loss, bce, disco = criterion(inferences, labels, disco_target, weights)
         if torch.isnan(loss):
+            torch.save(
+                model.state_dict(), 
+                get_outfile(config, epoch=epoch, tag="DEBUG_MODEL")
+            )
             torch.save(inferences, get_outfile(config, tag="DEBUG_INFERENCES"))
+            torch.save(features, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
             torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
             torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
