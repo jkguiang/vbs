@@ -1,9 +1,11 @@
 # ABCDNet
 Automated ABCD + SR machinery as proposed by Kasieczka et al. (https://doi.org/10.1103/PhysRevD.103.035021).
+The instructions below were formulated for running this code on the [HiPerGator](https://www.rc.ufl.edu/about/hipergator/) (HPG) HPC system at UFL.
 
 # Quick start
 See the instructions below this section for a more in-depth explanation of each step. 
 This section will reproduce the 3D gaussians example from the PRL paper referenced above.
+
 1. Make the Gaussian data via some interactive session
 ```
 # Run on a CPU node: more responsible, but will take longer to match
@@ -47,39 +49,43 @@ sbatch batch/full.script configs/Gaussians3D_PRL_dCorr.json
 5. Check `/blue/p.chang/USER/data/vbsvvh` for the output files
 
 # Instructions
-The following instructions were formulated for running this code on the [HiPerGator](https://www.rc.ufl.edu/about/hipergator/) (HPG) HPC system at UFL.
-1. Examine the configuration JSON; this is (in principle) the only file that needs to be edited
-2. Ingress the data (as far as I can tell, this is not accelerated with GPUs)
+This section enumerates the training steps for ABCDNet. 
+Note that a single batch script can instead be used to submit a job to perform all of the steps on a worker node--see step (7). 
+
+1. Edit the configuration JSON; this is (in principle) the only file that needs to be edited
+2. Run the training steps
 ```
+# Run interactively
+srun --partition=gpu --gpus=1 --mem=16gb --constraint=a100 --pty bash -i # interactive session
 source setup_hpg.sh
 python python/ingress.py configs/CONFIG.json
-```
-3. Request a GPU node either in an interactive session or via batch submission, then run training:
-```
-srun --partition=gpu --gpus=1 --mem=16gb --constraint=a100 --pty bash -i # interactive session
 python python/train.py configs/CONFIG.json
+python python/infer.py configs/CONFIG.json --epoch=100
+exit
 ```
 ```
+# Run in batch
+sbatch batch/ingress.script configs/CONFIG.json
 sbatch batch/train.script configs/CONFIG.json
+sbatch batch/infer.script configs/CONFIG.json --epoch=100
 ```
-4. Same as above, but for inference:
+4. You can make performance plots via the HPG [JupyterHub](https://jhub.rc.ufl.edu)
+5. Finally, you can export the scores back to the input baby ROOT files using the `infer.py` script:
 ```
+# Run interactively
 srun --partition=gpu --gpus=1 --mem=16gb --constraint=a100 --pty bash -i # interactive session
-python python/infer.py configs/CONFIG.json
-```
-```
-sbatch batch/infer.script configs/CONFIG.json
-```
-5. You can make performance plots via the HPG [JupyterHub](https://jhub.rc.ufl.edu)
-6. Otherwise, you can export the scores back to the input baby ROOT files using the `infer.py` script:
-```
+source setup_hpg.sh
 python python/infer.py --export configs/CONFIG.json
 ```
-7. I have written a handy script to copy the results to the UAFs
+```
+# Run in batch
+sbatch batch/infer.script configs/CONFIG.json --epoch=100 --export
+```
+6. I have written a handy script to copy the results to the UAFs
 ```
 sh scripts/export.sh configs/CONFIG.json jguiang@uaf-10.t2.ucsd.edu:/ceph/cms/store/user/jguiang/ABCDNet
 ```
-8. There is also a batch script for running the entire workflow:
+7. There is also a batch script for running the entire workflow shown in step (2)
 ```
 sbatch batch/full.script configs/CONFIG.json
 ```
