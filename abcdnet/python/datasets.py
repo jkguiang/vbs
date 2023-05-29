@@ -66,7 +66,7 @@ class DisCoDataset(Dataset):
         ```
         def get_filled_copy(self, data=None, norm=None):
             if data is None:
-                data = self.data
+                data = self.data.clone()
             if norm is None:
                 norm = self.norm
             data = torch.transpose(data, 0, 1)
@@ -124,7 +124,7 @@ class DisCoDataset(Dataset):
         )
 
         # Get sig histogram counts
-        sig_events = bkg_wgts.sum().item()
+        sig_events = sig_wgts.sum().item()
         sig_counts, _ = torch.histogram(sig_vals, bins=bins, weight=sig_wgts)
         if norm:
             sig_counts /= sig_counts.sum()
@@ -232,7 +232,7 @@ class SingleDisCoDataset(DisCoDataset):
 
     def get_filled_copy(self, data=None, norm=None):
         if data is None:
-            data = self.data
+            data = self.data.clone()
         if norm is None:
             norm = self.norm
         data = torch.transpose(data, 0, 1)
@@ -275,7 +275,7 @@ class DoubleDisCoDataset(DisCoDataset):
 
     def get_filled_copy(self, data=None, norm=None):
         if data is None:
-            data = self.data
+            data = self.data.clone()
         if norm is None:
             norm = self.norm
         data = torch.transpose(data, 0, 1)
