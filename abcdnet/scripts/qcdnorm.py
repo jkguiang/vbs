@@ -8,10 +8,9 @@ import numpy as np
 
 from utils import VBSConfig
 
-def get_n_events(root_file, ttree_name, weight_branches, selection=None):
+def get_event_count(root_file, ttree_name, weight_branches, selection=None):
     with uproot.open(root_file) as f:
         tree = f[ttree_name].arrays(weight_branches, cut=selection)
-        n_events = len(tree[weight_branches[0]])
         weights = None
         for branch_i, weight_branch in enumerate(weight_branches):
             if branch_i == 0:
@@ -21,17 +20,17 @@ def get_n_events(root_file, ttree_name, weight_branches, selection=None):
 
         return weights.sum().item()
 
-def get_qcdnorm(config, qcd_file, data_file):
-    n_qcd = get_n_events(
+def get_qcdnorm(config, qcd_file, data_file, signal_file):
+    n_qcd = get_event_count(
         qcd_file, config.ingress.ttree_name, config.ingress.weights, selection=config.ingress.selection
     )
     n_other = 0
     for other_file in glob.glob(f"{config.ingress.input_dir}/*.root"):
-        if other_file != qcd_file and other_file != data_file:
-            n_other += get_n_events(
+        if other_file not in [qcd_file, data_file, signal_file]:
+            n_other += get_event_count(
                 other_file, config.ingress.ttree_name, config.ingress.weights, selection=config.ingress.selection
             )
-    n_data = get_n_events(
+    n_data = get_event_count(
         data_file, config.ingress.ttree_name, config.ingress.weights, selection=config.ingress.selection
     )
     return (n_data - n_other)/n_qcd
@@ -49,7 +48,8 @@ if __name__ == "__main__":
 
     qcd_file = f"{indir}/QCD.root"
     data_file = f"{indir}/data.root"
-    qcdnorm = get_qcdnorm(config, qcd_file, data_file)
+    signal_file = f"{indir}/{config.ingress.signal_file}"
+    qcdnorm = get_qcdnorm(config, qcd_file, data_file, signal_file)
 
     # Open the existing ROOT file
     for baby in glob.glob(f"{indir}/*.root"):
