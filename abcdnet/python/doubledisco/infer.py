@@ -48,19 +48,20 @@ class OutputROOT(VBSOutput):
 
 def infer(model_1, model_2, device, loader, output):
     times = []
-    for event_i, (features, labels, weights) in enumerate(SimpleProgress(loader)):
+    for event_i, (features1, features2, labels, weights) in enumerate(SimpleProgress(loader)):
         # Load data
-        features = features.to(device)
+        features1 = features1.to(device)
+        features2 = features2.to(device)
         labels = labels.to(device)
         weights = weights.to(device)
 
         start = time.time()
-        inferences_1 = model_1(features)
+        inferences_1 = model_1(features1)
         end = time.time()
         times.append(end - start)
 
         start = time.time()
-        inferences_2 = model_2(features)
+        inferences_2 = model_2(features2)
         end = time.time()
         times.append(end - start)
 

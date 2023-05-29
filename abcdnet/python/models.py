@@ -28,10 +28,17 @@ class NeuralNetwork(nn.Module):
 
     @classmethod
     def from_config(cls, config):
-        input_size = len(config.ingress.features)
         n_hidden_layers = config.model.n_hidden_layers
         hidden_size = config.model.hidden_size
-        return cls(input_size, n_hidden_layers, hidden_size)
+        if config.discotype == "single":
+            input_size = len(config.ingress.features)
+            return cls(input_size, n_hidden_layers, hidden_size)
+        else:
+            input_size1 = len(config.ingress.features1)
+            input_size2 = len(config.ingress.features2)
+            model1 = cls(input_size1, n_hidden_layers, hidden_size)
+            model2 = cls(input_size2, n_hidden_layers, hidden_size)
+            return model1, model2
 
     def forward(self, x):
         return self.layers(x)
@@ -60,10 +67,17 @@ class LeakyNeuralNetwork(nn.Module):
 
     @classmethod
     def from_config(cls, config):
-        input_size = len(config.ingress.features)
         n_hidden_layers = config.model.n_hidden_layers
         hidden_size = config.model.hidden_size
-        return cls(input_size, n_hidden_layers, hidden_size)
+        if config.discotype == "single":
+            input_size = len(config.ingress.features)
+            return cls(input_size, n_hidden_layers, hidden_size)
+        else:
+            input_size1 = len(config.ingress.features1)
+            input_size2 = len(config.ingress.features2)
+            model1 = cls(input_size1, n_hidden_layers, hidden_size)
+            model2 = cls(input_size2, n_hidden_layers, hidden_size)
+            return model1, model2
 
     def forward(self, x):
         return self.layers(x)

@@ -40,24 +40,25 @@ if __name__ == "__main__":
     config = VBSConfig.from_json(args.config_json)
     os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
 
-    if config.ingress.get("disco_target", None):
-        discotype = "singledisco"
+    if config.discotype == "single":
         from singledisco.infer import infer, OutputCSV, OutputROOT
-    else:
-        discotype = "doubledisco"
+        from datasets import SingleDisCoDataset
+    elif config.discotype == "double":
         from doubledisco.infer import infer, OutputCSV, OutputROOT
+        from datasets import DoubleDisCoDataset
 
     device = torch.device("cuda" if torch.cuda.is_available() else "cpu")
 
     Model = getattr(models, config.model.name)
-    if discotype == "singledisco":
+    if config.discotype == "single":
         model = Model.from_config(config).to(device)
         saved_model = train.get_outfile(config, epoch=args.epoch, tag="model", subdir="models", msg="Loading {}")
         model.load_state_dict(torch.load(saved_model, map_location=device))
         model.eval()
-    elif discotype == "doubledisco":
-        model1 = Model.from_config(config).to(device)
-        model2 = Model.from_config(config).to(device)
+    elif config.discotype == "double":
+        model1, model2 = Model.from_config(config)
+        model1 = model1.to(device)
+        model2 = model2.to(device)
         saved_model1 = train.get_outfile(config, epoch=args.epoch, tag="model1", subdir="models", msg="Loading {}")
         saved_model2 = train.get_outfile(config, epoch=args.epoch, tag="model2", subdir="models", msg="Loading {}")
         model1.load_state_dict(torch.load(saved_model1, map_location=device))
@@ -72,50 +73,61 @@ if __name__ == "__main__":
         selection = config.ingress.get("selection", None)
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
             print(f"Loading {pt_file}")
-            data = DisCoDataset.from_file(pt_file, is_single_disco=(discotype == "singledisco"), norm=False)
+            if config.discotype == "single":
+                data = SingleDisCoDataset.from_file(pt_file, norm=False)
+            elif config.discotype == "double":
+                data = DoubleDisCoDataset.from_file(pt_file, norm=False)
             print(data)
             loader = DataLoader(data)
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
             old_baby = f"{config.ingress.input_dir}/{name}.root"
             new_baby = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
             output = OutputROOT(old_baby, new_baby, selection=selection)
-            if discotype == "singledisco":
+            if config.discotype == "single":
                 times += infer(model, device, loader, output)
-            elif discotype == "doubledisco":
+            elif config.discotype == "double":
                 times += infer(model1, model2, device, loader, output)
         # Run inference on data
         loader = DataLoader(ingress.ingress_file(config, f"{config.ingress.input_dir}/data.root", -1, save=False))
         old_baby = f"{config.ingress.input_dir}/data.root"
         new_baby = f"{config.ingress.input_dir}/{config.name}/data_abcdnet.root"
         output = OutputROOT(old_baby, new_baby, selection=selection)
-        if discotype == "singledisco":
+        if config.discotype == "single":
             times += infer(model, device, loader, output)
-        elif discotype == "doubledisco":
+        elif config.discotype == "double":
             times += infer(model1, model2, device, loader, output)
     else:
-        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv", subdir="inferences")
-        # Write testing inferences
-        test_data = DisCoDataset.from_file(
-            ingress.get_outfile(config, tag="test", subdir="inputs", msg="Loading {}"), 
-            is_single_disco=(discotype == "singledisco"),
-            norm=False
-        )
-        print(test_data)
+        # Load testing and training data
+        if config.discotype == "single":
+            test_data = SingleDisCoDataset.from_file(
+                ingress.get_outfile(config, tag="test", subdir="inputs", msg="Loading {}"), 
+                norm=False
+            )
+            train_data = SingleDisCoDataset.from_file(
+                ingress.get_outfile(config, tag="train", subdir="inputs", msg="Loading {}"), 
+                norm=False
+            )
+        if config.discotype == "double":
+            test_data = DoubleDisCoDataset.from_file(
+                ingress.get_outfile(config, tag="test", subdir="inputs", msg="Loading {}"), 
+                norm=False
+            )
+            train_data = DoubleDisCoDataset.from_file(
+                ingress.get_outfile(config, tag="train", subdir="inputs", msg="Loading {}"), 
+                norm=False
+            )
         test_loader = DataLoader(test_data)
-        test_csv = OutputCSV(csv_name.replace("REPLACE", "test"))
-        # Write training inferences
-        train_data = DisCoDataset.from_file(
-            ingress.get_outfile(config, tag="train", subdir="inputs", msg="Loading {}"), 
-            is_single_disco=(discotype == "singledisco"),
-            norm=False
-        )
-        print(train_data)
         train_loader = DataLoader(train_data)
+        print(test_data)
+        print(train_data)
+        # Write testing and training inferences
+        csv_name = train.get_outfile(config, epoch=args.epoch, tag="REPLACE_inferences", ext="csv", subdir="inferences")
+        test_csv = OutputCSV(csv_name.replace("REPLACE", "test"))
         train_csv = OutputCSV(csv_name.replace("REPLACE", "train"))
-        if discotype == "singledisco":
+        if config.discotype == "single":
             times += infer(model, device, test_loader, test_csv)
             times += infer(model, device, train_loader, train_csv)
-        elif discotype == "doubledisco":
+        elif config.discotype == "double":
             times += infer(model1, model2, device, test_loader, test_csv)
             times += infer(model1, model2, device, train_loader, train_csv)
 

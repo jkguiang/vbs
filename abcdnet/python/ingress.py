@@ -6,7 +6,7 @@ import uproot
 import torch
 
 from utils import VBSConfig
-from datasets import DisCoDataset
+from datasets import SingleDisCoDataset, DoubleDisCoDataset
 
 def get_outfile(config, tag, ext="pt", subdir=None, msg=None):
     outdir = f"{config.basedir}/{config.name}"
@@ -36,15 +36,19 @@ def transform(feature, transf):
 
 def ingress_file(config, root_file, file_i, save=True):
     transforms = config.ingress.get("transforms", {})
+    if config.discotype == "single":
+        feature_names = config.ingress.features
+    elif config.discotype == "double":
+        feature_names = config.ingress.features1 + config.ingress.features2
     print(f"Loading {root_file}")
     with uproot.open(root_file) as f:
         # Collect branches to ingress
         branches = (
-            config.ingress.features 
+            feature_names
             + config.ingress.get("label", []) 
             + config.ingress.get("weights", [])
         )
-        if config.ingress.get("disco_target", None):
+        if config.discotype == "single":
             branches.append(config.ingress.disco_target)
 
         # Load TTree
@@ -55,7 +59,7 @@ def ingress_file(config, root_file, file_i, save=True):
 
         # Load features
         features = []
-        for feature_branch in config.ingress.features:
+        for feature_branch in feature_names:
             feature = torch.tensor(tree[feature_branch], dtype=torch.float)
             feature = transform(feature, transforms.get(feature_branch, None))
             features.append(feature)
@@ -92,24 +96,35 @@ def ingress_file(config, root_file, file_i, save=True):
             disco_target = transform(disco_target, transforms.get(config.ingress.disco_target, None))
 
         # Save dataset
-        data = DisCoDataset(
-            features,
-            labels,
-            weights,
-            sample_number,
-            disco_target=disco_target,
-            norm=False
-        )
+        if config.discotype == "single":
+            data = SingleDisCoDataset(
+                features,
+                labels,
+                weights,
+                sample_number,
+                disco_target,
+                norm=False
+            )
+        elif config.discotype == "double":
+            data = DoubleDisCoDataset(
+                features,
+                labels,
+                weights,
+                sample_number,
+                len(config.ingress.features1),
+                len(config.ingress.features2),
+                norm=False
+            )
         if save:
             print(f"Created {data}")
-            data.save(get_outfile(config, tag=sample_name, subdir="datasets", msg="Writing to {}"))
+            torch.save(data, get_outfile(config, tag=sample_name, subdir="datasets", msg="Writing to {}"))
         else:
             return data
 
 
 def ingress(config, save=True):
     root_files = filter(
-        lambda f: "data.root" not in f and "abcdnet" not in f,
+        lambda f: "data.root" not in f and "abcdnet.root" not in f,
         glob.glob(f"{config.ingress.input_dir}/*.root")
     )
     for file_i, root_file in enumerate(root_files):

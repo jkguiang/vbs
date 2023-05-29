@@ -2,6 +2,13 @@ import json
 from types import SimpleNamespace
 
 class VBSConfig(SimpleNamespace):
+    @property
+    def discotype(self):
+        if self.ingress.get("disco_target", None):
+            return "single"
+        else:
+            return "double"
+
     @classmethod
     def from_json(cls, config_json, extra={}):
         with open(config_json, "r") as f:

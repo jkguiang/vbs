@@ -61,14 +61,14 @@ if __name__ == "__main__":
     print_title("Configuration")
     print(config)
 
-    if config.ingress.get("disco_target", None):
-        discotype = "singledisco"
+    if config.discotype == "single":
         from singledisco.train import train, test
         from losses import SingleDisCoLoss
-    else:
-        discotype = "doubledisco"
+        from datasets import SingleDisCoDataset
+    elif config.discotype == "double":
         from doubledisco.train import train, test
         from losses import DoubleDisCoLoss
+        from datasets import DoubleDisCoDataset
 
     # Write copy of config
     config.write(
@@ -84,44 +84,46 @@ if __name__ == "__main__":
 
     # Load model(s)
     Model = getattr(models, config.model.name)
-    if discotype == "singledisco":
+    if config.discotype == "single":
         model = Model.from_config(config).to(device)
-        total_trainable_params = sum(p.numel() for p in model.parameters())
-        optimizer = optim.Adam(
-            model.parameters(), 
-            lr=config.train.get("learning_rate", 0.001), 
-            weight_decay=config.train.get("weight_decay", 0)
-        )
-    elif discotype == "doubledisco":
-        model1 = Model.from_config(config).to(device)
-        model2 = Model.from_config(config).to(device)
-        total_trainable_params = 2*sum(p.numel() for p in model1.parameters())
-        optimizer = optim.Adam(
-            list(model1.parameters()) + list(model2.parameters()), 
-            lr=config.train.get("learning_rate", 0.001), 
-            weight_decay=config.train.get("weight_decay", 0)
-        )
+        params = list(model.parameters())
+    elif config.discotype == "double":
+        model1, model2 = Model.from_config(config)
+        model1 = model1.to(device)
+        model2 = model2.to(device)
+        params = list(model1.parameters()) + list(model2.parameters())
 
-    print(f"total trainable params: {total_trainable_params}")
+    print(f"total trainable params: {len(params)}")
 
+    # Initialize optimizer and scheduler
+    optimizer = optim.Adam(
+        params, 
+        lr=config.train.get("learning_rate", 0.001), 
+        weight_decay=config.train.get("weight_decay", 0)
+    )
     Scheduler = getattr(lr_schedulers, config.train.scheduler_name)
     scheduler = Scheduler(optimizer, **config.train.scheduler_kwargs)
 
     # Initialize loss function
-    if discotype == "singledisco":
+    if config.discotype == "single":
         criterion = SingleDisCoLoss.from_config(config)
-    elif discotype == "doubledisco":
+    elif config.discotype == "double":
         criterion = DoubleDisCoLoss.from_config(config)
 
     # Load data
     print_title("Input data")
-    data = DisCoDataset.from_files(
-        ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
-        is_single_disco=(discotype == "singledisco"),
-        norm=config.train.get("weight_norm", True)
-    )
+    if config.discotype == "single":
+        data = SingleDisCoDataset.from_files(
+            ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
+            norm=config.train.get("weight_norm", True)
+        )
+    elif config.discotype == "double":
+        data = DoubleDisCoDataset.from_files(
+            ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
+            norm=config.train.get("weight_norm", True)
+        )
     data.plot(config)
-    print(f"Before norm: {data.n_label(0)} bkg, {data.n_label(1)} sig (total raw)")
+    print(f"Before norm: {data.count_label(0)} bkg, {data.count_label(1)} sig (total raw)")
 
     # Split into test, train, and validation
     train_data, test_data = data.split(config.train.train_frac)
@@ -131,8 +133,8 @@ if __name__ == "__main__":
     print(f"{test_data} (test)")
 
     # Save datasets
-    train_data.save(ingress.get_outfile(config, tag="train", subdir="inputs", msg="Wrote {}"))
-    test_data.save(ingress.get_outfile(config, tag="test", subdir="inputs", msg="Wrote {}"))
+    torch.save(train_data, ingress.get_outfile(config, tag="train", subdir="inputs", msg="Wrote {}"))
+    torch.save(test_data, ingress.get_outfile(config, tag="test", subdir="inputs", msg="Wrote {}"))
 
     # Initialize loaders
     train_batch_size = round(len(train_data)/config.train.n_batches_train)
@@ -154,12 +156,12 @@ if __name__ == "__main__":
     for epoch in range(1, n_epochs + 1):
         epoch_t0 = time.time()
         print_title(f"Epoch {epoch}")
-        if discotype == "singledisco":
+        if config.discotype == "single":
             # Run training
             train_results = train(args, config, model, device, train_loader, optimizer, criterion, epoch)
             # Run testing
             test_results = test(model, device, test_loader, criterion)
-        elif discotype == "doubledisco":
+        elif config.discotype == "double":
             # Run training
             train_results = train(args, config, model1, model2, device, train_loader, optimizer, criterion, epoch)
             # Run testing
@@ -169,12 +171,12 @@ if __name__ == "__main__":
 
         # Save model(s)
         if epoch % 5 == 0 or epoch == n_epochs:
-            if discotype == "singledisco":
+            if config.discotype == "single":
                 torch.save(
                     model.state_dict(), 
                     get_outfile(config, epoch=epoch, tag="model", subdir="models", msg="Wrote {}")
                 )
-            elif discotype == "doubledisco":
+            elif config.discotype == "double":
                 torch.save(
                     model1.state_dict(), 
                     get_outfile(config, epoch=epoch, tag="model1", subdir="models", msg="Wrote {}")
