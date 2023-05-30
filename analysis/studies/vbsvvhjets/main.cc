@@ -189,7 +189,7 @@ int main(int argc, char** argv)
 
                 // Run cutflow
                 std::vector<std::string> cuts_to_check = {
-                    "AllMerged_SaveVariables"
+                    "SemiMerged_SaveVariables"
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
                 if (checkpoints.at(0)) { arbol.fill(); }
