@@ -2,11 +2,22 @@ if [[ "$1" == "" || "$2" == "" ]]; then
     echo "Usage: sh scripts/export.sh config/CONFIG.json USER@HOST.EXT:/path/to/destination/dir"
     exit 1
 fi
-mkdir -p tarballs
+
+BASEDIR=$(cat $1 | grep -o '"basedir": "[^"]*"' | sed 's/"basedir": "//' | sed 's/"//' | awk '{print $1}')
+INPUTDIR=$(cat $1 | grep -o '"input_dir": "[^"]*"' | sed 's/"input_dir": "//' | sed 's/"//' | awk '{print $1}')
+
+if [[ "$BASEDIR" == "" ]]; then
+    echo "ERROR: no 'basedir' specified in $1"
+fi
+
+if [[ "$INPUTDIR" == "" ]]; then
+    echo "ERROR: no 'input_dir' specified in $1"
+fi
+
+mkdir -p $BASEDIR/tarballs
 
 CWD=$PWD
 
-INPUTDIR=$(cat $1 | grep -o '"input_dir": "[^"]*"' | sed 's/"input_dir": "//' | sed 's/"//' | awk '{print $1}')
 ABCDNAME=$(basename $1)
 ABCDNAME=${ABCDNAME%%.*}
 
@@ -19,7 +30,7 @@ if [[ "$ABCDNAME" == "" ]]; then
     exit 1
 fi
 
-TARBALL=$CWD/tarballs/${ABCDNAME}.tar.gz
+TARBALL=$BASEDIR/tarballs/${ABCDNAME}.tar.gz
 echo "Creating ${TARBALL}..."
 
 cd $INPUTDIR/$ABCDNAME
