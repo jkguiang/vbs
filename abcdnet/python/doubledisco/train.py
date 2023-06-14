@@ -42,7 +42,6 @@ def train(args, config, model1, model2, device, train_loader, optimizer, criteri
             torch.save(features1, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(features2, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
-            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
             torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
             raise ValueError(
                 f"Some (or all) inferences are NaN(s)!"
@@ -72,20 +71,16 @@ def train(args, config, model1, model2, device, train_loader, optimizer, criteri
             torch.save(features1, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(features2, get_outfile(config, tag="DEBUG_FEATURES"))
             torch.save(labels, get_outfile(config, tag="DEBUG_LABELS"))
-            torch.save(disco_target, get_outfile(config, tag="DEBUG_DISCOTARGETS"))
             torch.save(weights, get_outfile(config, tag="DEBUG_EVENTWEIGHTS"))
             raise ValueError(
                 f"Loss is NaN!"
                 + f"\ninferences1 = {inferences1}"
                 + f"\ninferences2 = {inferences2}"
-                + f"\ndisco_target = {disco_target}"
                 + f"\nweights = {weights}"
                 + f"\nmax(inferences1) = {inferences1.max()}"
                 + f"\nmin(inferences1) = {inferences1.min()}"
                 + f"\nmax(inferences2) = {inferences2.max()}"
                 + f"\nmin(inferences2) = {inferences2.min()}"
-                + f"\nmax(disco_target) = {disco_target.max()}"
-                + f"\nmin(disco_target) = {disco_target.min()}"
                 + f"\nmax(weights) = {weights.max()}"
                 + f"\nmin(weights) = {weights.min()}"
             )
