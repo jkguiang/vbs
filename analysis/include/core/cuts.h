@@ -620,7 +620,7 @@ public:
         arbol.setLeaf<double>("ld_vbsjet_phi", ld_vbsjet_p4.phi());
         arbol.setLeaf<double>("tr_vbsjet_phi", tr_vbsjet_p4.phi());
         arbol.setLeaf<double>("M_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).M());
-        arbol.setLeaf<double>("pt_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).M());
+        arbol.setLeaf<double>("pt_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).pt());
         arbol.setLeaf<double>("eta_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).eta());
         arbol.setLeaf<double>("phi_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).phi());
         arbol.setLeaf<double>("deta_jj", ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta());
@@ -731,107 +731,6 @@ public:
         }
         return vbsjet_idxs;
     };
-
-    /* Refactored
-    bool evaluate()
-    {
-        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
-        // Select VBS jet candidates
-        Integers vbsjet_cand_idxs;
-        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
-        {
-            if (good_jet_p4s.at(jet_i).pt() >= 30.) { vbsjet_cand_idxs.push_back(jet_i); }
-        }
-        if (vbsjet_cand_idxs.size() < 2) { return false; }
-        // Sort candidates by pt
-        std::sort(
-            vbsjet_cand_idxs.begin(), vbsjet_cand_idxs.end(),
-            [&](int i, int j) -> bool { return good_jet_p4s.at(i).pt() > good_jet_p4s.at(j).pt(); }
-        );
-        // Process candidates
-        std::pair<int, int> vbsjet_idxs;
-        if (vbsjet_cand_idxs.size() == 2)
-        {
-            vbsjet_idxs = std::make_pair(vbsjet_cand_idxs.at(0), vbsjet_cand_idxs.at(1));
-        }
-        else
-        {
-            // Collect jets in pos/neg eta hemispheres
-            Integers vbs_pos_eta_jet_idxs;
-            Integers vbs_neg_eta_jet_idxs;
-            for (auto& jet_i : vbsjet_cand_idxs)
-            {
-                const LorentzVector& jet_p4 = good_jet_p4s.at(jet_i);
-                if (jet_p4.eta() >= 0)
-                {
-                    vbs_pos_eta_jet_idxs.push_back(jet_i);
-                }
-                else
-                {
-                    vbs_neg_eta_jet_idxs.push_back(jet_i);
-                }
-            }
-            // Sort the jets in each hemisphere by P
-            std::sort(
-                vbs_pos_eta_jet_idxs.begin(), vbs_pos_eta_jet_idxs.end(),
-                [&](int i, int j) -> bool { return good_jet_p4s.at(i).P() > good_jet_p4s.at(j).P(); }
-            );
-            std::sort(
-                vbs_neg_eta_jet_idxs.begin(), vbs_neg_eta_jet_idxs.end(),
-                [&](int i, int j) -> bool { return good_jet_p4s.at(i).P() > good_jet_p4s.at(j).P(); }
-            );
-            // Select VBS jets
-            if (vbs_pos_eta_jet_idxs.size() == 0)
-            {
-                // All candidates are in the -eta hemisphere
-                vbsjet_idxs = std::make_pair(vbs_neg_eta_jet_idxs.at(0), vbs_neg_eta_jet_idxs.at(1));
-            }
-            else if (vbs_neg_eta_jet_idxs.size() == 0)
-            {
-                // All candidates are in the +eta hemisphere
-                vbsjet_idxs = std::make_pair(vbs_pos_eta_jet_idxs.at(0), vbs_pos_eta_jet_idxs.at(1));
-            }
-            else
-            {
-                // Take the leading candidate (in P) from each hemisphere
-                vbsjet_idxs = std::make_pair(vbs_pos_eta_jet_idxs.at(0), vbs_neg_eta_jet_idxs.at(0));
-            }
-        }
-        // Separate the two VBS jets into leading/trailing
-        int ld_vbsjet_idx;
-        int tr_vbsjet_idx;
-        if (good_jet_p4s.at(vbsjet_idxs.first).pt() > good_jet_p4s.at(vbsjet_idxs.first).pt())
-        {
-            ld_vbsjet_idx = vbsjet_idxs.first;
-            tr_vbsjet_idx = vbsjet_idxs.second;
-        }
-        else
-        {
-            ld_vbsjet_idx = vbsjet_idxs.second;
-            tr_vbsjet_idx = vbsjet_idxs.first;
-        }
-        LorentzVector ld_vbsjet_p4 = good_jet_p4s.at(ld_vbsjet_idx);
-        LorentzVector tr_vbsjet_p4 = good_jet_p4s.at(tr_vbsjet_idx);
-        // Save VBS jet globals
-        globals.setVal<LorentzVector>("ld_vbsjet_p4", ld_vbsjet_p4);
-        globals.setVal<int>("ld_vbsjet_idx", ld_vbsjet_idx);
-        globals.setVal<LorentzVector>("tr_vbsjet_p4", tr_vbsjet_p4);
-        globals.setVal<int>("tr_vbsjet_idx", tr_vbsjet_idx);
-        // Set VBS jet leaves
-        arbol.setLeaf<double>("ld_vbsjet_pt", ld_vbsjet_p4.pt());
-        arbol.setLeaf<double>("tr_vbsjet_pt", tr_vbsjet_p4.pt());
-        arbol.setLeaf<double>("ld_vbsjet_eta", ld_vbsjet_p4.eta());
-        arbol.setLeaf<double>("tr_vbsjet_eta", tr_vbsjet_p4.eta());
-        arbol.setLeaf<double>("ld_vbsjet_phi", ld_vbsjet_p4.phi());
-        arbol.setLeaf<double>("tr_vbsjet_phi", tr_vbsjet_p4.phi());
-        arbol.setLeaf<double>("M_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).M());
-        arbol.setLeaf<double>("deta_jj", ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta());
-        arbol.setLeaf<double>("abs_deta_jj", fabs(ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta()));
-        arbol.setLeaf<double>("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbsjet_p4, tr_vbsjet_p4));
-
-        return true;
-    };
-    */
 };
 
 class SaveSystWeights : public AnalysisCut
