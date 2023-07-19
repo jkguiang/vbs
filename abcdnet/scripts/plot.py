@@ -12,6 +12,7 @@ import numpy as np
 import awkward as ak
 import pandas as pd
 import matplotlib.pyplot as plt
+plt.rcParams.update({"figure.facecolor":  (1,1,1,0)})
 from sklearn.metrics import roc_curve
 
 from utils import VBSConfig
@@ -28,12 +29,20 @@ parser.add_argument(
     "--corr2D_rebin", type=int, default=0, help="rebin 2D correlation plots"
 )
 parser.add_argument(
-    "--corr2D_ymax", type=int, default=10, 
+    "--corr2D_ymax", type=float, default=8., 
     help="max value for y-axis of nominal 2D correlation plot"
 )
 parser.add_argument(
-    "--corr2D_ymin", type=int, default=0, 
+    "--corr2D_ymin", type=float, default=0., 
     help="min value for y-axis of nominal 2D correlation plot"
+)
+parser.add_argument(
+    "--corr2D_ybins", type=int, default=20, 
+    help="number of bins for the y-axis of the nominal 2D correlation plot"
+)
+parser.add_argument(
+    "--loss_logy", action="store_true",
+    help="make y-axis of loss curve log-scale"
 )
 args = parser.parse_args()
 
@@ -86,12 +95,14 @@ axes.axvline(args.epoch, color="k", alpha=0.25)
 axes.tick_params(axis="both", which="both", direction="in", labelsize=32, top=True, right=True)
 axes.set_xlabel("Epoch", size=32);
 axes.set_ylabel("Avg. Loss", size=32);
+if args.loss_logy:
+    axes.set_yscale("log")
 axes.autoscale()
 axes.legend(loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=3, fontsize=24)
 
 plt.savefig(f"{plots_dir}/loss.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/loss.pdf", bbox_inches="tight")
-print("Wrote loss curve")
+print(f"Wrote loss curve to {plots_dir}/loss.png")
 plt.close()
 
 
@@ -122,7 +133,7 @@ axes.legend(fontsize=24);
 
 plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.pdf", bbox_inches="tight")
-print("Wrote ROC curve")
+print(f"Wrote ROC curve to {plots_dir}/roc_epoch{args.epoch}.png")
 plt.close()
 
 
@@ -156,20 +167,20 @@ axes.tick_params(axis="both", which="both", direction="in", labelsize=20, top=Tr
 axes.set_xlabel("score", size=20);
 axes.set_ylabel("a.u.", size=20);
 
-plt.savefig(f"{plots_dir}/scores_{args.epoch}.png", bbox_inches="tight")
-plt.savefig(f"{plots_dir}/scores_{args.epoch}.pdf", bbox_inches="tight")
-print("Wrote scores histogram")
+plt.savefig(f"{plots_dir}/scores_epoch{args.epoch}.png", bbox_inches="tight")
+plt.savefig(f"{plots_dir}/scores_epoch{args.epoch}.pdf", bbox_inches="tight")
+print(f"Wrote scores histogram to {plots_dir}/scores_epoch{args.epoch}.png")
 plt.close()
 
 # --- Plot correlation histogram ---
 fig, axes = plt.subplots(figsize=(12, 12))
 
-xbins = np.linspace(0, 1, 101)
-ybins = np.linspace(args.corr2D_ymin, args.corr2D_ymax, 101)
+xbins = [0, 0.05, 0.1, 0.2, 0.4, 0.7, 1]
+ybins = np.linspace(args.corr2D_ymin, args.corr2D_ymax, args.corr2D_ybins+1)
 
 hist = yahist.Hist2D(
     (test_df[test_df.truth == 0].score, test_df[test_df.truth == 0].disco_target), 
-    weights=test_df[test_df.truth == 0].weight/test_n_true, 
+    weights=test_df[test_df.truth == 0].weight/test_n_false, 
     bins=[xbins, ybins]
 );
 
@@ -187,7 +198,7 @@ axes.set_ylim([args.corr2D_ymin, args.corr2D_ymax])
 
 plt.savefig(f"{plots_dir}/correlation2D_epoch{args.epoch}.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/correlation2D_epoch{args.epoch}.pdf", bbox_inches="tight")
-print("Wrote correlation histogram")
+print(f"Wrote correlation histogram to {plots_dir}/correlation2D_epoch{args.epoch}.png")
 plt.close()
 
 
@@ -205,7 +216,7 @@ axes.set_xlim([args.corr2D_ymin, args.corr2D_ymax])
 
 plt.savefig(f"{plots_dir}/correlation2D_flipped_epoch{args.epoch}.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/correlation2D_flipped_epoch{args.epoch}.pdf", bbox_inches="tight")
-print("Wrote other correlation histogram")
+print(f"Wrote other correlation histogram to {plots_dir}/correlation2D_flipped_epoch{args.epoch}.png")
 plt.close()
 
 # --- Wrap up ---

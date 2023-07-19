@@ -72,6 +72,7 @@ if __name__ == "__main__":
         # Process MC
         selection = config.ingress.get("selection", None)
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
+            # Get data
             print(f"Loading {pt_file}")
             if config.discotype == "single":
                 data = SingleDisCoDataset.from_file(pt_file, norm=False)
@@ -79,23 +80,32 @@ if __name__ == "__main__":
                 data = DoubleDisCoDataset.from_file(pt_file, norm=False)
             print(data)
             loader = DataLoader(data)
+            # Make file names
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
-            old_baby = f"{config.ingress.input_dir}/{name}.root"
-            new_baby = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
-            output = OutputROOT(old_baby, new_baby, selection=selection)
+            old_root_file = f"{config.ingress.input_dir}/{name}.root"
+            new_root_file = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
+            # Run inference (and write output)
+            output = OutputROOT(old_root_file, new_root_file, selection=selection)
             if config.discotype == "single":
                 times += infer(model, device, loader, output)
             elif config.discotype == "double":
                 times += infer(model1, model2, device, loader, output)
-        # Run inference on data
-        loader = DataLoader(ingress.ingress_file(config, f"{config.ingress.input_dir}/data.root", -1, save=False))
-        old_baby = f"{config.ingress.input_dir}/data.root"
-        new_baby = f"{config.ingress.input_dir}/{config.name}/data_abcdnet.root"
-        output = OutputROOT(old_baby, new_baby, selection=selection)
-        if config.discotype == "single":
-            times += infer(model, device, loader, output)
-        elif config.discotype == "double":
-            times += infer(model1, model2, device, loader, output)
+        # Run inference on extra files (e.g. data)
+        for root_file in config.get("infer", {}).get("extra_files", []):
+            # Get data
+            loader = DataLoader(ingress.ingress_file(config, root_file, -1, save=False))
+            # Make file names
+            orig_dir = "/".join(root_file.split("/")[:-1])
+            if not orig_dir:
+                extra_dir = "."
+            name = root_file.split("/")[-1].replace(".root", "")
+            new_root_file = f"{orig_dir}/{config.name}/{name}_abcdnet.root"
+            # Run inference (and write output)
+            output = OutputROOT(root_file, new_root_file, selection=selection)
+            if config.discotype == "single":
+                times += infer(model, device, loader, output)
+            elif config.discotype == "double":
+                times += infer(model1, model2, device, loader, output)
     else:
         # Load testing and training data
         if config.discotype == "single":
@@ -132,3 +142,4 @@ if __name__ == "__main__":
             times += infer(model1, model2, device, train_loader, train_csv)
 
     print(f"Avg. inference time: {sum(times)/len(times)}s")
+    print("\nDone.\n")
