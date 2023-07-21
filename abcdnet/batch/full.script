@@ -12,3 +12,4 @@ source setup_hpg.sh
 python python/ingress.py $1
 python python/train.py $1 --log_interval=10
 python python/infer.py $1 --epoch=100
+python scripts/plot.py $1 --epoch=100
