@@ -1,5 +1,5 @@
 {
-    "basedir": "/blue/p.chang/jguiang/data/vbsvvh",
+    "base_dir": "/blue/p.chang/jguiang/data/vbsvvh",
     "model": {
         "name": "NeuralNetwork",
         "n_hidden_layers": 3,
@@ -7,7 +7,8 @@
     },
     "ingress": {
         "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/gaussiansPosCov",
-        "signal_file": "sig.root",
+        "sig_files": ["sig.root"],
+        "bkg_files": ["bkg.root"],
         "ttree_name": "tree", 
         "features": ["X1", "X2"],
         "transforms": {},

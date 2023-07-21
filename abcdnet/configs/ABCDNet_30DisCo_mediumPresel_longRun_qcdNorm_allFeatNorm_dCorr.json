@@ -1,13 +1,32 @@
 {
-    "basedir": "/blue/p.chang/jguiang/data/vbsvvh",
+    "base_dir": "/blue/p.chang/jguiang/data/vbsvvh",
     "model": {
         "name": "NeuralNetwork",
         "n_hidden_layers": 3,
         "hidden_size": 64
     },
+    "infer": {
+        "extra_files": [
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_qcdfix/Run2/QCDNorm_mediumPresel_qcdnorm/data.root"
+        ]
+    },
     "ingress": {
-        "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm",
-        "signal_file": "VBSVVH.root",
+        "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/output_main_qcdfix/Run2/QCDNorm_mediumPresel_qcdnorm",
+        "bkg_files": [
+            "Bosons.root",
+            "QCD.root",
+            "SingleTop.root",
+            "TT1L.root",
+            "TTHad.root",
+            "TTH.root",
+            "TTW.root"
+        ],
+        "sig_files": [
+            "SSVBSWWH.root",
+            "OSVBSWWH.root",
+            "VBSWZH.root",
+            "VBSZZH.root"
+        ],
         "ttree_name": "tree", 
         "selection": "(hbbfatjet_xbb > 0.5) & (ld_vqqfatjet_xwqq > 0.3) & (tr_vqqfatjet_xwqq > 0.3)",
         "features": [
