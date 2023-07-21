@@ -38,7 +38,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
-    os.makedirs(f"{config.basedir}/{config.name}", exist_ok=True)
+    os.makedirs(f"{config.base_dir}/{config.name}", exist_ok=True)
 
     if config.discotype == "single":
         from singledisco.infer import infer, OutputCSV, OutputROOT

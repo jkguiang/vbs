@@ -9,7 +9,7 @@ from utils import VBSConfig
 from datasets import SingleDisCoDataset, DoubleDisCoDataset
 
 def get_outfile(config, tag, ext="pt", subdir=None, msg=None):
-    outdir = f"{config.basedir}/{config.name}"
+    outdir = f"{config.base_dir}/{config.name}"
     if subdir:
         outdir = f"{outdir}/{subdir}"
 
@@ -34,7 +34,7 @@ def transform(feature, transf):
     else:
         raise ValueError(f"transformation '{transf}' not supported")
 
-def ingress_file(config, root_file, file_i, save=True):
+def ingress_file(config, root_file, file_i, is_signal=None, save=True):
     transforms = config.ingress.get("transforms", {})
     if config.discotype == "single":
         feature_names = config.ingress.features
@@ -67,18 +67,15 @@ def ingress_file(config, root_file, file_i, save=True):
         features = torch.transpose(torch.stack(features), 0, 1)
         n_events = len(features)
 
-        # Set label
-        is_signal = False
-        if config.ingress.get("signal_file", None):
-            if len(config.ingress.signal_file.split("/")) == 1:
-                is_signal = (root_file.split("/")[-1] == config.ingress.signal_file)
-            else:
-                is_signal = (root_file == config.ingress.signal_file)
-            labels = torch.ones(n_events)*is_signal
+        # Set truth labels
+        if is_signal is None or is_signal is False:
+            labels = torch.zeros(n_events)
+        elif is_signal is True:
+            labels = torch.ones(n_events)
         elif config.ingress.get("label", None):
             labels = torch.tensor(tree[config.ingress.label], dtype=torch.float)
         else:
-            raise Exception("No signal file name or label branch provided")
+            raise Exception("The is_signal argument is not a bool and no alternative signal label was provided")
 
         # Create a unique identifier for this sample (used for splitting evenly)
         sample_number = torch.ones(n_events)*file_i
@@ -121,14 +118,14 @@ def ingress_file(config, root_file, file_i, save=True):
         else:
             return data
 
-
-def ingress(config, save=True):
-    root_files = filter(
-        lambda f: "data.root" not in f and "abcdnet.root" not in f,
-        glob.glob(f"{config.ingress.input_dir}/*.root")
-    )
-    for file_i, root_file in enumerate(root_files):
-        ingress_file(config, root_file, file_i, save=save)
+def ingress(config):
+    file_i = 0
+    for root_file in config.ingress.sig_files:
+        ingress_file(config, f"{config.ingress.input_dir}/{root_file}", file_i, is_signal=True)
+        file_i += 1
+    for root_file in config.ingress.bkg_files:
+        ingress_file(config, f"{config.ingress.input_dir}/{root_file}", file_i, is_signal=False)
+        file_i += 1
 
 if __name__ == "__main__":
     parser = argparse.ArgumentParser(description="Ingress data")
@@ -138,3 +135,4 @@ if __name__ == "__main__":
     config = VBSConfig.from_json(args.config_json)
 
     ingress(config)
+    print("\nDone.\n")

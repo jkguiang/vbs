@@ -3,11 +3,11 @@ if [[ "$1" == "" || "$2" == "" ]]; then
     exit 1
 fi
 
-BASEDIR=$(cat $1 | grep -o '"basedir": "[^"]*"' | sed 's/"basedir": "//' | sed 's/"//' | awk '{print $1}')
+BASEDIR=$(cat $1 | grep -o '"base_dir": "[^"]*"' | sed 's/"base_dir": "//' | sed 's/"//' | awk '{print $1}')
 INPUTDIR=$(cat $1 | grep -o '"input_dir": "[^"]*"' | sed 's/"input_dir": "//' | sed 's/"//' | awk '{print $1}')
 
 if [[ "$BASEDIR" == "" ]]; then
-    echo "ERROR: no 'basedir' specified in $1"
+    echo "ERROR: no 'base_dir' specified in $1"
 fi
 
 if [[ "$INPUTDIR" == "" ]]; then

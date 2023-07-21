@@ -47,7 +47,7 @@ parser.add_argument(
 args = parser.parse_args()
 
 config = VBSConfig.from_json(args.config_json)
-plots_dir = f"{config.basedir}/{config.name}/plots"
+plots_dir = f"{config.base_dir}/{config.name}/plots"
 
 # Get history JSON
 history_json = {}
@@ -100,9 +100,9 @@ if args.loss_logy:
 axes.autoscale()
 axes.legend(loc="upper center", bbox_to_anchor=(0.5, 1.18), ncol=3, fontsize=24)
 
-plt.savefig(f"{plots_dir}/loss.png", bbox_inches="tight")
-plt.savefig(f"{plots_dir}/loss.pdf", bbox_inches="tight")
-print(f"Wrote loss curve to {plots_dir}/loss.png")
+plt.savefig(f"{plots_dir}/loss_epoch{args.epoch}.png", bbox_inches="tight")
+plt.savefig(f"{plots_dir}/loss_epoch{args.epoch}.pdf", bbox_inches="tight")
+print(f"Wrote loss curve to {plots_dir}/loss_epoch{args.epoch}.png")
 plt.close()
 
 
@@ -119,17 +119,18 @@ axes.plot(fpr, tpr, label=f"DisCo test (AUC = {np.trapz(tpr, fpr):.2f})");
 
 total_sig = total_df[total_df.truth == 1].weight.sum()
 total_bkg = total_df[total_df.truth == 0].weight.sum()
-axes.scatter(fpr[tpr >= 5/total_sig][0], tpr[tpr >= 5/total_sig][0], marker="*", s=100, zorder=104, color="c", label=f"5 sig ({fpr[tpr >= 5/total_sig][0]*total_bkg:0.2f} bkg)");
-axes.scatter(fpr[tpr >= 4/total_sig][0], tpr[tpr >= 4/total_sig][0], marker="v", s=100, zorder=103, color="b", label=f"4 sig ({fpr[tpr >= 4/total_sig][0]*total_bkg:0.2f} bkg)");
-axes.scatter(fpr[tpr >= 3/total_sig][0], tpr[tpr >= 3/total_sig][0], marker="^", s=100, zorder=102, color="m", label=f"3 sig ({fpr[tpr >= 3/total_sig][0]*total_bkg:0.2f} bkg)");
-axes.scatter(fpr[tpr >= 2/total_sig][0], tpr[tpr >= 2/total_sig][0], marker="o", s=100, zorder=101, color="r", label=f"2 sig ({fpr[tpr >= 2/total_sig][0]*total_bkg:0.2f} bkg)");
-axes.scatter(fpr[tpr >= 1/total_sig][0], tpr[tpr >= 1/total_sig][0], marker="s", s=100, zorder=100, color="y", label=f"1 sig ({fpr[tpr >= 1/total_sig][0]*total_bkg:0.2f} bkg)");
+axes.scatter(fpr[tpr >= 5/total_sig][0], tpr[tpr >= 5/total_sig][0], marker="*", s=100, zorder=104, color="c", label=f"5 signal ({fpr[tpr >= 5/total_sig][0]*total_bkg:0.2f} bkg) events");
+axes.scatter(fpr[tpr >= 4/total_sig][0], tpr[tpr >= 4/total_sig][0], marker="v", s=100, zorder=103, color="b", label=f"4 signal ({fpr[tpr >= 4/total_sig][0]*total_bkg:0.2f} bkg) events");
+axes.scatter(fpr[tpr >= 3/total_sig][0], tpr[tpr >= 3/total_sig][0], marker="^", s=100, zorder=102, color="m", label=f"3 signal ({fpr[tpr >= 3/total_sig][0]*total_bkg:0.2f} bkg) events");
+axes.scatter(fpr[tpr >= 2/total_sig][0], tpr[tpr >= 2/total_sig][0], marker="o", s=100, zorder=101, color="r", label=f"2 signal ({fpr[tpr >= 2/total_sig][0]*total_bkg:0.2f} bkg) events");
+axes.scatter(fpr[tpr >= 1/total_sig][0], tpr[tpr >= 1/total_sig][0], marker="s", s=100, zorder=100, color="y", label=f"1 signal ({fpr[tpr >= 1/total_sig][0]*total_bkg:0.2f} bkg) events");
 
 # Format axes
 axes.tick_params(axis="both", which="both", direction="in", labelsize=32, top=True, right=True)
-axes.set_xlabel("Background efficiency", size=32);
-axes.set_ylabel("Signal efficiency", size=32);
-axes.legend(fontsize=24);
+axes.set_xscale("log")
+axes.set_xlabel("Background efficiency", size=32)
+axes.set_ylabel("Signal efficiency", size=32)
+axes.legend(fontsize=24)
 
 plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.pdf", bbox_inches="tight")
@@ -175,7 +176,7 @@ plt.close()
 # --- Plot correlation histogram ---
 fig, axes = plt.subplots(figsize=(12, 12))
 
-xbins = [0, 0.05, 0.1, 0.2, 0.4, 0.7, 1]
+xbins = np.linspace(0, 1, 21)
 ybins = np.linspace(args.corr2D_ymin, args.corr2D_ymax, args.corr2D_ybins+1)
 
 hist = yahist.Hist2D(
@@ -220,4 +221,4 @@ print(f"Wrote other correlation histogram to {plots_dir}/correlation2D_flipped_e
 plt.close()
 
 # --- Wrap up ---
-print(f"Done. All plots can be found here: {plots_dir}")
+print(f"\nDone.\n")

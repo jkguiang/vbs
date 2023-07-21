@@ -156,7 +156,7 @@ class DisCoDataset(Dataset):
         plt.close()
 
     def plot(self, config, norm=True):
-        plots_dir = f"{config.basedir}/{config.name}/plots"
+        plots_dir = f"{config.base_dir}/{config.name}/plots"
         os.makedirs(plots_dir, exist_ok=True)
         # Plot features
         for feature_i in range(len(self.features)):
@@ -247,7 +247,7 @@ class SingleDisCoDataset(DisCoDataset):
 
     def plot(self, config, norm=True):
         super().plot(config, norm=norm)
-        plots_dir = f"{config.basedir}/{config.name}/plots"
+        plots_dir = f"{config.base_dir}/{config.name}/plots"
         self.plot_variable(
             self.disco_target,
             config.ingress.disco_target,
@@ -290,7 +290,7 @@ class DoubleDisCoDataset(DisCoDataset):
         )
 
     def plot(self, config, norm=True):
-        plots_dir = f"{config.basedir}/{config.name}/plots"
+        plots_dir = f"{config.base_dir}/{config.name}/plots"
         feature_names = config.ingress.features1 + config.ingress.features2
         os.makedirs(plots_dir, exist_ok=True)
         # Plot features

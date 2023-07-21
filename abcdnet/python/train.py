@@ -16,7 +16,7 @@ from utils import VBSConfig, print_title
 from datasets import DisCoDataset
 
 def get_outfile(config, epoch=None, tag=None, ext="pt", subdir=None, msg=None):
-    outdir = f"{config.basedir}/{config.name}"
+    outdir = f"{config.base_dir}/{config.name}"
     if subdir:
         outdir = f"{outdir}/{subdir}"
 

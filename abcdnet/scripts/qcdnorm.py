@@ -20,13 +20,14 @@ def get_event_count(root_file, ttree_name, weight_branches, selection=None):
 
         return weights.sum().item()
 
-def get_qcdnorm(config, qcd_file, data_file, signal_file):
+def get_qcdnorm(config, qcd_file, data_file):
     n_qcd = get_event_count(
         qcd_file, config.ingress.ttree_name, config.ingress.weights, selection=config.ingress.selection
     )
     n_other = 0
-    for other_file in glob.glob(f"{config.ingress.input_dir}/*.root"):
-        if other_file not in [qcd_file, data_file, signal_file]:
+    for other_file in config.ingress.bkg_files:
+        other_file = f"{config.ingress.input_dir}/{other_file}"
+        if other_file not in [qcd_file, data_file]:
             n_other += get_event_count(
                 other_file, config.ingress.ttree_name, config.ingress.weights, selection=config.ingress.selection
             )
@@ -37,7 +38,7 @@ def get_qcdnorm(config, qcd_file, data_file, signal_file):
 
 if __name__ == "__main__":
     # CLI
-    parser = argparse.ArgumentParser(description="Run inference and calculate DisCo")
+    parser = argparse.ArgumentParser(description="Normalize QCD to (data - non-QCD)")
     parser.add_argument("config_json", type=str, help="config JSON")
     args = parser.parse_args()
 
@@ -48,11 +49,10 @@ if __name__ == "__main__":
 
     qcd_file = f"{indir}/QCD.root"
     data_file = f"{indir}/data.root"
-    signal_file = f"{indir}/{config.ingress.signal_file}"
-    qcdnorm = get_qcdnorm(config, qcd_file, data_file, signal_file)
+    qcdnorm = get_qcdnorm(config, qcd_file, data_file)
 
-    # Open the existing ROOT file
     for baby in glob.glob(f"{indir}/*.root"):
+        # Open the existing ROOT file
         with uproot.open(baby) as old_baby:
             print(f"Loading {baby}")
             # Copy the existing TTree
@@ -67,3 +67,5 @@ if __name__ == "__main__":
             with uproot.recreate(baby.replace(indir, outdir)) as new_baby:
                 new_baby[config.ingress.ttree_name] = tree
                 print(f"Wrote {baby.replace(indir, outdir)}")
+
+    print("\nDone.\n")
