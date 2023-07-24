@@ -85,7 +85,7 @@ if __name__ == "__main__":
             old_root_file = f"{config.ingress.input_dir}/{name}.root"
             new_root_file = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
             # Run inference (and write output)
-            output = OutputROOT(old_root_file, new_root_file, selection=selection)
+            output = OutputROOT(old_root_file, new_root_file, selection=selection, ttree_name=config.ingress.ttree_name)
             if config.discotype == "single":
                 times += infer(model, device, loader, output)
             elif config.discotype == "double":
@@ -95,13 +95,12 @@ if __name__ == "__main__":
             # Get data
             loader = DataLoader(ingress.ingress_file(config, root_file, -1, save=False))
             # Make file names
-            orig_dir = "/".join(root_file.split("/")[:-1])
-            if not orig_dir:
-                extra_dir = "."
+            orig_dir = "/".join(root_file.split("/")[:-1]) or "."
+            os.makedirs(f"{orig_dir}/{config.name}", exist_ok=True)
             name = root_file.split("/")[-1].replace(".root", "")
             new_root_file = f"{orig_dir}/{config.name}/{name}_abcdnet.root"
             # Run inference (and write output)
-            output = OutputROOT(root_file, new_root_file, selection=selection)
+            output = OutputROOT(root_file, new_root_file, selection=selection, ttree_name=config.ingress.ttree_name)
             if config.discotype == "single":
                 times += infer(model, device, loader, output)
             elif config.discotype == "double":
