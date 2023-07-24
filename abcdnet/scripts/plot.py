@@ -127,7 +127,6 @@ axes.scatter(fpr[tpr >= 1/total_sig][0], tpr[tpr >= 1/total_sig][0], marker="s",
 
 # Format axes
 axes.tick_params(axis="both", which="both", direction="in", labelsize=32, top=True, right=True)
-axes.set_xscale("log")
 axes.set_xlabel("Background efficiency", size=32)
 axes.set_ylabel("Signal efficiency", size=32)
 axes.legend(fontsize=24)
@@ -135,6 +134,16 @@ axes.legend(fontsize=24)
 plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.pdf", bbox_inches="tight")
 print(f"Wrote ROC curve to {plots_dir}/roc_epoch{args.epoch}.png")
+
+axes.set_xscale("log")
+plt.savefig(f"{plots_dir}/roc_logx_epoch{args.epoch}.png", bbox_inches="tight")
+plt.savefig(f"{plots_dir}/roc_logx_epoch{args.epoch}.pdf", bbox_inches="tight")
+print(f"Wrote ROC curve to {plots_dir}/roc_logx_epoch{args.epoch}.png")
+
+axes.set_yscale("log")
+plt.savefig(f"{plots_dir}/roc_logxy_epoch{args.epoch}.png", bbox_inches="tight")
+plt.savefig(f"{plots_dir}/roc_logxy_epoch{args.epoch}.pdf", bbox_inches="tight")
+print(f"Wrote ROC curve to {plots_dir}/roc_logxy_epoch{args.epoch}.png")
 plt.close()
 
 
