@@ -78,11 +78,11 @@ srun --partition=gpu --gpus=1 --mem=16gb --constraint=a100 --pty bash -i # inter
 source setup_hpg.sh
 python scripts/plot.py configs/CONFIG.json --epoch=100
 python scripts/plot.py configs/CONFIG.json --epoch=200
+...
 ```
 ```
 # Run in batch
 sbatch batch/scan.script configs/CONFIG.json 100 200 ...
-...
 ```
 4. Finally, you can export the scores back to the input baby ROOT files in the inference step:
 ```
