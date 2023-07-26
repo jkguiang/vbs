@@ -64,8 +64,6 @@ source setup_hpg.sh
 python python/ingress.py configs/CONFIG.json
 python python/train.py configs/CONFIG.json
 python python/infer.py configs/CONFIG.json --epoch=100
-python scripts/plot.py configs/CONFIG.json --epoch=100
-exit
 ```
 ```
 # Run in batch
