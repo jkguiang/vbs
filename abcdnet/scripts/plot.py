@@ -44,6 +44,10 @@ parser.add_argument(
     "--loss_logy", action="store_true",
     help="make y-axis of loss curve log-scale"
 )
+parser.add_argument(
+    "--loss_N", type=int, default=10, 
+    help="plot the loss for every Nth epoch (default: 10)"
+)
 args = parser.parse_args()
 
 config = VBSConfig.from_json(args.config_json)
@@ -82,13 +86,12 @@ fig, axes = plt.subplots(figsize=(16, 12))
 
 epochs = range(1, len(history_json["train_loss"])+1)
 
-N = 10 # granularity of epochs shown (every Nth epoch is plotted)
-axes.plot(epochs[::N], history_json["test_loss"][::N], label=r"$\mathcal{L}_{test} = \mathcal{L}_{BCE}$ + $\lambda$dCorr", color="C0");
-axes.plot(epochs[::N], history_json["train_loss"][::N], label=r"$\mathcal{L}_{train} = \mathcal{L}_{BCE}$ + $\lambda$dCorr", color="C1");
-axes.plot(epochs[::N], history_json["test_bce"][::N], label=r"$\mathcal{L}_{BCE}$", color="C0", linestyle="dashed")
-axes.plot(epochs[::N], history_json["train_bce"][::N], label=r"$\mathcal{L}_{BCE}$", color="C1", linestyle="dashed")
-axes.plot(epochs[::N], history_json["test_disco"][::N], label=r"$\lambda$dCorr$^2$", color="C0", linestyle="dotted")
-axes.plot(epochs[::N], history_json["train_disco"][::N], label=r"$\lambda$dCorr$^2$", color="C1", linestyle="dotted")
+axes.plot(epochs[::args.loss_N], history_json["test_loss"][::args.loss_N], label=r"$\mathcal{L}_{test} = \mathcal{L}_{BCE}$ + $\lambda$dCorr", color="C0");
+axes.plot(epochs[::args.loss_N], history_json["train_loss"][::args.loss_N], label=r"$\mathcal{L}_{train} = \mathcal{L}_{BCE}$ + $\lambda$dCorr", color="C1");
+axes.plot(epochs[::args.loss_N], history_json["test_bce"][::args.loss_N], label=r"$\mathcal{L}_{BCE}$", color="C0", linestyle="dashed")
+axes.plot(epochs[::args.loss_N], history_json["train_bce"][::args.loss_N], label=r"$\mathcal{L}_{BCE}$", color="C1", linestyle="dashed")
+axes.plot(epochs[::args.loss_N], history_json["test_disco"][::args.loss_N], label=r"$\lambda$dCorr$^2$", color="C0", linestyle="dotted")
+axes.plot(epochs[::args.loss_N], history_json["train_disco"][::args.loss_N], label=r"$\lambda$dCorr$^2$", color="C1", linestyle="dotted")
 
 axes.axvline(args.epoch, color="k", alpha=0.25)
 
@@ -119,7 +122,7 @@ axes.plot(fpr, tpr, label=f"DisCo test (AUC = {np.trapz(tpr, fpr):.2f})");
 
 total_sig = total_df[total_df.truth == 1].weight.sum()
 total_bkg = total_df[total_df.truth == 0].weight.sum()
-axes.scatter(fpr[tpr >= 5/total_sig][0], tpr[tpr >= 5/total_sig][0], marker="*", s=100, zorder=104, color="c", label=f"5 signal ({fpr[tpr >= 5/total_sig][0]*total_bkg:0.2f} bkg) events");
+axes.scatter(fpr[tpr >= 5/total_sig][0], tpr[tpr >= 5/total_sig][0], marker="*", s=200, zorder=104, color="c", label=f"5 signal ({fpr[tpr >= 5/total_sig][0]*total_bkg:0.2f} bkg) events");
 axes.scatter(fpr[tpr >= 4/total_sig][0], tpr[tpr >= 4/total_sig][0], marker="v", s=100, zorder=103, color="b", label=f"4 signal ({fpr[tpr >= 4/total_sig][0]*total_bkg:0.2f} bkg) events");
 axes.scatter(fpr[tpr >= 3/total_sig][0], tpr[tpr >= 3/total_sig][0], marker="^", s=100, zorder=102, color="m", label=f"3 signal ({fpr[tpr >= 3/total_sig][0]*total_bkg:0.2f} bkg) events");
 axes.scatter(fpr[tpr >= 2/total_sig][0], tpr[tpr >= 2/total_sig][0], marker="o", s=100, zorder=101, color="r", label=f"2 signal ({fpr[tpr >= 2/total_sig][0]*total_bkg:0.2f} bkg) events");
@@ -136,6 +139,7 @@ plt.savefig(f"{plots_dir}/roc_epoch{args.epoch}.pdf", bbox_inches="tight")
 print(f"Wrote ROC curve to {plots_dir}/roc_epoch{args.epoch}.png")
 
 axes.set_xscale("log")
+axes.legend(fontsize=24, loc="upper left")
 plt.savefig(f"{plots_dir}/roc_logx_epoch{args.epoch}.png", bbox_inches="tight")
 plt.savefig(f"{plots_dir}/roc_logx_epoch{args.epoch}.pdf", bbox_inches="tight")
 print(f"Wrote ROC curve to {plots_dir}/roc_logx_epoch{args.epoch}.png")
