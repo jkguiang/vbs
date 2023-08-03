@@ -1,7 +1,10 @@
 #include "vbsvvhjets/collections.h"
 // RAPIDO
+<<<<<<< HEAD
 
 
+=======
+>>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
 #include "arbol.h"
 #include "hepcli.h"
 #include "looper.h"
@@ -70,9 +73,12 @@ int main(int argc, char** argv)
 
     arbol.newBranch<int>("bQuarksInHiggsJet", -999);
 
+<<<<<<< HEAD
     arbol.newBranch<std::vector<int>>("HiggsDecay_pdgId");
     arbol.newBranch<std::vector<int>>("HiggsDecay_nParticles");
 
+=======
+>>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
 
 
 
@@ -127,6 +133,7 @@ int main(int argc, char** argv)
 
         }
     );
+<<<<<<< HEAD
     // choosing hbbfatjet_n_true_higgsbquark to be equal to 2 to see the actual graphs with higgs
     cutflow.insert("SemiMerged_SaveVariables", hbbfatjet_n_true_higgsbquark, Right);
 
@@ -163,6 +170,11 @@ int main(int argc, char** argv)
     // {
     //     std::cout << "Particle ID: " << savedParticleIds[i] << ", count: " << savedParticleCounts[i] << std::endl;
     // }
+=======
+    cutflow.insert("SemiMerged_SaveVariables", hbbfatjet_n_true_higgsbquark, Right);
+
+
+>>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
 
     // ld_fatjet_pt
     //
@@ -249,7 +261,11 @@ int main(int argc, char** argv)
 
                 // Run cutflow
                 std::vector<std::string> cuts_to_check = {
+<<<<<<< HEAD
                     "BQuarksInHiggsJeteq0"
+=======
+                    "SemiMerged_SaveVariables"
+>>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
                 if (checkpoints.at(0)) { arbol.fill(); }
