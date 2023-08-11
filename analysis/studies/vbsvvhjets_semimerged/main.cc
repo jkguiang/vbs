@@ -1,10 +1,7 @@
 #include "vbsvvhjets/collections.h"
 // RAPIDO
-<<<<<<< HEAD
 
 
-=======
->>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
 #include "arbol.h"
 #include "hepcli.h"
 #include "looper.h"
@@ -71,14 +68,42 @@ int main(int argc, char** argv)
     arbol.newBranch<double>("vqqjets_mass", -999);
     arbol.newBranch<double>("vqqjets_eta", -999);
 
+
+
+
+
     arbol.newBranch<int>("bQuarksInHiggsJet", -999);
+    arbol.newBranch<int>("wBosonsInHiggsJet", -999);
+    arbol.newBranch<int>("zBosonsInHiggsJet", -999);
+    arbol.newBranch<int>("cQuarksInHiggsJet", -999);
+    arbol.newBranch<int>("tLeptonsInHiggsJet", -999);
+    arbol.newBranch<int>("gluonsInHiggsJet", -999);
+    arbol.newBranch<int>("gammasInHiggsJet", -999);
 
-<<<<<<< HEAD
-    arbol.newBranch<std::vector<int>>("HiggsDecay_pdgId");
-    arbol.newBranch<std::vector<int>>("HiggsDecay_nParticles");
+    arbol.newBranch<double>("ld_w_ld_fermion_pt",-999);
+    arbol.newBranch<double>("ld_w_ld_fermion_eta",-999);
+    arbol.newBranch<double>("ld_w_ld_fermion_phi",-999);
+    arbol.newBranch<double>("ld_w_ld_fermion_mass",-999);
+    arbol.newBranch<double>("ld_w_tr_fermion_pt",-999);
+    arbol.newBranch<double>("ld_w_tr_fermion_eta",-999);
+    arbol.newBranch<double>("ld_w_tr_fermion_phi",-999);
+    arbol.newBranch<double>("ld_w_tr_fermion_mass",-999);
+    arbol.newBranch<double>("tr_w_ld_fermion_pt",-999);
+    arbol.newBranch<double>("tr_w_ld_fermion_eta",-999);
+    arbol.newBranch<double>("tr_w_ld_fermion_phi",-999);
+    arbol.newBranch<double>("tr_w_ld_fermion_mass",-999);
+    arbol.newBranch<double>("tr_w_tr_fermion_pt",-999);
+    arbol.newBranch<double>("tr_w_tr_fermion_eta",-999);
+    arbol.newBranch<double>("tr_w_tr_fermion_phi",-999);
+    arbol.newBranch<double>("tr_w_tr_fermion_mass",-999);
 
-=======
->>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
+    arbol.newBranch<double>("ld_w_ld_fermion_pdgId",-999);
+    arbol.newBranch<double>("ld_w_tr_fermion_pdgId",-999);
+    arbol.newBranch<double>("tr_w_ld_fermion_pdgId",-999);
+    arbol.newBranch<double>("tr_w_tr_fermion_pdgId",-999);
+
+
+
 
 
 
@@ -100,42 +125,497 @@ int main(int argc, char** argv)
     );
     cutflow.insert("SemiMerged_SaveVariables", addition_vqqjets, Right);
 
-        // truth tagging
+// classification of the decay of ww to fermions on gen level and seeing which came from which
+    Cut* ww_fermions = new LambdaCut(
+            "WW_fermions",
+            [&]()
+            {
+
+                // LorentzVector v_p4 = nt.GenPart_p4();
+                std::vector<LorentzVector> fermions_ww_p4;
+                // fermions_pair_ww_p4 is vector having two fermions from one w and two from the other w after pplying dR<0.8
+                std::vector<LorentzVector> fermions_pair_from_ww;
+                std::vector<int> pdgId_fermions_ww;
+
+                std::vector<unsigned int> fermions_ww_originalIdx; // Store original indices here
+
+                LorentzVector ld_w_ld_fermion; // leading W's leading fermion
+                LorentzVector ld_w_tr_fermion; // leading W's trailing fermion
+                LorentzVector tr_w_ld_fermion; // trailing W's leading fermion
+                LorentzVector tr_w_tr_fermion; // trailing W's trailing fermion
+
+                int ld_w_ld_fermion_pdgId;
+                int ld_w_tr_fermion_pdgId;
+                int tr_w_ld_fermion_pdgId;
+                int tr_w_tr_fermion_pdgId;
+
+                for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+                {
+                    int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+                    if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+                    int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+                    if ((abs(gen_pdgId)==11 || abs(gen_pdgId)==12 || abs(gen_pdgId)==13 ||abs(gen_pdgId)==14 ||abs(gen_pdgId)==15 ||abs(gen_pdgId)==16
+                    ||abs(gen_pdgId)==17 ||abs(gen_pdgId)==18  ||abs(gen_pdgId)==2 || abs(gen_pdgId)==1 ||abs(gen_pdgId)==4 ||abs(gen_pdgId)==3 ) && gen_mother_pdgId==24)
+                    {
+                        fermions_ww_p4.push_back(nt.GenPart_p4().at(gen_i));
+                        fermions_ww_originalIdx.push_back(gen_i);  // Add the original index to the separate vector
+
+                    }
+                }
+                if (fermions_ww_p4.size() < 4) {return false;}
+                std::set<unsigned int> usedIndices;
+                for (unsigned int i=0; i < fermions_ww_p4.size()-1; i++)
+                {
+                    if (usedIndices.count(i)) continue; // Skip this fermion if it's already been paired
+                    for (unsigned int ii = i+1; ii < fermions_ww_p4.size(); ii++)
+                    {
+                        if (usedIndices.count(ii)) continue; // Skip this fermion if it's already been paired
+
+                        double deltaR = ROOT::Math::VectorUtil::DeltaR(fermions_ww_p4.at(ii),fermions_ww_p4.at(i));
+                        if (deltaR<0.8)
+                        {
+                            fermions_pair_from_ww.push_back(fermions_ww_p4.at(i));
+                            fermions_pair_from_ww.push_back(fermions_ww_p4.at(ii));
+                            pdgId_fermions_ww.push_back(nt.GenPart_pdgId().at(fermions_ww_originalIdx.at(i)));
+                            pdgId_fermions_ww.push_back(nt.GenPart_pdgId().at(fermions_ww_originalIdx.at(ii)));
+
+                            // Mark these fermions as used
+                            usedIndices.insert(i);
+                            usedIndices.insert(ii);
+
+                            break; // exit the inner loop once a pair is found for the current fermion
+                        }
+                    }
+
+                }
+                if (fermions_pair_from_ww.size() < 4) {return false;}
+
+                double pt_W1 = (fermions_pair_from_ww[0] + fermions_pair_from_ww[1]).Pt();
+                double pt_W2 = (fermions_pair_from_ww[2] + fermions_pair_from_ww[3]).Pt();
+                if (pt_W1 > pt_W2)
+                {
+                    if (fermions_pair_from_ww[0].pt()> fermions_pair_from_ww[1].pt())
+                    {
+                        ld_w_ld_fermion = fermions_pair_from_ww[0];
+                        ld_w_tr_fermion = fermions_pair_from_ww[1];
+
+                        ld_w_ld_fermion_pdgId=pdgId_fermions_ww[0];
+                        ld_w_tr_fermion_pdgId=pdgId_fermions_ww[1];
+                    }
+                    else{
+                        ld_w_ld_fermion = fermions_pair_from_ww[1];
+                        ld_w_tr_fermion = fermions_pair_from_ww[0];
+
+                        ld_w_ld_fermion_pdgId = pdgId_fermions_ww[1];
+                        ld_w_tr_fermion_pdgId = pdgId_fermions_ww[0];
+                    }
+                    if (fermions_pair_from_ww[2].pt()> fermions_pair_from_ww[3].pt())
+                    {
+                        tr_w_ld_fermion = fermions_pair_from_ww[2];
+                        tr_w_tr_fermion = fermions_pair_from_ww[3];
+
+                        tr_w_ld_fermion_pdgId = pdgId_fermions_ww[2];
+                        tr_w_tr_fermion_pdgId = pdgId_fermions_ww[3];
+                    }
+                    else{
+                        tr_w_ld_fermion = fermions_pair_from_ww[3];
+                        tr_w_tr_fermion = fermions_pair_from_ww[2];
+
+                        tr_w_ld_fermion_pdgId = pdgId_fermions_ww[3];
+                        tr_w_tr_fermion_pdgId = pdgId_fermions_ww[2];
+                    }
+
+                }
+                else
+                {
+                    if (fermions_pair_from_ww[0].pt()> fermions_pair_from_ww[1].pt())
+                    {
+                        tr_w_ld_fermion = fermions_pair_from_ww[0];
+                        tr_w_tr_fermion = fermions_pair_from_ww[1];
+
+                        tr_w_ld_fermion_pdgId = pdgId_fermions_ww[0];
+                        tr_w_tr_fermion_pdgId = pdgId_fermions_ww[1];
+                    }
+                    else{
+                        tr_w_ld_fermion = fermions_pair_from_ww[1];
+                        tr_w_tr_fermion = fermions_pair_from_ww[0];
+
+                        tr_w_ld_fermion_pdgId = pdgId_fermions_ww[1];
+                        tr_w_tr_fermion_pdgId = pdgId_fermions_ww[0];
+                    }
+                    if (fermions_pair_from_ww[2].pt()> fermions_pair_from_ww[3].pt())
+                    {
+                        ld_w_ld_fermion = fermions_pair_from_ww[2];
+                        ld_w_tr_fermion = fermions_pair_from_ww[3];
+
+                        ld_w_ld_fermion_pdgId = pdgId_fermions_ww[2];
+                        ld_w_tr_fermion_pdgId = pdgId_fermions_ww[3];
+                    }
+                    else{
+                        ld_w_ld_fermion = fermions_pair_from_ww[3];
+                        ld_w_tr_fermion = fermions_pair_from_ww[2];
+
+                        ld_w_ld_fermion_pdgId = pdgId_fermions_ww[3];
+                        ld_w_tr_fermion_pdgId = pdgId_fermions_ww[2];
+                    }
+
+                }
+
+                arbol.setLeaf<double>("ld_w_ld_fermion_pt",ld_w_ld_fermion.pt());
+                arbol.setLeaf<double>("ld_w_ld_fermion_eta",ld_w_ld_fermion.eta());
+                arbol.setLeaf<double>("ld_w_ld_fermion_phi",ld_w_ld_fermion.phi());
+                arbol.setLeaf<double>("ld_w_ld_fermion_mass",ld_w_ld_fermion.mass());
+                arbol.setLeaf<double>("ld_w_tr_fermion_pt",ld_w_tr_fermion.pt());
+                arbol.setLeaf<double>("ld_w_tr_fermion_eta",ld_w_tr_fermion.eta());
+                arbol.setLeaf<double>("ld_w_tr_fermion_phi",ld_w_tr_fermion.phi());
+                arbol.setLeaf<double>("ld_w_tr_fermion_mass",ld_w_tr_fermion.mass());
+                arbol.setLeaf<double>("tr_w_ld_fermion_pt",tr_w_ld_fermion.pt());
+                arbol.setLeaf<double>("tr_w_ld_fermion_eta",tr_w_ld_fermion.eta());
+                arbol.setLeaf<double>("tr_w_ld_fermion_phi",tr_w_ld_fermion.phi());
+                arbol.setLeaf<double>("tr_w_ld_fermion_mass",tr_w_ld_fermion.mass());
+                arbol.setLeaf<double>("tr_w_tr_fermion_pt",tr_w_tr_fermion.pt());
+                arbol.setLeaf<double>("tr_w_tr_fermion_eta",tr_w_tr_fermion.eta());
+                arbol.setLeaf<double>("tr_w_tr_fermion_phi",tr_w_tr_fermion.phi());
+                arbol.setLeaf<double>("tr_w_tr_fermion_mass",tr_w_tr_fermion.mass());
+
+                arbol.setLeaf<double>("ld_w_ld_fermion_pdgId",ld_w_ld_fermion_pdgId);
+                arbol.setLeaf<double>("ld_w_tr_fermion_pdgId",ld_w_tr_fermion_pdgId);
+                arbol.setLeaf<double>("tr_w_ld_fermion_pdgId",tr_w_ld_fermion_pdgId);
+                arbol.setLeaf<double>("tr_w_tr_fermion_pdgId",tr_w_tr_fermion_pdgId);
+                return true;
+
+
+            }
+        );
+        cutflow.insert("SemiMerged_SaveVariables", ww_fermions, Right);
+
+    //truth tagging hbb
     Cut* hbbfatjet_n_true_higgsbquark = new LambdaCut(
-        "Hbbfatjet_n_true_higgsbquark",
+            "Hbbfatjet_n_true_higgsbquark",
+            [&]()
+            {
+
+                LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+                std::vector<LorentzVector> bQuarks;
+                int bQuarksInHiggsJet = 0;
+                for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+                {
+                    int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+                    if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+                    int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+                    if (abs(gen_pdgId)==5 && gen_mother_pdgId==25)
+                    {
+                        bQuarks.push_back(nt.GenPart_p4().at(gen_i));
+                    }
+                }
+                for (unsigned int i=0; i < bQuarks.size(); i++)
+                {
+                    double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,bQuarks.at(i));
+                    if (deltaR<0.8)
+                    {
+                        bQuarksInHiggsJet++;
+                    }
+                }
+                arbol.setLeaf<int>("bQuarksInHiggsJet",bQuarksInHiggsJet);
+                return true;
+
+
+            }
+        );
+        cutflow.insert("SemiMerged_SaveVariables", hbbfatjet_n_true_higgsbquark, Right);
+
+    // choosing hbbfatjet_n_true_higgsbquark to be equal to 0 to see the actual graphs withouy higgs
+
+    Cut* bQuarksInHiggsJeteq0 = new LambdaCut(
+        "BQuarksInHiggsJeteq0",
         [&]()
         {
-
-            LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
-            std::vector<LorentzVector> bQuarks;
-            int bQuarksInHiggsJet = 0;
-            for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
-            {
-                int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
-                if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
-                int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
-                if (abs(gen_pdgId)==5 && gen_mother_pdgId==25)
-                {
-                    bQuarks.push_back(nt.GenPart_p4().at(gen_i));
-                }
-            }
-            for (unsigned int i=0; i < bQuarks.size(); i++)
-            {
-                double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,bQuarks.at(i));
-                if (deltaR<0.8)
-                {
-                    bQuarksInHiggsJet++;
-                }
-            }
-            arbol.setLeaf<int>("bQuarksInHiggsJet",bQuarksInHiggsJet);
-            return true;
-
+            return arbol.getLeaf<int>("bQuarksInHiggsJet")==2;
 
         }
     );
-<<<<<<< HEAD
+    cutflow.insert(hbbfatjet_n_true_higgsbquark, bQuarksInHiggsJeteq0, Right);
+
+
+
+    //truth tagging WWWWWWWWWWWWW Bosons
+    Cut* hwwfatjet_n_true_higgswboson = new LambdaCut(
+    		"Hwwfatjet_n_true_higgswboson",
+    		[&]()
+    		{
+
+    			LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+    			std::vector<LorentzVector> wBosons;
+    			int wBosonsInHiggsJet = 0;
+    			for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+    			{
+    				int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+    				if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+    				int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+    				if (abs(gen_pdgId)==24 && gen_mother_pdgId==25)
+    				{
+    					wBosons.push_back(nt.GenPart_p4().at(gen_i));
+    				}
+    			}
+    			for (unsigned int i=0; i < wBosons.size(); i++)
+    			{
+    				double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,wBosons.at(i));
+    				if (deltaR<0.8)
+    				{
+    					wBosonsInHiggsJet++;
+    				}
+    			}
+    			arbol.setLeaf<int>("wBosonsInHiggsJet",wBosonsInHiggsJet);
+    			return true;
+
+
+    		}
+    	);
+    	cutflow.insert("SemiMerged_SaveVariables", hwwfatjet_n_true_higgswboson, Right);
+
+    // choosing hwwfatjet_n_true_higgsbquark to be equal to 0 to see the actual graphs withouy higgs
+
+    Cut* wBosonsInHiggsJeteq0 = new LambdaCut(
+    	"WBosonsInHiggsJeteq0",
+    	[&]()
+    	{
+    		return arbol.getLeaf<int>("wBosonsInHiggsJet")==0;
+
+    	}
+    );
+    cutflow.insert(hwwfatjet_n_true_higgswboson, wBosonsInHiggsJeteq0, Right);
+
+
+    //truth tagging ZZZZZZZZZZZZZZZZ bosons
+    Cut* hzzfatjet_n_true_higgszboson = new LambdaCut(
+    		"Hzzfatjet_n_true_higgszboson",
+    		[&]()
+    		{
+
+    			LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+    			std::vector<LorentzVector> zBosons;
+    			int zBosonsInHiggsJet = 0;
+    			for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+    			{
+    				int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+    				if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+    				int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+    				if (abs(gen_pdgId)==23 && gen_mother_pdgId==25)
+    				{
+    					zBosons.push_back(nt.GenPart_p4().at(gen_i));
+    				}
+    			}
+    			for (unsigned int i=0; i < zBosons.size(); i++)
+    			{
+    				double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,zBosons.at(i));
+    				if (deltaR<0.8)
+    				{
+    					zBosonsInHiggsJet++;
+    				}
+    			}
+    			arbol.setLeaf<int>("zBosonsInHiggsJet",zBosonsInHiggsJet);
+    			return true;
+
+
+    		}
+    	);
+    	cutflow.insert("SemiMerged_SaveVariables", hzzfatjet_n_true_higgszboson, Right);
+
+    // choosing hzzfatjet_n_true_higgszboson to be equal to 0 to see the actual graphs without Higgs
+
+    Cut* zBosonsInHiggsJeteq0 = new LambdaCut(
+    	"ZBosonsInHiggsJeteq0",
+    	[&]()
+    	{
+    		return arbol.getLeaf<int>("zBosonsInHiggsJet")==0;
+
+    	}
+    );
+    cutflow.insert(hzzfatjet_n_true_higgszboson, zBosonsInHiggsJeteq0, Right);
+
+
+
+    //truth tagging Charm quarks cc
+    Cut* hccfatjet_n_true_higgscquark = new LambdaCut(
+    		"Hccfatjet_n_true_higgscquark",
+    		[&]()
+    		{
+
+    			LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+    			std::vector<LorentzVector> cQuarks;
+    			int cQuarksInHiggsJet = 0;
+    			for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+    			{
+    				int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+    				if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+    				int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+    				if (abs(gen_pdgId)==4 && gen_mother_pdgId==25)
+    				{
+    					cQuarks.push_back(nt.GenPart_p4().at(gen_i));
+    				}
+    			}
+    			for (unsigned int i=0; i < cQuarks.size(); i++)
+    			{
+    				double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,cQuarks.at(i));
+    				if (deltaR<0.8)
+    				{
+    					cQuarksInHiggsJet++;
+    				}
+    			}
+    			arbol.setLeaf<int>("cQuarksInHiggsJet",cQuarksInHiggsJet);
+    			return true;
+    		}
+    	);
+    	cutflow.insert("SemiMerged_SaveVariables", hccfatjet_n_true_higgscquark, Right);
+
+    // choosing hccfatjet_n_true_higgscquark to be equal to 0 to see the actual graphs without Higgs
+
+    Cut* cQuarksInHiggsJeteq0 = new LambdaCut(
+    	"CQuarksInHiggsJeteq0",
+    	[&]()
+    	{
+    		return arbol.getLeaf<int>("cQuarksInHiggsJet")==0;
+    	}
+    );
+    cutflow.insert(hccfatjet_n_true_higgscquark, cQuarksInHiggsJeteq0, Right);
+
+
+    //truth tagging for Tau Leptons
+    Cut* httfatjet_n_true_higgstlepton = new LambdaCut(
+    		"Httfatjet_n_true_higgstlepton",
+    		[&]()
+    		{
+
+    			LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+    			std::vector<LorentzVector> tLeptons;
+    			int tLeptonsInHiggsJet = 0;
+    			for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+    			{
+    				int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+    				if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+    				int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+    				if (abs(gen_pdgId)==15 && gen_mother_pdgId==25)
+    				{
+    					tLeptons.push_back(nt.GenPart_p4().at(gen_i));
+    				}
+    			}
+    			for (unsigned int i=0; i < tLeptons.size(); i++)
+    			{
+    				double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,tLeptons.at(i));
+    				if (deltaR<0.8)
+    				{
+    					tLeptonsInHiggsJet++;
+    				}
+    			}
+    			arbol.setLeaf<int>("tLeptonsInHiggsJet",tLeptonsInHiggsJet);
+    			return true;
+    		}
+    	);
+    	cutflow.insert("SemiMerged_SaveVariables", httfatjet_n_true_higgstlepton, Right);
+
+    // choosing httfatjet_n_true_higgstlepton to be equal to 0 to see the actual graphs without Higgs
+
+    Cut* tLeptonsInHiggsJeteq0 = new LambdaCut(
+    	"TLeptonsInHiggsJeteq0",
+    	[&]()
+    	{
+    		return arbol.getLeaf<int>("tLeptonsInHiggsJet")==0;
+    	}
+    );
+    cutflow.insert(httfatjet_n_true_higgstlepton, tLeptonsInHiggsJeteq0, Right);
+
+
+    //truth tagging gluon pair gg
+    Cut* hggfatjet_n_true_higgsgluon = new LambdaCut(
+    		"Hggfatjet_n_true_higgsgluon",
+    		[&]()
+    		{
+
+    			LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+    			std::vector<LorentzVector> gluons;
+    			int gluonsInHiggsJet = 0;
+    			for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+    			{
+    				int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+    				if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+    				int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+    				if (abs(gen_pdgId)==21 && gen_mother_pdgId==25)
+    				{
+    					gluons.push_back(nt.GenPart_p4().at(gen_i));
+    				}
+    			}
+    			for (unsigned int i=0; i < gluons.size(); i++)
+    			{
+    				double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,gluons.at(i));
+    				if (deltaR<0.8)
+    				{
+    					gluonsInHiggsJet++;
+    				}
+    			}
+    			arbol.setLeaf<int>("gluonsInHiggsJet",gluonsInHiggsJet);
+    			return true;
+    		}
+    	);
+    	cutflow.insert("SemiMerged_SaveVariables", hggfatjet_n_true_higgsgluon, Right);
+
+    // choosing hggfatjet_n_true_higgsgluon to be equal to 0 to see the actual graphs without Higgs
+
+    Cut* gluonsInHiggsJeteq0 = new LambdaCut(
+    	"GluonsInHiggsJeteq0",
+    	[&]()
+    	{
+    		return arbol.getLeaf<int>("gluonsInHiggsJet")==0;
+    	}
+    );
+    cutflow.insert(hggfatjet_n_true_higgsgluon, gluonsInHiggsJeteq0, Right);
+
+
+    //truth tagging  gamma pair yy
+Cut* hggfatjet_n_true_higgsgamma = new LambdaCut(
+		"Hggfatjet_n_true_higgsgamma",
+		[&]()
+		{
+
+			LorentzVector higgsJetP4 = cutflow.globals.getVal<LorentzVector>("hbbfatjet_p4");
+			std::vector<LorentzVector> gammas;
+			int gammasInHiggsJet = 0;
+			for (unsigned int gen_i = 0; gen_i < nt.nGenPart(); gen_i++)
+			{
+				int gen_pdgId=nt.GenPart_pdgId().at(gen_i);
+				if (nt.GenPart_genPartIdxMother().at(gen_i)<0) {continue;}
+				int gen_mother_pdgId=nt.GenPart_pdgId().at(nt.GenPart_genPartIdxMother().at(gen_i));
+				if (abs(gen_pdgId)==22 && gen_mother_pdgId==25)
+				{
+					gammas.push_back(nt.GenPart_p4().at(gen_i));
+				}
+			}
+			for (unsigned int i=0; i < gammas.size(); i++)
+			{
+				double deltaR = ROOT::Math::VectorUtil::DeltaR(higgsJetP4,gammas.at(i));
+				if (deltaR<0.8)
+				{
+					gammasInHiggsJet++;
+				}
+			}
+			arbol.setLeaf<int>("gammasInHiggsJet",gammasInHiggsJet);
+			return true;
+		}
+	);
+	cutflow.insert("SemiMerged_SaveVariables", hggfatjet_n_true_higgsgamma, Right);
+
+// choosing hggfatjet_n_true_higgsgamma to be equal to 0 to see the actual graphs without Higgs
+
+Cut* gammasInHiggsJeteq0 = new LambdaCut(
+	"GammasInHiggsJeteq0",
+	[&]()
+	{
+		return arbol.getLeaf<int>("gammasInHiggsJet")==0;
+	}
+);
+cutflow.insert(hggfatjet_n_true_higgsgamma, gammasInHiggsJeteq0, Right);
+
+
     // choosing hbbfatjet_n_true_higgsbquark to be equal to 2 to see the actual graphs with higgs
-    cutflow.insert("SemiMerged_SaveVariables", hbbfatjet_n_true_higgsbquark, Right);
 
     // Cut* bQuarksInHiggsJeteq2 = new LambdaCut(
     //     "BQuarksInHiggsJeteq2",
@@ -149,32 +629,16 @@ int main(int argc, char** argv)
 
     // choosing hbbfatjet_n_true_higgsbquark to be equal to 0 to see the actual graphs withouy higgs
 
-    Cut* bQuarksInHiggsJeteq0 = new LambdaCut(
-        "BQuarksInHiggsJeteq0",
-        [&]()
-        {
-            return arbol.getLeaf<int>("bQuarksInHiggsJet")==0;
 
-        }
-    );
-    cutflow.insert(hbbfatjet_n_true_higgsbquark, bQuarksInHiggsJeteq0, Right);
 // trying to see the higgs which diddn't came from h->bb since when we investigated bQuarksInHiggsJet=0 we found little peak around the higgs although there hsouldn't be higgs
 
 
-    // Fetch the data from 'arbol'
-    // std::vector<int> savedParticleIds = arbol.getLeaf<std::vector<int>>("HiggsDecay_pdgId");
-    // std::vector<int> savedParticleCounts = arbol.getLeaf<std::vector<int>>("HiggsDecay_nParticles");
-    //
+
     // // Print the data
     // for (size_t i = 0; i < savedParticleIds.size(); i++)
     // {
     //     std::cout << "Particle ID: " << savedParticleIds[i] << ", count: " << savedParticleCounts[i] << std::endl;
     // }
-=======
-    cutflow.insert("SemiMerged_SaveVariables", hbbfatjet_n_true_higgsbquark, Right);
-
-
->>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
 
     // ld_fatjet_pt
     //
@@ -261,11 +725,7 @@ int main(int argc, char** argv)
 
                 // Run cutflow
                 std::vector<std::string> cuts_to_check = {
-<<<<<<< HEAD
-                    "BQuarksInHiggsJeteq0"
-=======
-                    "SemiMerged_SaveVariables"
->>>>>>> 926d2cf8699ae1d287ef8f5e0718dbf75b71389b
+                    "WW_fermions"
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
                 if (checkpoints.at(0)) { arbol.fill(); }
