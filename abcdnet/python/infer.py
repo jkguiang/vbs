@@ -35,6 +35,14 @@ if __name__ == "__main__":
         "--export", action="store_true",
         help="write copy of input babies with 'abcdnet_score' branch"
     )
+    parser.add_argument(
+        "--no_tag", action="store_true",
+        help="disabled '_abcdnet' tag for output files"
+    )
+    parser.add_argument(
+        "--name", type=str, default="abcdnet",
+        help="name to be used for branches, i.e. NAME_score (default: 'abcdnet')"
+    )
     args = parser.parse_args()
 
     config = VBSConfig.from_json(args.config_json)
@@ -68,7 +76,8 @@ if __name__ == "__main__":
 
     times = []
     if args.export:
-        os.makedirs(f"{config.ingress.input_dir}/{config.name}", exist_ok=True)
+        out_dir = f"{config.base_dir}/{config.name}/output"
+        os.makedirs(out_dir, exist_ok=True)
         # Process MC
         selection = config.ingress.get("selection", None)
         for pt_file in glob.glob(ingress.get_outfile(config, tag="*", subdir="datasets", msg="Globbing {}")): 
@@ -83,9 +92,17 @@ if __name__ == "__main__":
             # Make file names
             name = pt_file.split(config.name+"_")[-1].split("_dataset")[0].replace(".pt", "")
             old_root_file = f"{config.ingress.input_dir}/{name}.root"
-            new_root_file = f"{config.ingress.input_dir}/{config.name}/{name}_abcdnet.root"
+            if args.no_tag:
+                new_root_file = f"{out_dir}/{name}.root"
+            else:
+                new_root_file = f"{out_dir}/{name}_abcdnet.root"
             # Run inference (and write output)
-            output = OutputROOT(old_root_file, new_root_file, selection=selection, ttree_name=config.ingress.ttree_name)
+            output = OutputROOT(
+                old_root_file, new_root_file, 
+                selection=selection, 
+                ttree_name=config.ingress.ttree_name, 
+                algo_name=args.name
+            )
             if config.discotype == "single":
                 times += infer(model, device, loader, output)
             elif config.discotype == "double":
@@ -98,9 +115,17 @@ if __name__ == "__main__":
             orig_dir = "/".join(root_file.split("/")[:-1]) or "."
             os.makedirs(f"{orig_dir}/{config.name}", exist_ok=True)
             name = root_file.split("/")[-1].replace(".root", "")
-            new_root_file = f"{orig_dir}/{config.name}/{name}_abcdnet.root"
+            if args.no_tag:
+                new_root_file = f"{out_dir}/{name}.root"
+            else:
+                new_root_file = f"{out_dir}/{name}_abcdnet.root"
             # Run inference (and write output)
-            output = OutputROOT(root_file, new_root_file, selection=selection, ttree_name=config.ingress.ttree_name)
+            output = OutputROOT(
+                root_file, new_root_file, 
+                selection=selection, 
+                ttree_name=config.ingress.ttree_name,
+                algo_name=args.name
+            )
             if config.discotype == "single":
                 times += infer(model, device, loader, output)
             elif config.discotype == "double":

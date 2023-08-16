@@ -22,27 +22,28 @@ class OutputCSV(VBSOutput):
         self.__f.close()
 
 class OutputROOT(VBSOutput):
-    def __init__(self, old_baby, new_baby, selection=None, ttree_name="tree"):
+    def __init__(self, old_baby, new_baby, selection=None, ttree_name="tree", algo_name="abcdnet"):
         super().__init__(new_baby)
         self.__scores = []
-        self.__old_baby = old_baby
-        self.__new_baby = new_baby
-        self.__ttree_name = ttree_name
-        self.__selection = selection
+        self.old_baby = old_baby
+        self.new_baby = new_baby
+        self.ttree_name = ttree_name
+        self.selection = selection
+        self.algo_name = algo_name
 
     def write(self, idx, truth, score, weight, disco_target):
         self.__scores.append(score.item())
 
     def close(self):
         # Open the existing ROOT file
-        with uproot.open(self.__old_baby) as old_baby:
+        with uproot.open(self.old_baby) as old_baby:
             # Copy the existing TTree
-            tree = old_baby[self.__ttree_name].arrays(cut=self.__selection)
+            tree = old_baby[self.ttree_name].arrays(cut=self.selection)
             # Add the new branch to the copy
-            tree["abcdnet_score"] = np.array(self.__scores)
+            tree[f"{self.algo_name}_score"] = np.array(self.__scores)
             # Write the updated TTree to a new ROOT file
-            with uproot.recreate(self.__new_baby) as new_baby:
-                new_baby[self.__ttree_name] = tree
+            with uproot.recreate(self.new_baby) as new_baby:
+                new_baby[self.ttree_name] = tree
 
 def infer(model, device, loader, output):
     times = []
