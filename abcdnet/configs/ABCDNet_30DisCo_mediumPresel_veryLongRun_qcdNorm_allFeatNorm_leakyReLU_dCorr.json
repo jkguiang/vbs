@@ -1,0 +1,90 @@
+{
+    "base_dir": "/blue/p.chang/jguiang/data/vbsvvh",
+    "model": {
+        "name": "LeakyNeuralNetwork",
+        "n_hidden_layers": 3,
+        "hidden_size": 64
+    },
+    "infer": {
+        "extra_files": [
+            "/blue/p.chang/jguiang/data/vbsvvh/output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm/data.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/Bosons.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/QCD.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/SingleTop.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TT1L.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TTHad.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TTH.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TTW.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/data.root",
+            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/VBSVVH.root"
+        ]
+    },
+    "ingress": {
+        "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm",
+        "bkg_files": [
+            "Bosons.root",
+            "QCD.root",
+            "SingleTop.root",
+            "TT1L.root",
+            "TTHad.root",
+            "TTH.root",
+            "TTW.root"
+        ],
+        "sig_files": [
+            "VBSVVH.root"
+        ],
+        "ttree_name": "tree", 
+        "selection": "(hbbfatjet_xbb > 0.5) & (ld_vqqfatjet_xwqq > 0.3) & (tr_vqqfatjet_xwqq > 0.3)",
+        "features": [
+            "hbbfatjet_pt",
+            "hbbfatjet_eta",
+            "hbbfatjet_phi",
+            "hbbfatjet_mass",
+            "ld_vqqfatjet_pt",
+            "ld_vqqfatjet_eta",
+            "ld_vqqfatjet_phi",
+            "ld_vqqfatjet_mass", 
+            "tr_vqqfatjet_pt", 
+            "tr_vqqfatjet_eta",
+            "tr_vqqfatjet_phi",
+            "tr_vqqfatjet_mass", 
+            "M_jj"
+        ],
+        "transforms": {
+            "hbbfatjet_pt": "log",
+            "ld_vqqfatjet_pt": "log",
+            "tr_vqqfatjet_pt": "log",
+            "hbbfatjet_eta": ["rescale", [-2.5, 2.5]],
+            "ld_vqqfatjet_eta": ["rescale", [-2.5, 2.5]],
+            "tr_vqqfatjet_eta": ["rescale", [-2.5, 2.5]],
+            "hbbfatjet_phi": ["rescale", [-3, 3]],
+            "ld_vqqfatjet_phi": ["rescale", [-3, 3]],
+            "tr_vqqfatjet_phi": ["rescale", [-3, 3]],
+            "hbbfatjet_mass": ["rescale", [0, 200]],
+            "ld_vqqfatjet_mass": ["rescale", [0, 200]],
+            "tr_vqqfatjet_mass": ["rescale", [0, 200]],
+            "M_jj": ["rescale", [0, 3000]]
+        },
+        "weights": [
+            "xsec_sf",
+            "pu_sf",
+            "prefire_sf",
+            "qcdnorm_sf"
+        ],
+        "disco_target": "abs_deta_jj"
+    },
+    "train": {
+        "train_frac": 0.8,
+        "n_batches_train": 10,
+        "n_batches_test": 5,
+        "learning_rate": 0.001,
+        "seed": 1234,
+        "scheduler_name": "ConstantLR",
+        "scheduler_kwargs": {
+            "factor": 1.0
+        },
+        "disco_lambda": 30,
+        "disco_power": 1,
+        "n_epochs": 3000
+    }
+}

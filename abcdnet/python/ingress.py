@@ -21,10 +21,13 @@ def get_outfile(config, tag, ext="pt", subdir=None, msg=None):
     return outfile
 
 def transform(feature, transf):
+    if type(transf) == list:
+        transf, params = transf
     if transf == None:
         return feature
     elif transf == "rescale":
-        return (feature - feature.min())/(feature.max() - feature.min())
+        min_value, max_value = params
+        return (feature - min_value)/(max_value - min_value)
     elif transf == "log":
         return torch.log(feature)
     elif transf == "log2":
