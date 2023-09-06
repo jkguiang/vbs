@@ -1,6 +1,8 @@
 import os
 import glob
+import math
 import matplotlib.pyplot as plt
+import numpy as np
 import torch
 from torch.utils.data import Dataset
 
@@ -84,8 +86,10 @@ class DisCoDataset(Dataset):
     def count_label(self, label):
         return torch.sum(self.labels == label).item()
 
-    def plot_variable(self, values, name, plots_dir, norm=True):
-        fig, axes = plt.subplots(figsize=(10, 10))
+    def plot_variable(self, values, name, plots_dir=None, norm=True, axes=None, integrals=True):
+        if axes is None:
+            fig, axes = plt.subplots(figsize=(10, 10))
+
         is_signal = (self.labels == 1)
         sig_vals = values[is_signal]
         sig_wgts = self.weights[is_signal]
@@ -120,7 +124,7 @@ class DisCoDataset(Dataset):
             weights=bkg_counts,
             color="k",
             alpha=0.75,
-            label=f"total bkg [{bkg_events:0.1f} events]"
+            label=(f"total bkg [{bkg_events:0.1f} events]" if integrals else "bkg")
         )
 
         # Get sig histogram counts
@@ -136,7 +140,8 @@ class DisCoDataset(Dataset):
             weights=sig_counts,
             histtype="step",
             color="r",
-            label=f"total sig [{sig_events:0.1f} events]"
+            linewidth=3,
+            label=(f"total sig [{sig_events:0.1f} events]" if integrals else "signal")
         )
 
         # Format axes
@@ -149,23 +154,50 @@ class DisCoDataset(Dataset):
 
         axes.set_xlabel(name)
 
-        # Save plot
-        outname = f"{plots_dir}/{name}.png"
-        plt.savefig(outname, bbox_inches="tight")
-        print(f"Wrote {outname}")
-        plt.close()
+        if not plots_dir is None:
+            # Save plot
+            outname = f"{plots_dir}/{name}.png"
+            plt.savefig(outname, bbox_inches="tight")
+            plt.savefig(outname.replace(".png", ".pdf"), bbox_inches="tight")
+            print(f"Wrote {outname}")
+            plt.close()
 
     def plot(self, config, norm=True):
         plots_dir = f"{config.base_dir}/{config.name}/plots"
         os.makedirs(plots_dir, exist_ok=True)
-        # Plot features
-        for feature_i in range(len(self.features)):
+        # Plot features individually (actually useful)
+        n_features = len(self.features)
+        for feature_i in range(n_features):
             self.plot_variable(
                 self.features[feature_i],
                 config.ingress.features[feature_i],
                 plots_dir,
                 norm=norm
             )
+
+        # Plot features together (also useful, but mainly for slides, etc.)
+        n_cols = round(np.sqrt(n_features))
+        n_rows = n_features//n_cols + (n_features%n_cols > 0)
+        fig, all_axes = plt.subplots(n_rows, n_cols, figsize=(20, 20))
+        for row in range(n_rows):
+            for col in range(n_cols):
+                feature_i = row*n_cols + col
+                if feature_i >= n_features:
+                    fig.delaxes(all_axes[row][col])
+                    continue
+
+                self.plot_variable(
+                    self.features[feature_i],
+                    config.ingress.features[feature_i],
+                    norm=True,
+                    axes=all_axes[row][col],
+                    integrals=False
+                )
+
+        plt.savefig(f"{plots_dir}/all_features.png", bbox_inches="tight")
+        plt.savefig(f"{plots_dir}/all_features.pdf", bbox_inches="tight")
+        print(f"Wrote {plots_dir}/all_features.pdf")
+                
 
     def split(self, fraction):
         left_data = None
