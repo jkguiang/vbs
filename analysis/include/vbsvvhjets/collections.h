@@ -99,6 +99,11 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("VVH_pt", -999);
         arbol.newBranch<double>("VVH_eta", -999);
         arbol.newBranch<double>("VVH_phi", -999);
+        arbol.newBranch<double>("alphaS_up", -999);
+        arbol.newBranch<double>("alphaS_dn", -999);
+        arbol.newBranch<double>("xbb_sf", 1.);
+        arbol.newBranch<double>("xbb_sf_up", 1.);
+        arbol.newBranch<double>("xbb_sf_dn", 1.);
     };
 
     virtual void initCorrections()

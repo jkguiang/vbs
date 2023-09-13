@@ -183,7 +183,6 @@ int main(int argc, char** argv)
             {
                 // Reset branches and globals
                 arbol.resetBranches();
-                pdf_arbol.resetBranches();
                 cutflow.globals.resetVars();
 
                 nt.GetEntry(entry);
@@ -196,7 +195,6 @@ int main(int argc, char** argv)
                 if (checkpoints.at(0)) 
                 { 
                     arbol.fill(); 
-                    pdf_arbol.fill();
                 }
 
                 // Update progress bar
