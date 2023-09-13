@@ -388,11 +388,23 @@ public:
                 arbol.setLeaf<double>("trig_sf", hlt_sfs->getElecSF(pt, eta));
                 arbol.setLeaf<double>("trig_sf_up", hlt_sfs->getElecErrUp(pt, eta));
                 arbol.setLeaf<double>("trig_sf_dn", hlt_sfs->getElecErrDn(pt, eta));
+                arbol.setLeaf<double>("trig_elec_sf", hlt_sfs->getElecSF(pt, eta));
+                arbol.setLeaf<double>("trig_elec_sf_up", hlt_sfs->getElecErrUp(pt, eta));
+                arbol.setLeaf<double>("trig_elec_sf_dn", hlt_sfs->getElecErrDn(pt, eta));
+                arbol.setLeaf<double>("trig_muon_sf", 1.);
+                arbol.setLeaf<double>("trig_muon_sf_up", 1.);
+                arbol.setLeaf<double>("trig_muon_sf_dn", 1.);
                 break;
             case (13):
                 arbol.setLeaf<double>("trig_sf", hlt_sfs->getMuonSF(pt, eta));
                 arbol.setLeaf<double>("trig_sf_up", hlt_sfs->getMuonErrUp(pt, eta));
                 arbol.setLeaf<double>("trig_sf_dn", hlt_sfs->getMuonErrDn(pt, eta));
+                arbol.setLeaf<double>("trig_muon_sf", hlt_sfs->getMuonSF(pt, eta));
+                arbol.setLeaf<double>("trig_muon_sf_up", hlt_sfs->getMuonErrUp(pt, eta));
+                arbol.setLeaf<double>("trig_muon_sf_dn", hlt_sfs->getMuonErrDn(pt, eta));
+                arbol.setLeaf<double>("trig_elec_sf", 1.);
+                arbol.setLeaf<double>("trig_elec_sf_up", 1.);
+                arbol.setLeaf<double>("trig_elec_sf_dn", 1.);
                 break;
             default:
                 break;
@@ -643,9 +655,15 @@ public:
         double lep_id_sf = 1.;
         double lep_id_sf_up = 1.;
         double lep_id_sf_dn = 1.;
+        double muon_id_sf = 1.;
+        double muon_id_sf_up = 1.;
+        double muon_id_sf_dn = 1.;
         double muon_iso_sf = 1.;
         double muon_iso_sf_up = 1.;
         double muon_iso_sf_dn = 1.;
+        double elec_id_sf = 1.;
+        double elec_id_sf_up = 1.;
+        double elec_id_sf_dn = 1.;
         double elec_reco_sf = 1.;
         double elec_reco_sf_up = 1.;
         double elec_reco_sf_dn = 1.;
@@ -657,6 +675,9 @@ public:
             elec_reco_sf = lep_sfs->getElecRecoSF(lep_pt, lep_eta);
             elec_reco_sf_up = lep_sfs->getElecRecoErrUp(lep_pt, lep_eta);
             elec_reco_sf_dn = lep_sfs->getElecRecoErrDn(lep_pt, lep_eta);
+            elec_id_sf = lep_id_sf;
+            elec_id_sf_up = lep_id_sf_up;
+            elec_id_sf_dn = lep_id_sf_dn;
         }
         else if (abs_lep_pdgID == 13)
         {
@@ -666,16 +687,27 @@ public:
             muon_iso_sf = lep_sfs->getMuonIsoSF(lep_pt, lep_eta);
             muon_iso_sf_up = lep_sfs->getMuonIsoErrUp(lep_pt, lep_eta);
             muon_iso_sf_dn = lep_sfs->getMuonIsoErrDn(lep_pt, lep_eta);
+            muon_id_sf = lep_id_sf;
+            muon_id_sf_up = lep_id_sf_up;
+            muon_id_sf_dn = lep_id_sf_dn;
         }
         arbol.setLeaf<double>("lep_id_sf", lep_id_sf);
         arbol.setLeaf<double>("lep_id_sf_up", lep_id_sf_up);
         arbol.setLeaf<double>("lep_id_sf_dn", lep_id_sf_dn);
+
         arbol.setLeaf<double>("muon_iso_sf", muon_iso_sf);
         arbol.setLeaf<double>("muon_iso_sf_up", muon_iso_sf_up);
         arbol.setLeaf<double>("muon_iso_sf_dn", muon_iso_sf_dn);
         arbol.setLeaf<double>("elec_reco_sf", elec_reco_sf);
         arbol.setLeaf<double>("elec_reco_sf_up", elec_reco_sf_up);
         arbol.setLeaf<double>("elec_reco_sf_dn", elec_reco_sf_dn);
+
+        arbol.setLeaf<double>("muon_id_sf",    muon_id_sf);
+        arbol.setLeaf<double>("muon_id_sf_up", muon_id_sf_up);
+        arbol.setLeaf<double>("muon_id_sf_dn", muon_id_sf_dn);
+        arbol.setLeaf<double>("elec_id_sf",    elec_id_sf);
+        arbol.setLeaf<double>("elec_id_sf_up", elec_id_sf_up);
+        arbol.setLeaf<double>("elec_id_sf_dn", elec_id_sf_dn);
     };
 
     double weight()
