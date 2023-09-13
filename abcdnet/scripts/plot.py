@@ -48,10 +48,30 @@ parser.add_argument(
     "--loss_N", type=int, default=10, 
     help="plot the loss for every Nth epoch (default: 10)"
 )
+parser.add_argument(
+    "--plot_features", action="store_true",
+    help="plot the input features again (done during training step)"
+)
 args = parser.parse_args()
 
 config = VBSConfig.from_json(args.config_json)
 plots_dir = f"{config.base_dir}/{config.name}/plots"
+
+if args.plot_features:
+    if config.discotype == "single":
+        from datasets import SingleDisCoDataset
+        data = SingleDisCoDataset.from_files(
+            ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
+            norm=config.train.get("weight_norm", True)
+        )
+    elif config.discotype == "double":
+        from datasets import DoubleDisCoDataset
+        data = DoubleDisCoDataset.from_files(
+            ingress.get_outfile(config, tag="*", subdir="datasets", msg="Loading files {}"), 
+            norm=config.train.get("weight_norm", True)
+        )
+    data.plot(config)
+    del data
 
 # Get history JSON
 history_json = {}
