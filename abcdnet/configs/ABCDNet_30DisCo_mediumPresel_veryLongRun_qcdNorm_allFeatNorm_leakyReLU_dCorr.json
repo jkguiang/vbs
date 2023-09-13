@@ -7,16 +7,7 @@
     },
     "infer": {
         "extra_files": [
-            "/blue/p.chang/jguiang/data/vbsvvh/output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm/data.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/Bosons.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/QCD.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/SingleTop.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TT1L.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TTHad.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TTH.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/TTW.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/data.root",
-            "/blue/p.chang/jguiang/data/vbsvvh/output_main_nofix/Run2/QCDNorm_mediumPresel_noFix_qcdnorm/VBSVVH.root"
+            "/blue/p.chang/jguiang/data/vbsvvh/output_pnetfix/Run2/QCDNorm_mediumPresel_qcdnorm/data.root"
         ]
     },
     "ingress": {
