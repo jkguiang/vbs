@@ -94,6 +94,13 @@ for hist_name in data_hists:
 
 for ndim, hists_ndim in hists.items():
     for h in hists_ndim.values():
+        """
+        Bins: Underflow Bin, Bin 1, Bin 2, ..., Bin N, Overflow Bin
+              |  (Bin 0)     |______________________|   (Bin N+1) |
+              |                       N bins                      |
+              |___________________________________________________|
+                                  N bins + 2
+        """
         for xbin in range(0, h.GetNbinsX()+2):
             for ybin in range(0, h.GetNbinsY()+2):
                 for zbin in range(0, h.GetNbinsZ()+2):
