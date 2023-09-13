@@ -361,7 +361,7 @@ class CutflowCollection:
         if cutflows:
             if type(cutflows) == dict:
                 self.__cutflows = cutflows
-            elif type(cutflow_objs) == list:
+            elif type(cutflows) == list:
                 for cutflow_i, cutflow in enumerate(cutflows):
                     self.__cutflows[f"Cutflow_{cutflow_i}"] = cutflow
             else:
@@ -581,12 +581,12 @@ class CutflowCollection:
             cutflows = []
             for cflow_file in cflow_files:
                 cutflows.append(Cutflow.from_file(cflow_file, delimiter=delimiter))
-            return CutflowCollection(cutflows)
+            return CutflowCollection(cutflows=cutflows)
         elif type(cflow_files) == dict:
             cutflows = {}
-            for cutflow_name, cflow_file in cflow_files:
+            for cutflow_name, cflow_file in cflow_files.items():
                 cutflows[cutflow_name] = Cutflow.from_file(cflow_file, delimiter=delimiter)
-            return CutflowCollection(cutflows)
+            return CutflowCollection(cutflows=cutflows)
         else:
             raise ValueError("cutflow files must be arranged in a dict or list")
 
