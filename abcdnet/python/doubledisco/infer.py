@@ -41,8 +41,8 @@ class OutputROOT(VBSOutput):
             # Copy the existing TTree
             tree = old_baby[self.ttree_name].arrays(cut=self.selection)
             # Add the new branch to the copy
-            tree[f"{algo_name}_score1"] = np.array(self.__scores_1)
-            tree[f"{algo_name}_score2"] = np.array(self.__scores_2)
+            tree[f"{self.algo_name}_score1"] = np.array(self.__scores_1)
+            tree[f"{self.algo_name}_score2"] = np.array(self.__scores_2)
             # Write the updated TTree to a new ROOT file
             with uproot.recreate(self.new_baby) as new_baby:
                 new_baby[self.ttree_name] = tree

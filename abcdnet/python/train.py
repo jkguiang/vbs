@@ -201,4 +201,5 @@ if __name__ == "__main__":
                 print(f"Wrote {history_json}")
 
         print(f"total runtime: {time.time() - epoch_t0:0.3f}s", flush=True)
-        print("\nDone.\n")
+
+    print("\nDone.\n")
