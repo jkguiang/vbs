@@ -14,6 +14,7 @@
 // ROOT
 #include "TString.h"
 #include "Math/VectorUtil.h"    // DeltaR
+#include "TH2.h"
 // NanoCORE
 #include "Nano.h"
 #include "Config.h"             // gconf
@@ -451,6 +452,7 @@ public:
         Doubles good_fatjet_xvqqtags;
         Doubles good_fatjet_masses;
         Doubles good_fatjet_msoftdrops;
+        double ht = 0.;
         LorentzVectors veto_lep_p4s = globals.getVal<LorentzVectors>("veto_lep_p4s");
         for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
@@ -510,6 +512,7 @@ public:
             good_fatjet_xvqqtags.push_back((pnet_xbb + pnet_xcc + pnet_xqq)/(pnet_xbb + pnet_xcc + pnet_xqq + pnet_qcd));
             good_fatjet_masses.push_back(nt.FatJet_particleNet_mass().at(fatjet_i));
             good_fatjet_msoftdrops.push_back(nt.FatJet_msoftdrop().at(fatjet_i));
+            ht += fatjet_p4.pt();
         }
         globals.setVal<LorentzVectors>("good_fatjet_p4s", good_fatjet_p4s);
         globals.setVal<Integers>("good_fatjet_idxs", good_fatjet_idxs);
@@ -525,6 +528,7 @@ public:
         globals.setVal<Doubles>("good_fatjet_msoftdrops", good_fatjet_msoftdrops);
 
         arbol.setLeaf<int>("n_fatjets", good_fatjet_p4s.size());
+        arbol.setLeaf<double>("HT_fat", ht);
 
         return true;
     };
@@ -617,6 +621,9 @@ public:
         arbol.setLeaf<double>("ld_vbsjet_phi", ld_vbsjet_p4.phi());
         arbol.setLeaf<double>("tr_vbsjet_phi", tr_vbsjet_p4.phi());
         arbol.setLeaf<double>("M_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).M());
+        arbol.setLeaf<double>("pt_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).pt());
+        arbol.setLeaf<double>("eta_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).eta());
+        arbol.setLeaf<double>("phi_jj", (ld_vbsjet_p4 + tr_vbsjet_p4).phi());
         arbol.setLeaf<double>("deta_jj", ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta());
         arbol.setLeaf<double>("abs_deta_jj", fabs(ld_vbsjet_p4.eta() - tr_vbsjet_p4.eta()));
         arbol.setLeaf<double>("dR_jj", ROOT::Math::VectorUtil::DeltaR(ld_vbsjet_p4, tr_vbsjet_p4));
@@ -839,6 +846,10 @@ public:
     bool evaluate()
     {
         if (nt.isData()) { return true; }
+
+        // Hard-coded blacklist for NanoAOD known to _not_ have LHE branches
+        TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+        if (file_name.Contains("QCD_Pt")) { return true; }
 
         /* From Events->GetListOfBranches()->ls("LHEScaleWeight*"):
            OBJ: TBranch   LHEScaleWeight  LHE scale variation weights (w_var / w_nominal); 
