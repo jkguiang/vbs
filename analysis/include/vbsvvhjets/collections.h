@@ -24,6 +24,7 @@ struct Analysis : Core::Analysis
     HLT1LepSFs* hlt_sfs;
     BTagSFs* btag_sfs;
     PileUpSFs* pu_sfs;
+    PileUpJetIDSFs* puid_sfs;
     bool all_corrections;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
@@ -47,6 +48,7 @@ struct Analysis : Core::Analysis
         hlt_sfs = nullptr;
         btag_sfs = nullptr;
         pu_sfs = nullptr;
+        puid_sfs = nullptr;
         all_corrections = false;
     };
 
@@ -54,25 +56,27 @@ struct Analysis : Core::Analysis
     {
         Core::Analysis::initBranches();
         // W/Z fat jet branches
-        arbol.newBranch<double>("ld_vqqfatjet_score", -999);
+        arbol.newBranch<double>("ld_vqqfatjet_xwqq", -999);
+        arbol.newBranch<double>("ld_vqqfatjet_xvqq", -999);
         arbol.newBranch<double>("ld_vqqfatjet_pt", -999);
         arbol.newBranch<double>("ld_vqqfatjet_eta", -999);
         arbol.newBranch<double>("ld_vqqfatjet_phi", -999);
         arbol.newBranch<double>("ld_vqqfatjet_mass", -999);
         arbol.newBranch<double>("ld_vqqfatjet_msoftdrop", -999);
-        arbol.newBranch<double>("tr_vqqfatjet_score", -999);
+        arbol.newBranch<double>("tr_vqqfatjet_xwqq", -999);
+        arbol.newBranch<double>("tr_vqqfatjet_xvqq", -999);
         arbol.newBranch<double>("tr_vqqfatjet_pt", -999);
         arbol.newBranch<double>("tr_vqqfatjet_eta", -999);
         arbol.newBranch<double>("tr_vqqfatjet_phi", -999);
         arbol.newBranch<double>("tr_vqqfatjet_mass", -999);
         arbol.newBranch<double>("tr_vqqfatjet_msoftdrop", -999);
         // W/Z AK4 jet branches
-        arbol.newBranch<double>("ld_vqqjet_score", -999);
+        arbol.newBranch<double>("ld_vqqjet_qgl", -999);
         arbol.newBranch<double>("ld_vqqjet_pt", -999);
         arbol.newBranch<double>("ld_vqqjet_eta", -999);
         arbol.newBranch<double>("ld_vqqjet_phi", -999);
         arbol.newBranch<double>("ld_vqqjet_mass", -999);
-        arbol.newBranch<double>("tr_vqqjet_score", -999);
+        arbol.newBranch<double>("tr_vqqjet_qgl", -999);
         arbol.newBranch<double>("tr_vqqjet_pt", -999);
         arbol.newBranch<double>("tr_vqqjet_eta", -999);
         arbol.newBranch<double>("tr_vqqjet_phi", -999);
@@ -80,7 +84,7 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("vqqjets_Mjj", -999);
         arbol.newBranch<double>("vqqjets_dR", -999);
         // Hbb fat jet branches
-        arbol.newBranch<double>("hbbfatjet_score", -999);
+        arbol.newBranch<double>("hbbfatjet_xbb", -999);
         arbol.newBranch<double>("hbbfatjet_pt", -999);
         arbol.newBranch<double>("hbbfatjet_eta", -999);
         arbol.newBranch<double>("hbbfatjet_phi", -999);
@@ -91,15 +95,19 @@ struct Analysis : Core::Analysis
         arbol.newBranch<bool>("passes_bveto", false);
         arbol.newBranch<bool>("is_allmerged", false);
         arbol.newBranch<bool>("is_semimerged", false);
+        arbol.newBranch<double>("M_VVH", -999);
+        arbol.newBranch<double>("VVH_pt", -999);
+        arbol.newBranch<double>("VVH_eta", -999);
+        arbol.newBranch<double>("VVH_phi", -999);
     };
 
     virtual void initCorrections()
     {
         jes = new JetEnergyScales(cli.variation);
         // lep_sfs = new LeptonSFsPKU(PKU::IDtight);     // TODO: figure out how to apply these for a lep veto
-        // hlt_sfs = new HLT1LepSFs();                   // TODO: add HT HLT sfs
-        // btag_sfs = new BTagSFs(cli.output_name, "M"); // TODO: design new btageff study for this analysis
+        // hlt_sfs = new HLT1LepSFs();                   // TODO: add HT HLT sfs? If we are on the trigger plateau, not needed
         pu_sfs = new PileUpSFs();
+        puid_sfs = new PileUpJetIDSFs();
         all_corrections = true;
     };
 
@@ -109,9 +117,31 @@ struct Analysis : Core::Analysis
         Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this, pu_sfs);
         cutflow.setRoot(bookkeeping);
 
+        // Cut to make jet selection consistent in cutflow tables...
+        Cut* jet_pt = new LambdaCut(
+            "Geq2JetsPtGt30_FatJetHLTPlataeuCut",
+            [&]()
+            {
+                int n_jets = 0;
+                for (auto jet_pt : nt.Jet_pt())
+                {
+                    if (jet_pt > 30) { n_jets++; }
+                }
+
+                double max_fatjet_pt = 0;
+                for (auto fatjet_pt : nt.FatJet_pt())
+                {
+                    if (fatjet_pt > max_fatjet_pt) { max_fatjet_pt = fatjet_pt; }
+                }
+
+                return (n_jets >= 2 && max_fatjet_pt > 550);
+            }
+        );
+        cutflow.insert(bookkeeping, jet_pt, Right);
+
         // Save LHE mu_R and mu_F scale weights
         Cut* save_lhe = new Core::SaveSystWeights("SaveSystWeights", *this);
-        cutflow.insert(bookkeeping, save_lhe, Right);
+        cutflow.insert(jet_pt, save_lhe, Right);
 
         // Event filters
         Cut* event_filters = new VBSWH::PassesEventFilters("PassesEventFilters", *this);
@@ -139,7 +169,7 @@ struct Analysis : Core::Analysis
         Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this, jes);
         cutflow.insert(no_leps, select_fatjets, Right);
 
-        Cut* trigger_plateau = new LambdaCut(
+        Cut* trigger_plateau = new LambdaCut( // Delete if jet_pt Cut works
             "TriggerPlateauCuts",
             [&]()
             {
@@ -152,20 +182,21 @@ struct Analysis : Core::Analysis
                 return max_fatjet_pt > 550;
             }
         );
-        cutflow.insert(select_fatjets, trigger_plateau, Right);
+        cutflow.insert(select_fatjets, trigger_plateau, Right); // Delete if jet_pt Cut works
 
         /* ------------------ 3 fatjet channel ------------------ */
         Cut* geq3_fatjets = new LambdaCut(
             "Geq3FatJets", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 3; }
         );
-        cutflow.insert(trigger_plateau, geq3_fatjets, Right);
+        // cutflow.insert(select_fatjets, geq3_fatjets, Right);
+        cutflow.insert(trigger_plateau, geq3_fatjets, Right); // Delete if jet_pt Cut works
 
         // VVH fat jet candidate selection
         Cut* allmerged_select_vvh = new SelectVVHFatJets("AllMerged_SelectVVHFatJets", *this, AllMerged);
         cutflow.insert(geq3_fatjets, allmerged_select_vvh, Right);
 
         // Jet selection
-        Cut* allmerged_select_jets = new SelectJetsNoFatJetOverlap("AllMerged_SelectJets", *this, AllMerged, jes, btag_sfs);
+        Cut* allmerged_select_jets = new SelectJetsNoFatJetOverlap("AllMerged_SelectJets", *this, AllMerged, jes, btag_sfs, puid_sfs);
         cutflow.insert(allmerged_select_vvh, allmerged_select_jets, Right);
 
         // VBS jet selection
@@ -188,7 +219,7 @@ struct Analysis : Core::Analysis
         
         // Preliminary cut tests
         Cut* allmerged_prelim_cut1 = new LambdaCut(
-            "AllMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_score") > 0.9; }
+            "AllMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_xbb") > 0.9; }
         );
         cutflow.insert(allmerged_detajjgt3, allmerged_prelim_cut1, Right);
         Cut* allmerged_prelim_cut2 = new LambdaCut(
@@ -196,8 +227,8 @@ struct Analysis : Core::Analysis
             [&]() 
             { 
                 return (
-                    arbol.getLeaf<double>("ld_vqqfatjet_score") > 0.9
-                    && arbol.getLeaf<double>("tr_vqqfatjet_score") > 0.9
+                    arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.9
+                    && arbol.getLeaf<double>("tr_vqqfatjet_xwqq") > 0.9
                 );
             }
         );
@@ -234,7 +265,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(exactly2_fatjets, semimerged_select_vvh, Right);
 
         // Jet selection
-        Cut* semimerged_select_jets = new SelectJetsNoFatJetOverlap("SemiMerged_SelectJets", *this, SemiMerged, jes, btag_sfs);
+        Cut* semimerged_select_jets = new SelectJetsNoFatJetOverlap("SemiMerged_SelectJets", *this, SemiMerged, jes, btag_sfs, puid_sfs);
         cutflow.insert(semimerged_select_vvh, semimerged_select_jets, Right);
 
         // N jets >= 4 (2 VBS + V --> qq)
@@ -267,11 +298,11 @@ struct Analysis : Core::Analysis
         
         // Preliminary cut tests
         Cut* semimerged_prelim_cut1 = new LambdaCut(
-            "SemiMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_score") > 0.9; }
+            "SemiMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_xbb") > 0.9; }
         );
         cutflow.insert(semimerged_detajjgt3, semimerged_prelim_cut1, Right);
         Cut* semimerged_prelim_cut2 = new LambdaCut(
-            "SemiMerged_XVqqGt0p9", [&]() { return arbol.getLeaf<double>("ld_vqqfatjet_score") > 0.9; }
+            "SemiMerged_XVqqGt0p9", [&]() { return arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.9; }
         );
         cutflow.insert(semimerged_prelim_cut1, semimerged_prelim_cut2, Right);
         Cut* semimerged_prelim_cut3 = new LambdaCut(
@@ -302,8 +333,8 @@ struct Analysis : Core::Analysis
             jes->init();
             // lep_sfs->init(file_name);  // TODO: see Analysis::initCorrections
             // hlt_sfs->init(file_name);  // TODO: see Analysis::initCorrections
-            // btag_sfs->init(file_name); // TODO: see Analysis::initCorrections
             pu_sfs->init(file_name);
+            puid_sfs->init(file_name);
         }
     };
 };
