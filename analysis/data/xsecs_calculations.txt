@@ -26,4 +26,16 @@ TTToHadronic:
 (831.76 pb ttbar xsec)*(0.665 t->W(->lnu)b BR)*(0.665 t->W(->lnu)b BR) = 367.825066
 
 VBFWH_HToBB_WToLNu_M-125_dipoleRecoilOn:
-(0.02202 pb xsecs from MadGraph)*(0.5840 H->bb BR) = 0.01285968
+(0.02202 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.01285968
+
+VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn:
+(0.4378 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.2556752
+
+VBSWH_negLambdaWZ_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn
+(0.437504 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.255502336
+
+VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn
+(0.0655874 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.0383030416
+
+VBSWH_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn
+(0.437504 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.255502336
