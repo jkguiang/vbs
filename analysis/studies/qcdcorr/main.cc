@@ -40,8 +40,8 @@ int main(int argc, char** argv)
     // Define histogram binning
     const int n_ptbins = 12;
     double ptbin_edges[n_ptbins+1] = {300., 310., 320., 340., 360., 400., 450., 500., 600., 700., 800., 900., 1000.};
-    const int n_etabins = 5;
-    double etabin_edges[n_etabins+1] = {0., 0.5, 1.0, 1.5, 2.0, 2.5};
+    const int n_etabins = 3;
+    double etabin_edges[n_etabins+1] = {0., 0.5, 1.25, 2.5};
     const int n_scorebins = 1000;
     double scorebin_edges[n_scorebins+1] = {0.};
     for (int scorebin_i = 0; scorebin_i < n_scorebins; ++scorebin_i)

@@ -362,6 +362,7 @@ public:
 
     bool evaluate()
     {
+        // Save b-veto
         arbol.setLeaf<bool>("passes_bveto", arbol.getLeaf<int>("n_medium_b_jets") == 0);
         if (channel == AllMerged)
         {
@@ -383,6 +384,18 @@ public:
                 + arbol.getLeaf<double>("tr_vqqjet_pt")
             );
             arbol.setLeaf<bool>("is_semimerged", true);
+        }
+
+        // Save alphaS variations
+        if (!nt.isData() && nt.nLHEPdfWeight() == 103) // PDF-dependent; this is fine for VBSWH signal
+        {
+            arbol.setLeaf<double>("alphaS_up", nt.LHEPdfWeight().at(101));
+            arbol.setLeaf<double>("alphaS_dn", nt.LHEPdfWeight().at(102));
+        }
+        else
+        {
+            arbol.setLeaf<double>("alphaS_up", 1.);
+            arbol.setLeaf<double>("alphaS_dn", 1.);
         }
         return true;
     };

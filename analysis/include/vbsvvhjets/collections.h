@@ -105,8 +105,7 @@ struct Analysis : Core::Analysis
     {
         jes = new JetEnergyScales(cli.variation);
         // lep_sfs = new LeptonSFsPKU(PKU::IDtight);     // TODO: figure out how to apply these for a lep veto
-        // hlt_sfs = new HLT1LepSFs();                   // TODO: add HT HLT sfs
-        // btag_sfs = new BTagSFs(cli.output_name, "M"); // TODO: design new btageff study for this analysis
+        // hlt_sfs = new HLT1LepSFs();                   // TODO: add HT HLT sfs? If we are on the trigger plateau, not needed
         pu_sfs = new PileUpSFs();
         puid_sfs = new PileUpJetIDSFs();
         all_corrections = true;
@@ -118,9 +117,31 @@ struct Analysis : Core::Analysis
         Cut* bookkeeping = new Core::Bookkeeping("Bookkeeping", *this, pu_sfs);
         cutflow.setRoot(bookkeeping);
 
+        // Cut to make jet selection consistent in cutflow tables...
+        Cut* jet_pt = new LambdaCut(
+            "Geq2JetsPtGt30_FatJetHLTPlataeuCut",
+            [&]()
+            {
+                int n_jets = 0;
+                for (auto jet_pt : nt.Jet_pt())
+                {
+                    if (jet_pt > 30) { n_jets++; }
+                }
+
+                double max_fatjet_pt = 0;
+                for (auto fatjet_pt : nt.FatJet_pt())
+                {
+                    if (fatjet_pt > max_fatjet_pt) { max_fatjet_pt = fatjet_pt; }
+                }
+
+                return (n_jets >= 2 && max_fatjet_pt > 550);
+            }
+        );
+        cutflow.insert(bookkeeping, jet_pt, Right);
+
         // Save LHE mu_R and mu_F scale weights
         Cut* save_lhe = new Core::SaveSystWeights("SaveSystWeights", *this);
-        cutflow.insert(bookkeeping, save_lhe, Right);
+        cutflow.insert(jet_pt, save_lhe, Right);
 
         // Event filters
         Cut* event_filters = new VBSWH::PassesEventFilters("PassesEventFilters", *this);
@@ -148,7 +169,7 @@ struct Analysis : Core::Analysis
         Cut* select_fatjets = new Core::SelectFatJets("SelectFatJets", *this, jes);
         cutflow.insert(no_leps, select_fatjets, Right);
 
-        Cut* trigger_plateau = new LambdaCut(
+        Cut* trigger_plateau = new LambdaCut( // Delete if jet_pt Cut works
             "TriggerPlateauCuts",
             [&]()
             {
@@ -161,13 +182,14 @@ struct Analysis : Core::Analysis
                 return max_fatjet_pt > 550;
             }
         );
-        cutflow.insert(select_fatjets, trigger_plateau, Right);
+        cutflow.insert(select_fatjets, trigger_plateau, Right); // Delete if jet_pt Cut works
 
         /* ------------------ 3 fatjet channel ------------------ */
         Cut* geq3_fatjets = new LambdaCut(
             "Geq3FatJets", [&]() { return arbol.getLeaf<int>("n_fatjets") >= 3; }
         );
-        cutflow.insert(trigger_plateau, geq3_fatjets, Right);
+        // cutflow.insert(select_fatjets, geq3_fatjets, Right);
+        cutflow.insert(trigger_plateau, geq3_fatjets, Right); // Delete if jet_pt Cut works
 
         // VVH fat jet candidate selection
         Cut* allmerged_select_vvh = new SelectVVHFatJets("AllMerged_SelectVVHFatJets", *this, AllMerged);
@@ -311,7 +333,6 @@ struct Analysis : Core::Analysis
             jes->init();
             // lep_sfs->init(file_name);  // TODO: see Analysis::initCorrections
             // hlt_sfs->init(file_name);  // TODO: see Analysis::initCorrections
-            // btag_sfs->init(file_name); // TODO: see Analysis::initCorrections
             pu_sfs->init(file_name);
             puid_sfs->init(file_name);
         }

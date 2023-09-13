@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH --partition=gpu 
+#SBATCH --gpus=1 
+#SBATCH --mem=16gb 
+#SBATCH --constraint=a100 
+#SBATCH --time=4:00:00
+#SBATCH --job-name=ABCDNet_infer
+#SBATCH --account avery 
+#SBATCH --qos avery
+
+source setup_hpg.sh
+python python/infer.py $@

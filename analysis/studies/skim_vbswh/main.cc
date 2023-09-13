@@ -190,7 +190,7 @@ int main(int argc, char** argv)
                 // Run cutflow
                 nt.GetEntry(entry);
                 bool passed = cutflow.run(geq1fatjet);
-                if (passed) { arbusto.fill(); }
+                if (passed) { arbusto.fill(entry); }
                 bar.progress(looper.n_events_processed, looper.n_events_total);
             }
         }

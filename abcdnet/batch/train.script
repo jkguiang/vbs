@@ -1,0 +1,12 @@
+#!/bin/bash
+#SBATCH --partition=gpu 
+#SBATCH --gpus=1 
+#SBATCH --mem=16gb 
+#SBATCH --constraint=a100 
+#SBATCH --time=12:00:00
+#SBATCH --job-name=ABCDNet_train
+#SBATCH --account avery 
+#SBATCH --qos avery
+
+source setup_hpg.sh
+python python/train.py $1 --log_interval=10

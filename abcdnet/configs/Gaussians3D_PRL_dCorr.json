@@ -1,0 +1,32 @@
+{
+    "base_dir": "/blue/p.chang/jguiang/data/vbsvvh",
+    "model": {
+        "name": "NeuralNetwork",
+        "n_hidden_layers": 3,
+        "hidden_size": 128
+    },
+    "ingress": {
+        "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/gaussiansPosCov",
+        "sig_files": ["sig.root"],
+        "bkg_files": ["bkg.root"],
+        "ttree_name": "tree", 
+        "features": ["X1", "X2"],
+        "transforms": {},
+        "disco_target": "X0"
+    },
+    "train": {
+        "train_frac": 0.85,
+        "n_batches_train": 85,
+        "n_batches_test": 15,
+        "learning_rate": 0.001,
+        "seed": 1234,
+        "scheduler_name": "ConstantLR",
+        "scheduler_kwargs": {
+            "factor": 1.0
+        },
+        "disco_lambda": 1000,
+        "disco_power": 1,
+        "weight_norm": false,
+        "n_epochs": 200
+    }
+}

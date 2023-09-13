@@ -14,6 +14,7 @@
 // ROOT
 #include "TString.h"
 #include "Math/VectorUtil.h"    // DeltaR
+#include "TH2.h"
 // NanoCORE
 #include "Nano.h"
 #include "Config.h"             // gconf

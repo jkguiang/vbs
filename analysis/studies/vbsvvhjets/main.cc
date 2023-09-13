@@ -24,7 +24,7 @@ int main(int argc, char** argv)
 
     // Initialize Arbol
     Arbol arbol = Arbol(cli);
-    arbol.newBranch<double>("reweight_c2v_eq_3", -999);
+    arbol.newBranch<double>("reweights", -999);
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name + "_Cutflow");
@@ -183,6 +183,7 @@ int main(int argc, char** argv)
             {
                 // Reset branches and globals
                 arbol.resetBranches();
+                pdf_arbol.resetBranches();
                 cutflow.globals.resetVars();
 
                 nt.GetEntry(entry);
@@ -192,7 +193,11 @@ int main(int argc, char** argv)
                     "AllMerged_SaveVariables"
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
-                if (checkpoints.at(0)) { arbol.fill(); }
+                if (checkpoints.at(0)) 
+                { 
+                    arbol.fill(); 
+                    pdf_arbol.fill();
+                }
 
                 // Update progress bar
                 bar.progress(looper.n_events_processed, looper.n_events_total);

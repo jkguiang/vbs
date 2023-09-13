@@ -1,0 +1,24 @@
+#!/bin/bash
+#SBATCH --partition=gpu 
+#SBATCH --gpus=1 
+#SBATCH --mem=16gb 
+#SBATCH --constraint=a100 
+#SBATCH --time=12:00:00
+#SBATCH --job-name=ABCDNet
+#SBATCH --account avery 
+#SBATCH --qos avery
+
+source setup_hpg.sh
+
+config=$1
+shift
+epochs=$@
+
+if [[ "$epochs" == "" ]]; then
+    epochs="100 200 300 400 500 600 700 800 900 1000"
+fi
+
+for epoch in $epochs; do
+    python python/infer.py $config --epoch=$epoch
+    python scripts/plot.py $config --epoch=$epoch
+done

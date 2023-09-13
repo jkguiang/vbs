@@ -1,0 +1,21 @@
+{
+    "ingress": {
+        "input_dir": "/blue/p.chang/jguiang/data/vbsvvh/output_main_qcdfix/Run2",
+        "bkg_files": [
+            "Bosons.root",
+            "QCD.root",
+            "SingleTop.root",
+            "TT1L.root",
+            "TTHad.root",
+            "TTH.root",
+            "TTW.root"
+        ],
+        "ttree_name": "tree", 
+        "selection": "(hbbfatjet_xbb > 0.5) & (ld_vqqfatjet_xwqq > 0.3) & (tr_vqqfatjet_xwqq > 0.3)",
+        "weights": [
+            "xsec_sf",
+            "pu_sf",
+            "prefire_sf"
+        ]
+    }
+}
