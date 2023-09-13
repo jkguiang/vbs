@@ -24,7 +24,7 @@ class VBSOrchestrator(Orchestrator):
     def get_file_info(self, input_file):
         file_info = {
             "is_data": ("Run201" in input_file),
-            "is_signal": ("privateMC_NANOGEN" in input_file), 
+            "is_signal": ("VBSWH_" in input_file or "privateMC_NANOGEN" in input_file), 
             "output_name": None, # set below, depends on is_data
             "output_dir": None,  # set below, depends on year
             "n_events": None,    # set by file_info.parse
@@ -132,6 +132,10 @@ if __name__ == "__main__":
     )
     cli.add_argument(
         "--filter", type=str,
+        help="Regex filter for selecting matching datasets"
+    )
+    cli.add_argument(
+        "--ifilter", type=str,
         help="Regex filter for excluding matching datasets"
     )
     cli.add_argument(
@@ -219,6 +223,21 @@ if __name__ == "__main__":
         resp = ""
         while resp != "y" and resp != "n":
             resp = input("Run analysis jobs for these samples? y/n: ").lower()
+        if resp == "n":
+            exit()
+
+    if args.ifilter:
+        ifilter_re = re.compile(args.ifilter)
+        excl_samples = [sample for sample in samples if ifilter_re.match(sample)]
+        samples = [sample for sample in samples if not sample in excl_samples]
+        if not samples:
+            print(f"Filter '{args.ifilter}' did not exclude any datasets")
+        else:
+            print(f"Filter '{args.ifilter}' excluded {len(excl_samples)} datasets:")
+            print("\n".join(excl_samples))
+        resp = ""
+        while resp != "y" and resp != "n":
+            resp = input("Run analysis jobs without these samples? y/n: ").lower()
         if resp == "n":
             exit()
 

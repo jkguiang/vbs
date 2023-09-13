@@ -23,96 +23,78 @@ BKG_SAMPLE_MAP = {
         "2017":        ["QCD_HT*"],
         "2018":        ["QCD_HT*"],
     },
+    # "QCD": {
+    #     "2016preVFP":  ["QCD_Pt*"],
+    #     "2016postVFP": ["QCD_Pt*"],
+    #     "2017":        ["QCD_Pt*"],
+    #     "2018":        ["QCD_Pt*"],
+    # },
     "TT1L": {
         "2016preVFP":  ["TTToSemiLep*"],
         "2016postVFP": ["TTToSemiLep*"],
         "2017":        ["TTToSemiLep*"],
         "2018":        ["TTToSemiLep*"],
     },
-    # "TT2L": {
-    #     "2016preVFP":  ["TTTo2L*"],
-    #     "2016postVFP": ["TTTo2L*"],
-    #     "2017":        ["TTTo2L*"],
-    #     "2018":        ["TTTo2L*"],
-    # },
     "TTW": {
         "2016preVFP":  ["TTW*"],
         "2016postVFP": ["TTW*"],
         "2017":        ["TTW*"],
         "2018":        ["TTW*"],
     },
-    # "TTZ": {
-    #     "2016preVFP":  ["TTZ*"],
-    #     "2016postVFP": ["TTZ*"],
-    #     "2017":        ["TTZ*"],
-    #     "2018":        ["TTZ*"],
-    # },
     "TTH": {
         "2016preVFP":  ["ttH*"],
         "2016postVFP": ["ttH*"],
         "2017":        ["ttH*"],
         "2018":        ["ttH*"],
     },
-    # "TTbb": {
-    #     "2016preVFP":  ["TTbb*"],
-    #     "2016postVFP": ["TTbb*"],
-    #     "2017":        ["TTbb*"],
-    #     "2018":        ["TTbb*"],
-    # },
-    # "TTX": {
-    #     "2016preVFP":  ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToSemiLep*", "TTTo2L*"],
-    #     "2016postVFP": ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToSemiLep*", "TTTo2L*"],
-    #     "2017":        ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToSemiLep*", "TTTo2L*"],
-    #     "2018":        ["ttH*", "TTW*", "TTZ*", "TTbb*", "TTToSemiLep*", "TTTo2L*"],
-    # },
-    # "WJets": {
-    #     "2016preVFP":  ["WJets*"],
-    #     "2016postVFP": ["WJets*"],
-    #     "2017":        ["WJets*"],
-    #     "2018":        ["WJets*"],
-    # },
-    # "ZJets": {
-    #     "2016preVFP":  ["ZJets*"],
-    #     "2016postVFP": ["ZJets*"],
-    #     "2017":        ["ZJets*"],
-    #     "2018":        ["ZJets*"],
-    # },
     "Bosons": {
         "2016preVFP":  ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*", "WJets*", "ZJets*", "*HToBB*", "VHToNonbb_M125"],
         "2016postVFP": ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*", "WJets*", "ZJets*", "*HToBB*", "VHToNonbb_M125"],
         "2017":        ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*", "WJets*", "ZJets*", "*HToBB*", "VHToNonbb_M125"],
         "2018":        ["WW*", "WZ*", "ZZ*", "DY*", "EWKW*WToQQ*", "EWKZ*ZToNuNu*", "EWKZ*ZToLL*", "EWKZ*ZToQQ*", "WJets*", "ZJets*", "*HToBB*", "VHToNonbb_M125"],
     },
-    # "EWKWLep": {
-    #     "2016preVFP":  ["EWKW*WToLNu*"],
-    #     "2016postVFP": ["EWKW*WToLNu*"],
-    #     "2017":        ["EWKW*WToLNu*"],
-    #     "2018":        ["EWKW*WToLNu*"],
-    # },
-    # "VH": {
-    #     "2016preVFP":  ["*HToBB*", "VHToNonbb_M125"],
-    #     "2016postVFP": ["*HToBB*", "VHToNonbb_M125"],
-    #     "2017":        ["*HToBB*", "VHToNonbb_M125"],
-    #     "2018":        ["*HToBB*", "VHToNonbb_M125"]
-    # },
 }
 
 SIG_SAMPLE_MAP = {
-    "VBSVVH": {
-        "2016preVFP":  ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"],
-        "2016postVFP": ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"],
-        "2017":        ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"],
-        "2018":        ["VBSWWH*", "VBSOSWWH*", "VBSWZH*", "VBSZZH*"]
-    }
+    "SSVBSWWH": {
+        "2016preVFP":  ["VBSWWH_SS_VBSCuts*"],
+        "2016postVFP": ["VBSWWH_SS_VBSCuts*"],
+        "2017":        ["VBSWWH_SS_VBSCuts*"],
+        "2018":        ["VBSWWH_SS_VBSCuts*"]
+    },
+    "OSVBSWWH": {
+        "2016preVFP":  ["VBSWWH_OS_VBSCuts*"],
+        "2016postVFP": ["VBSWWH_OS_VBSCuts*"],
+        "2017":        ["VBSWWH_OS_VBSCuts*"],
+        "2018":        ["VBSWWH_OS_VBSCuts*"]
+    },
+    "VBSWZH": {
+        "2016preVFP":  ["VBSWZH_VBSCuts*"],
+        "2016postVFP": ["VBSWZH_VBSCuts*"],
+        "2017":        ["VBSWZH_VBSCuts*"],
+        "2018":        ["VBSWZH_VBSCuts*"]
+    },
+    "VBSZZH": {
+        "2016preVFP":  ["VBSZZH_VBSCuts*"],
+        "2016postVFP": ["VBSZZH_VBSCuts*"],
+        "2017":        ["VBSZZH_VBSCuts*"],
+        "2018":        ["VBSZZH_VBSCuts*"]
+    },
 }
 
-DATA_SAMPLE_MAP = {
+OTHER_SAMPLE_MAP = {
     "data": {
         "2016preVFP":  ["*Run201*"],
         "2016postVFP": ["*Run201*"],
         "2017":        ["*Run201*"],
         "2018":        ["*Run201*"]
-    }
+    },
+    "VBSVVH": {
+        "2016preVFP":  ["VBSWWH_SS_VBSCuts*", "VBSWWH_OS_VBSCuts*", "VBSWZH_VBSCuts*", "VBSZZH_VBSCuts*"],
+        "2016postVFP": ["VBSWWH_SS_VBSCuts*", "VBSWWH_OS_VBSCuts*", "VBSWZH_VBSCuts*", "VBSZZH_VBSCuts*"],
+        "2017":        ["VBSWWH_SS_VBSCuts*", "VBSWWH_OS_VBSCuts*", "VBSWZH_VBSCuts*", "VBSZZH_VBSCuts*"],
+        "2018":        ["VBSWWH_SS_VBSCuts*", "VBSWWH_OS_VBSCuts*", "VBSWZH_VBSCuts*", "VBSZZH_VBSCuts*"]
+    },
 }
 
 if __name__ == "__main__":
@@ -147,12 +129,14 @@ if __name__ == "__main__":
     os.makedirs(f"{output_dir}/Run2", exist_ok=True)
 
     # Get Cutflow objects for background samples
-    cutflows = merge(output_dir, BKG_SAMPLE_MAP, n_hadders=args.n_workers)
-    cutflows["TotalBkg"] = cutflows.sum()
+    bkg_cutflows = merge(output_dir, BKG_SAMPLE_MAP, n_hadders=args.n_workers)
+    cutflows = bkg_cutflows
+    cutflows["TotalBkg"] = bkg_cutflows.sum()
     # Get Cutflow objects for signal samples
-    cutflows += merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
-    # cutflows.reorder(["QCD", "TTbarHad", "TTX", "SingleTop", "WJets", "ZJets", "Bosons", "VH", "TotalBkg", "VBSVVH"])
-    cutflows.reorder(["QCD", "TTHad", "TT1L", "TTW", "TTH", "SingleTop", "Bosons", "TotalBkg", "VBSVVH"])
+    sig_cutflows = merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
+    cutflows += sig_cutflows
+    cutflows["TotalSig"] = sig_cutflows.sum()
+    cutflows.reorder(["QCD", "TTHad", "TT1L", "TTW", "TTH", "SingleTop", "Bosons", "TotalBkg", "SSVBSWWH", "OSVBSWWH", "VBSWZH", "VBSZZH", "TotalSig"])
 
     # Write .cflow files
     for group_name, cutflow in cutflows.items():
@@ -163,4 +147,4 @@ if __name__ == "__main__":
         cutflows.write_txt(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.txt", terminal_cut_name)
 
     # Merge data samples and DO NOT save Cutflow object
-    merge(output_dir, DATA_SAMPLE_MAP, n_hadders=args.n_workers)
+    merge(output_dir, OTHER_SAMPLE_MAP, n_hadders=args.n_workers)
