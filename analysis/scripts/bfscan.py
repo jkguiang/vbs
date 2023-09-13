@@ -5,7 +5,7 @@ import signal
 import hashlib
 import argparse
 import itertools
-import concurrent.futures as futures
+from multiprocessing import Pool
 
 import matplotlib.pyplot as plt
 import numpy as np
@@ -20,7 +20,6 @@ class BruteForceScan:
     def __init__(self):
         self.results = []
         self.df = None
-        signal.signal(signal.SIGINT, self.stop())
 
     @staticmethod
     def get_cuts(cut_config, ineq=">", invert=False):
@@ -88,20 +87,33 @@ class BruteForceScan:
 
     def run(self, config_json, n_workers=32):
 
+        base_dir = "/".join(config_json.split("/")[:-1])
         with open(config_json) as f:
             config = json.load(f)
             config_str = "".join(json.dumps(config).split())
             config_hash = hashlib.sha1(config_str.encode("utf-8"))
-            results_csv = f"{config['output_dir']}/results_{config_hash.hexdigest()[:12]}.csv"
+            if config.get("output_dir", None) is None:
+                results_csv = f"{base_dir}/results_{config_hash.hexdigest()[:12]}.csv"
+            else:
+                results_csv = f"{config['output_dir']}/results_{config_hash.hexdigest()[:12]}.csv"
 
         if os.path.exists(results_csv):
             print(f"This config has already been processed: {results_csv}")
             return
 
+        if config.get("input_dir", None) is None:
+            sig_root_files  = [f"{base_dir}/Run2/inferences/{f}" for f in config["sig_files"]]
+            bkg_root_files  = [f"{base_dir}/Run2/inferences/{f}" for f in config["bkg_files"]]
+            data_root_files = [f"{base_dir}/Run2/inferences/{f}" for f in config["data_files"]]
+        else:
+            sig_root_files  = [f"{config['input_dir']}/{f}" for f in config["sig_files"]]
+            bkg_root_files  = [f"{config['input_dir']}/{f}" for f in config["bkg_files"]]
+            data_root_files = [f"{config['input_dir']}/{f}" for f in config["data_files"]]
+
         analysis = Optimization(
-            sig_root_files=[f"{config['input_dir']}/{f}" for f in config["sig_files"]],
-            bkg_root_files=[f"{config['input_dir']}/{f}" for f in config["bkg_files"]],
-            data_root_files=[f"{config['input_dir']}/{f}" for f in config["data_files"]],
+            sig_root_files=sig_root_files,
+            bkg_root_files=bkg_root_files,
+            data_root_files=data_root_files,
             ttree_name=config["ttree_name"],
             weight_columns=config["weights"]
         )
@@ -128,15 +140,10 @@ class BruteForceScan:
         jobs = [(job_i, *abcd) for job_i, abcd in enumerate(zip(A_regions, B_regions, C_regions, D_regions))]
 
         # Execute jobs
-        submitted_futures = {}
-        with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
-            with futures.ThreadPoolExecutor(max_workers=n_workers) as executor:
-                submitted_futures = {
-                    executor.submit(self.run_job, job): job for job in jobs
-                }
-                for future in futures.as_completed(submitted_futures):
-                    # Update progress bar
-                    pbar.update(1)
+        with Pool(processes=n_workers) as pool:
+            with tqdm(total=len(jobs), desc="Executing jobs") as pbar:
+                for _ in pool.imap_unordered(self.run_job, jobs):
+                    pbar.update()
 
         results_df = pd.DataFrame(self.results)
         print(results_df)
@@ -147,13 +154,6 @@ class BruteForceScan:
 
         results_df.to_csv(results_csv, index=False)
         print(f"Wrote {results_csv}")
-
-    def stop(self):
-        def sigint_handler(sig, frame):
-            for future in self.submitted_futures:
-                future.cancel()
-            sys.exit(0)
-        return sigint_handler
 
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run brute force scan")
