@@ -12,7 +12,6 @@ namespace MVATTH
 class MVATTH
 {
 public:
-
     // TMVA Reader object
     TMVA::Reader* reader;
 
@@ -30,6 +29,8 @@ public:
     Float_t Var_dxy;
     Float_t Var_dz;
     Float_t Var_mvaFall17V2noIso;
+
+    MVATTH() { /* Do nothing */ };
 
     MVATTH(TString xmlpath)
     {
@@ -80,9 +81,9 @@ public:
         Var_mvaFall17V2noIso  = nt.Electron_mvaFall17V2noIso()[idx];
     }
 
-    float compute_Electron_mvaTTH(int idx)
+    float computeElecMVA(unsigned int elec_i)
     {
-        setVariables(idx);
+        setVariables(elec_i);
         return reader->EvaluateMVA("BDTG");
     }
 
