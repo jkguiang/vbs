@@ -547,11 +547,17 @@ public:
         std::vector<unsigned int> vbsjet_cand_idxs;
         for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
         {
+
             LorentzVector jet_p4 = good_jet_p4s.at(jet_i);
+            // Skip Vqq jets candidates
+            if (jet_i == ld_vqqjet_idx || jet_i == tr_vqqjet_idx) { continue; }
+            
             if (jet_p4.pt() >= 30. && fabs(jet_p4.eta()) < 4.7) 
             {
                 vbsjet_cand_idxs.push_back(jet_i); 
             }
+
+            
         }
         return vbsjet_cand_idxs;
     };
