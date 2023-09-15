@@ -298,7 +298,8 @@ public:
         {
             int jet_idx = good_jet_idxs.at(jet_i);
             // Skip VBS jet candidates
-            if (jet_idx == ld_vbsjet_idx || jet_idx == tr_vbsjet_idx) { continue; }
+            // skip this step since we are gonna select the Vqq jets first
+            // if (jet_idx == ld_vbsjet_idx || jet_idx == tr_vbsjet_idx) { continue; }
             // Iterate over all pairs
             for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
             {
