@@ -252,17 +252,17 @@ struct Analysis : Core::Analysis
         );
         cutflow.insert(semimerged_select_jets, semimerged_geq4_jets, Right);
 
-        // VBS jet selection
-        Cut* semimerged_select_vbsjets = new Core::SelectVBSJets("SemiMerged_SelectVBSJets", *this);
-        cutflow.insert(semimerged_geq4_jets, semimerged_select_vbsjets, Right);
-
         // V --> qq jet candidate selection
         Cut* semimerged_select_vjets = new SelectVJets("SemiMerged_SelectVJets", *this);
-        cutflow.insert(semimerged_select_vbsjets, semimerged_select_vjets, Right);
+        cutflow.insert(semimerged_geq4_jets, semimerged_select_vjets, Right);
+
+        // VBS jet selection
+        Cut* semimerged_select_vbsjets = new Core::SelectVBSJets("SemiMerged_SelectVBSJets", *this);
+        cutflow.insert(semimerged_select_vjets, semimerged_select_vbsjets, Right);
 
         // Save analysis variables
         Cut* semimerged_save_vars = new SaveVariables("SemiMerged_SaveVariables", *this, SemiMerged);
-        cutflow.insert(semimerged_select_vjets, semimerged_save_vars, Right);
+        cutflow.insert(semimerged_select_vbsjets, semimerged_save_vars, Right);
 
         // Basic VBS jet requirements
         Cut* semimerged_Mjjgt500 = new LambdaCut(
