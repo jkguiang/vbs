@@ -334,6 +334,10 @@ public:
 
         globals.setVal<LorentzVector>("ld_vqqjet_p4", ld_vqqjet_p4);
         globals.setVal<LorentzVector>("tr_vqqjet_p4", tr_vqqjet_p4);
+        // save vbf jet globals to be used in vbs part
+        globals.setVal<int>("ld_vqqjet_idx", ld_vqqjet_idx);
+        globals.setVal<int>("tr_vqqjet_idx", tr_vqqjet_idx);
+        
         arbol.setLeaf<double>("ld_vqqjet_qgl", nt.Jet_qgl().at(ld_vqqjet_nanoidx));
         arbol.setLeaf<double>("ld_vqqjet_pt", ld_vqqjet_p4.pt());
         arbol.setLeaf<double>("ld_vqqjet_eta", ld_vqqjet_p4.eta());
