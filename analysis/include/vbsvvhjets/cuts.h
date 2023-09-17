@@ -298,7 +298,8 @@ public:
         {
             int jet_idx = good_jet_idxs.at(jet_i);
             // Skip VBS jet candidates
-            if (jet_idx == ld_vbsjet_idx || jet_idx == tr_vbsjet_idx) { continue; }
+            // skip this step since we are gonna select the Vqq jets first
+            // if (jet_idx == ld_vbsjet_idx || jet_idx == tr_vbsjet_idx) { continue; }
             // Iterate over all pairs
             for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
             {
@@ -313,10 +314,10 @@ public:
             }
         }
 
-        // Sort the two VBS jets into leading/trailing
+        // Sort the two (VBS-xx) Vqq jets into leading/trailing
         int ld_vqqjet_idx;
         int tr_vqqjet_idx;
-        if (good_jet_p4s.at(vqqjet_idxs.first).pt() > good_jet_p4s.at(vqqjet_idxs.first).pt())
+        if (good_jet_p4s.at(vqqjet_idxs.first).pt() > good_jet_p4s.at(vqqjet_idxs.second).pt())
         {
             ld_vqqjet_idx = vqqjet_idxs.first;
             tr_vqqjet_idx = vqqjet_idxs.second;
@@ -333,6 +334,10 @@ public:
 
         globals.setVal<LorentzVector>("ld_vqqjet_p4", ld_vqqjet_p4);
         globals.setVal<LorentzVector>("tr_vqqjet_p4", tr_vqqjet_p4);
+        // save vbf jet globals to be used in vbs part
+        globals.setVal<int>("ld_vqqjet_idx", ld_vqqjet_idx);
+        globals.setVal<int>("tr_vqqjet_idx", tr_vqqjet_idx);
+        
         arbol.setLeaf<double>("ld_vqqjet_qgl", nt.Jet_qgl().at(ld_vqqjet_nanoidx));
         arbol.setLeaf<double>("ld_vqqjet_pt", ld_vqqjet_p4.pt());
         arbol.setLeaf<double>("ld_vqqjet_eta", ld_vqqjet_p4.eta());

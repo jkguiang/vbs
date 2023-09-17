@@ -546,13 +546,22 @@ public:
     {
         LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
         std::vector<unsigned int> vbsjet_cand_idxs;
+        // getting the vqq globals to use it to skip vqq jets candidates
+        int ld_vqqjet_idx = globals.getVal<int>("ld_vqqjet_idx");
+        int tr_vqqjet_idx = globals.getVal<int>("tr_vqqjet_idx");
         for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
         {
+
             LorentzVector jet_p4 = good_jet_p4s.at(jet_i);
+            // Skip Vqq jets candidates
+            if (jet_i == ld_vqqjet_idx || jet_i == tr_vqqjet_idx) { continue; }
+            
             if (jet_p4.pt() >= 30. && fabs(jet_p4.eta()) < 4.7) 
             {
                 vbsjet_cand_idxs.push_back(jet_i); 
             }
+
+            
         }
         return vbsjet_cand_idxs;
     };
