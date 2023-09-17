@@ -135,8 +135,8 @@ if __name__ == "__main__":
     # Get Cutflow objects for signal samples
     sig_cutflows = merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
     cutflows += sig_cutflows
-    cutflows["TotalSig"] = sig_cutflows.sum()
-    cutflows.reorder(["QCD", "TTHad", "TT1L", "TTW", "TTH", "SingleTop", "Bosons", "TotalBkg", "SSVBSWWH", "OSVBSWWH", "VBSWZH", "VBSZZH", "TotalSig"])
+    cutflows["VBSVVH"] = sig_cutflows.sum()
+    cutflows.reorder(["QCD", "TTHad", "TT1L", "TTW", "TTH", "SingleTop", "Bosons", "TotalBkg", "SSVBSWWH", "OSVBSWWH", "VBSWZH", "VBSZZH", "VBSVVH"])
 
     # Write .cflow files
     for group_name, cutflow in cutflows.items():
