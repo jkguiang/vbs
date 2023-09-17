@@ -192,7 +192,7 @@ class Cutflow:
                 target_cut.right.parent = new_cut
             target_cut.right = new_cut
         elif direction.lower() == "left":
-            if target_cut.right:
+            if target_cut.left:
                 new_cut.left = target_cut.left
                 target_cut.left.parent = new_cut
             target_cut.left = new_cut
@@ -205,7 +205,18 @@ class Cutflow:
         new_cut.parent = target_cut.parent
         new_cut.left = target_cut.left
         new_cut.right = target_cut.right
-        self.__cuts[new_cut.name] = new_cut
+
+        if target_cut.parent.right is target_cut:
+            new_cut.parent.right = new_cut
+        else:
+            new_cut.parent.left = new_cut
+
+        if new_cut.left:
+            new_cut.left.parent = new_cut
+        if new_cut.right:
+            new_cut.right.parent = new_cut
+
+        self.__cuts[target_cut_name] = new_cut
         del target_cut
 
     def get_cut_network(self):
