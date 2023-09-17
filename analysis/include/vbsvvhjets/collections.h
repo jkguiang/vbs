@@ -41,6 +41,9 @@ struct Analysis : Core::Analysis
         // Hbb jet globals
         cutflow.globals.newVar<LorentzVector>("hbbfatjet_p4");
         cutflow.globals.newVar<unsigned int>("hbbfatjet_gidx", 999); // idx in 'good' fatjets global vector
+        // vvhqq globals
+        cutflow.globals.newVar<int>("ld_vqqjet_idx");
+        cutflow.globals.newVar<int>("tr_vqqjet_idx");
 
         // Scale factors
         jes = nullptr;
