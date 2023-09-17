@@ -76,7 +76,7 @@ int main(int argc, char** argv)
             for (int i = 0; i < 101; ++i)
             {
                 TString branch_name = "lhe_pdf_"+std::to_string(i);
-                if (nt.nLHEPdfWeight() == 103)
+                if (nt.nLHEPdfWeight() >= 101)
                 {
                     pdf_arbol.setLeaf<double>(branch_name, nt.LHEPdfWeight().at(i));
                 }
