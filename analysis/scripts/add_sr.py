@@ -28,7 +28,7 @@ cli.add_argument(
 args = cli.parse_args()
 
 # Get babies
-babies = sorted(glob.glob(f"studies/vbsvvhjets/output_{args.tag}/Run2/inferences/*.root"))
+babies = sorted(glob.glob(f"studies/{args.study}/output_{args.tag}/Run2/inferences/*.root"))
 sig_babies = [baby for baby in babies if "VBS" in baby]
 bkg_babies = [baby for baby in babies if "VBS" not in baby and "data" not in baby]
 data_babies = [baby for baby in babies if "data" in baby]
@@ -40,7 +40,7 @@ print("Data:")
 print("\n".join(data_babies))
 
 # Load VBS VVH analyis object
-vbsvvh = PandasAnalysis(
+vbs = PandasAnalysis(
     sig_root_files=sig_babies,
     bkg_root_files=bkg_babies,
     data_root_files=data_babies,
@@ -53,25 +53,25 @@ vbsvvh = PandasAnalysis(
 )
 
 # Add presel
-vbsvvh.df["objsel"] = True
-vbsvvh.df["presel"] = vbsvvh.df.eval(
+vbs.df["objsel"] = True
+vbs.df["presel"] = vbs.df.eval(
     "objsel and hbbfatjet_xbb > 0.5 and ld_vqqfatjet_xwqq > 0.3 and tr_vqqfatjet_xwqq > 0.3"
 )
-vbsvvh.make_selection("presel")
+vbs.make_selection("presel")
 
 # Re-normalize QCD
-bkg_count = vbsvvh.bkg_count()
-qcd_count = vbsvvh.sample_count("QCD")
-data_count = vbsvvh.data_count()
-vbsvvh.df.loc[vbsvvh.df.name == "QCD", "event_weight"] *= (data_count - (bkg_count - qcd_count))/(qcd_count)
+bkg_count = vbs.bkg_count()
+qcd_count = vbs.sample_count("QCD")
+data_count = vbs.data_count()
+vbs.df.loc[vbs.df.name == "QCD", "event_weight"] *= (data_count - (bkg_count - qcd_count))/(qcd_count)
 
-for name in vbsvvh.df.name.unique():
+for name in vbs.df.name.unique():
     if name == "data":
         continue
 
-    df = vbsvvh.sample_df(name)
+    df = vbs.sample_df(name)
 
-    cflow_file = f"studies/vbsvvhjets/output_{args.tag}/Run2/{name}_cutflow.cflow"
+    cflow_file = f"studies/{args.study}/output_{args.tag}/Run2/{name}_cutflow.cflow"
     cutflow = Cutflow.from_file(cflow_file)
 
     # Divert cutflow to a new path of cuts
