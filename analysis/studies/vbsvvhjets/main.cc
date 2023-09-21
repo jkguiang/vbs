@@ -198,7 +198,7 @@ int main(int argc, char** argv)
             return true;
         }
     );
-    cutflow.insert("AllMerged_SaveVariables", save_pdfweights, Right);
+    cutflow.insert("AllMerged_Preselection", save_pdfweights, Right);
 
     // Run looper
     tqdm bar;
@@ -223,13 +223,16 @@ int main(int argc, char** argv)
 
                 // Run cutflow
                 std::vector<std::string> cuts_to_check = {
-                    // "AllMerged_SaveVariables"
+                    "AllMerged_SaveVariables",
                     "AllMerged_SavePDFWeights"
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
                 if (checkpoints.at(0)) 
                 { 
                     arbol.fill(); 
+                }
+                if (checkpoints.at(1)) 
+                { 
                     pdf_arbol.fill(); 
                 }
 
