@@ -212,11 +212,25 @@ struct Analysis : Core::Analysis
         Cut* allmerged_save_vars = new SaveVariables("AllMerged_SaveVariables", *this, AllMerged);
         cutflow.insert(allmerged_select_vbsjets, allmerged_save_vars, Right);
 
+        // Preselection
+        Cut* allmerged_presel = new LambdaCut(
+            "AllMerged_Preselection", 
+            [&]() 
+            { 
+                return (
+                    arbol.getLeaf<double>("hbbfatjet_xbb") > 0.5
+                    && arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.3
+                    && arbol.getLeaf<double>("tr_vqqfatjet_xwqq") > 0.3
+                );
+            }
+        );
+        cutflow.insert(allmerged_save_vars, allmerged_presel, Right);
+
         // Basic VBS jet requirements
         Cut* allmerged_Mjjgt500 = new LambdaCut(
             "AllMerged_MjjGt500", [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
         );
-        cutflow.insert(allmerged_save_vars, allmerged_Mjjgt500, Right);
+        cutflow.insert(allmerged_presel, allmerged_Mjjgt500, Right);
         Cut* allmerged_detajjgt3 = new LambdaCut(
             "AllMerged_detajjGt3", [&]() { return fabs(arbol.getLeaf<double>("deta_jj")) > 3; }
         );
