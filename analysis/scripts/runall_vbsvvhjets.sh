@@ -1,5 +1,5 @@
 TAG=abcdnet_v1
-N_WORKERS=48
+N_WORKERS=32
 
 # Run main analysis code
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --skimdir=/data/userdata/jguiang/nanoaod/VBSVVHSkim --skimtag=0lep_2ak4_2ak8_ttH --data --tag=$TAG

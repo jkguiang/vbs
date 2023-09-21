@@ -1,4 +1,4 @@
-TAG=kscans
+TAG=btagsf_fix
 N_WORKERS=32
 
 # Compute b-tagging efficiencies for scale factors
@@ -16,3 +16,6 @@ rm -rf studies/btageff/output_vbswh
 ./bin/merge_vbswh vbswh --tag=${TAG}_jec_dn
 ./bin/merge_vbswh vbswh --tag=${TAG}_jer_up
 ./bin/merge_vbswh vbswh --tag=${TAG}_jer_dn
+
+rm -rf /data/userdata/jguiang/babies/vbswh/output_${TAG}*
+cp -R studies/vbswh/output_${TAG}* /data/userdata/jguiang/babies/vbswh/
