@@ -252,9 +252,12 @@ public:
         int n_medium_b_jets = 0;
         int n_tight_b_jets = 0;
         int n_jets = 0;
-        double btag_sf = 1.;
-        double btag_sf_up = 1.;
-        double btag_sf_dn = 1.;
+        double light_btag_sf = 1.;
+        double light_btag_sf_up = 1.;
+        double light_btag_sf_dn = 1.;
+        double bc_btag_sf = 1.;
+        double bc_btag_sf_up = 1.;
+        double bc_btag_sf_dn = 1.;
         double puid_sf = 1.;
         double puid_sf_up = 1.;
         double puid_sf_dn = 1.;
@@ -352,9 +355,26 @@ public:
                         double sf_up = btag_sfs->getSFUp(flavor, jet_pt, jet_abseta);
                         double sf_dn = btag_sfs->getSFDn(flavor, jet_pt, jet_abseta);
                         double eff = btag_sfs->getEff(flavor, jet_pt, jet_abseta);
-                        btag_sf *= (1 - sf*eff)/(1 - eff);
-                        btag_sf_up *= (1 - sf_up*eff)/(1 - eff);
-                        btag_sf_dn *= (1 - sf_dn*eff)/(1 - eff);
+                        switch (abs(flavor))
+                        {
+                        case 0:
+                            light_btag_sf *= (1 - sf*eff)/(1 - eff);
+                            light_btag_sf_up *= (1 - sf_up*eff)/(1 - eff);
+                            light_btag_sf_dn *= (1 - sf_dn*eff)/(1 - eff);
+                            break;
+                        case 4:
+                            bc_btag_sf *= (1 - sf*eff)/(1 - eff);
+                            bc_btag_sf_up *= (1 - sf_up*eff)/(1 - eff);
+                            bc_btag_sf_dn *= (1 - sf_dn*eff)/(1 - eff);
+                            break;
+                        case 5:
+                            bc_btag_sf *= (1 - sf*eff)/(1 - eff);
+                            bc_btag_sf_up *= (1 - sf_up*eff)/(1 - eff);
+                            bc_btag_sf_dn *= (1 - sf_dn*eff)/(1 - eff);
+                            break;
+                        default:
+                            break;
+                        }
                     }
                 }
                 if (deepflav_btag > gconf.WP_DeepFlav_loose)
@@ -391,18 +411,24 @@ public:
         arbol.setLeaf<int>("n_jets", n_jets);
         if (!nt.isData())
         {
-            arbol.setLeaf<double>("btag_sf", btag_sf);
-            arbol.setLeaf<double>("btag_sf_up", btag_sf_up);
-            arbol.setLeaf<double>("btag_sf_dn", btag_sf_dn);
-            arbol.setLeaf<double>("puid_sf", puid_sf);
+            arbol.setLeaf<double>("light_btag_sf",    light_btag_sf);
+            arbol.setLeaf<double>("light_btag_sf_up", light_btag_sf_up);
+            arbol.setLeaf<double>("light_btag_sf_dn", light_btag_sf_dn);
+            arbol.setLeaf<double>("bc_btag_sf",    bc_btag_sf);
+            arbol.setLeaf<double>("bc_btag_sf_up", bc_btag_sf_up);
+            arbol.setLeaf<double>("bc_btag_sf_dn", bc_btag_sf_dn);
+            arbol.setLeaf<double>("puid_sf",    puid_sf);
             arbol.setLeaf<double>("puid_sf_up", puid_sf_up);
             arbol.setLeaf<double>("puid_sf_dn", puid_sf_dn);
         }
         else
         {
-            arbol.setLeaf<double>("btag_sf", 1.);
-            arbol.setLeaf<double>("btag_sf_up", 1.);
-            arbol.setLeaf<double>("btag_sf_dn", 1.);
+            arbol.setLeaf<double>("light_btag_sf", 1.);
+            arbol.setLeaf<double>("light_btag_sf_up", 1.);
+            arbol.setLeaf<double>("light_btag_sf_dn", 1.);
+            arbol.setLeaf<double>("bc_btag_sf", 1.);
+            arbol.setLeaf<double>("bc_btag_sf_up", 1.);
+            arbol.setLeaf<double>("bc_btag_sf_dn", 1.);
             arbol.setLeaf<double>("puid_sf", 1.);
             arbol.setLeaf<double>("puid_sf_up", 1.);
             arbol.setLeaf<double>("puid_sf_dn", 1.);
@@ -413,7 +439,11 @@ public:
 
     double weight()
     {
-        return arbol.getLeaf<double>("btag_sf")*arbol.getLeaf<double>("puid_sf");
+        return (
+            arbol.getLeaf<double>("light_btag_sf")
+            *arbol.getLeaf<double>("bc_btag_sf")
+            *arbol.getLeaf<double>("puid_sf")
+        );
     };
 };
 

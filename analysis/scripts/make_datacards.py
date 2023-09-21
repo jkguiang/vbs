@@ -92,7 +92,7 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
         
     return systs
 
-TAG = "new_signal"
+TAG = "btagsf_fix"
 
 for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
 
@@ -102,7 +102,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
 
     os.makedirs(f"../combine/datacards/{SIG_NAME}", exist_ok=True)
 
-    babies = glob.glob(f"../analysis/studies/vbswh/output_{TAG}/Run2/*.root")
+    babies = glob.glob(f"/data/userdata/jguiang/babies/vbswh/output_{TAG}/Run2/*.root")
     sig_babies = [b for b in babies if SIG_NAME in b]
     print(f"Found {len(sig_babies)} signal babies:")
     print("\n".join(sig_babies))
@@ -121,7 +121,8 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         weight_columns=[
             "xsec_sf", "lep_id_sf", "ewkfix_sf", 
             "elec_reco_sf", "muon_iso_sf", 
-            "btag_sf", "pu_sf", "prefire_sf", "trig_sf",
+            "bc_btag_sf", "light_btag_sf", 
+            "pu_sf", "prefire_sf", "trig_sf",
             "xbb_sf" # applied only because Xbb > 0.9 applied everywhere for SR1 and SR2
         ],
         reweight_column="reweights"
@@ -191,7 +192,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
                 
         pdf_ratio = pdf_sum/gen_sum
 
-        with uproot.open(f"../analysis/studies/vbswh/output_main/Run2/{SIG_NAME}.root") as f:
+        with uproot.open(f"/data/userdata/jguiang/babies/vbswh/output_{TAG}/Run2/{SIG_NAME}.root") as f:
             df = f.get("pdf_tree").arrays(library="pd")
             
         systs = []
@@ -272,12 +273,6 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         # --------------------------------------------------------------------------------------
 
         # -- HLT scale factors -----------------------------------------------------------------
-        # trig_sf_systs = Systematic("hlt_sfs", SIGNAL_REGIONS)
-        # trig_sf_systs.add_systs(
-        #     get_systs(SIG_NAME, SIGNAL_REGIONS, "trig_sf", "trig_sf_up", "trig_sf_dn")
-        # )
-        # SIG_SYSTS_LIMIT.add_row(trig_sf_systs)
-
         trig_elec_sf_systs = Systematic("Single-electron HLT scale factors", SIGNAL_REGIONS)
         trig_elec_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "trig_elec_sf", "trig_elec_sf_up", "trig_elec_sf_dn")
@@ -303,12 +298,6 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         # --------------------------------------------------------------------------------------
 
         # -- Lepton scale factors --------------------------------------------------------------
-        # lep_id_sf_systs = Systematic("lep_id", SIGNAL_REGIONS)
-        # lep_id_sf_systs.add_systs(
-        #     get_systs(SIG_NAME, SIGNAL_REGIONS, "lep_id_sf", "lep_id_sf_up", "lep_id_sf_dn")
-        # )
-        # SIG_SYSTS_LIMIT.add_row(lep_id_sf_systs)
-
         elec_id_sf_systs = Systematic("CMS_vbswhboosted_id_e_13TeV", SIGNAL_REGIONS)
         elec_id_sf_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "elec_id_sf", "elec_id_sf_up", "elec_id_sf_dn")
@@ -335,11 +324,6 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         # --------------------------------------------------------------------------------------
 
         # -- ParticleNet Xbb scale factors -----------------------------------------------------
-        # xbb_sf_systs = Systematic("ParticleNet Xbb scale factors", SIGNAL_REGIONS)
-        # xbb_sf_systs.add_systs(
-        #     get_systs(SIG_NAME, SIGNAL_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up")
-        # )
-        # SIG_SYSTS_LIMIT.add_row(xbb_sf_systs.copy("xbb_sfs"))
         for year in [-2016, 2016, 2017, 2018]:
             cms_year_str = get_year_str(year).replace("20", "")
             xbb_sf_systs = Systematic(f"CMS_vbswhboosted_bTagWeightXbb_13TeV_{cms_year_str}", SIGNAL_REGIONS)
@@ -350,11 +334,18 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         # --------------------------------------------------------------------------------------
 
         # -- DeepJet b-tagging scale factors ---------------------------------------------------
-        btag_sf_systs = Systematic("DeepJet b-tagging scale factors", SIGNAL_REGIONS)
+        btag_sf_systs = Systematic("CMS_bTagWeightDeepJet_bcJets_13TeV", SIGNAL_REGIONS)
         btag_sf_systs.add_systs(
-            get_systs(SIG_NAME, SIGNAL_REGIONS, "btag_sf", "btag_sf_dn", "btag_sf_up")
+            get_systs(SIG_NAME, SIGNAL_REGIONS, "bc_btag_sf", "bc_btag_sf_dn", "bc_btag_sf_up")
         )
-        SIG_SYSTS_LIMIT.add_row(btag_sf_systs.copy("CMS_bTagWeightDeepJet_13TeV"))
+        SIG_SYSTS_LIMIT.add_row(btag_sf_systs)
+
+
+        btag_sf_systs = Systematic("CMS_bTagWeightDeepJet_lightJets_13TeV", SIGNAL_REGIONS)
+        btag_sf_systs.add_systs(
+            get_systs(SIG_NAME, SIGNAL_REGIONS, "light_btag_sf", "light_btag_sf_dn", "light_btag_sf_up")
+        )
+        SIG_SYSTS_LIMIT.add_row(btag_sf_systs)
         # --------------------------------------------------------------------------------------
 
         # -- MET uncertainty -------------------------------------------------------------------
@@ -422,4 +413,4 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
             datacard_systs
         )
             
-        datacard.write(f"../combine/datacards/{SIG_NAME}/{reweight_names[reweight_i]}.dat")
+        datacard.write(f"../combine/vbswh/datacards/{SIG_NAME}/{reweight_names[reweight_i]}.dat")

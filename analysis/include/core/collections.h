@@ -115,9 +115,12 @@ struct Analysis
         arbol.newBranch<int>("n_loose_b_jets", -999);
         arbol.newBranch<int>("n_medium_b_jets", -999);
         arbol.newBranch<int>("n_tight_b_jets", -999);
-        arbol.newBranch<double>("btag_sf", -999);
-        arbol.newBranch<double>("btag_sf_up", -999);
-        arbol.newBranch<double>("btag_sf_dn", -999);
+        arbol.newBranch<double>("light_btag_sf", -999);
+        arbol.newBranch<double>("light_btag_sf_up", -999);
+        arbol.newBranch<double>("light_btag_sf_dn", -999);
+        arbol.newBranch<double>("bc_btag_sf", -999);
+        arbol.newBranch<double>("bc_btag_sf_up", -999);
+        arbol.newBranch<double>("bc_btag_sf_dn", -999);
         arbol.newBranch<double>("puid_sf", -999);
         arbol.newBranch<double>("puid_sf_up", -999);
         arbol.newBranch<double>("puid_sf_dn", -999);
