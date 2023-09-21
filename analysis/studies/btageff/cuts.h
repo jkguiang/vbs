@@ -25,6 +25,7 @@ public:
     FillHistograms(std::string name, Core::Analysis& analysis) : Core::AnalysisCut(name, analysis) 
     {
         TH2D* hist_base = new TH2D("hist", "hist", 10, 30, 300, 4, 0, 2.5);
+        hist_base->Sumw2();
         b_total_hist = (TH2D*)hist_base->Clone("n_b_total");
         b_loose_hist = (TH2D*)hist_base->Clone("n_b_loose");
         b_medium_hist = (TH2D*)hist_base->Clone("n_b_medium");
@@ -55,7 +56,7 @@ public:
             bool is_btagged_loose = deepflav_btag > gconf.WP_DeepFlav_loose;
             bool is_btagged_medium = deepflav_btag > gconf.WP_DeepFlav_medium;
             bool is_btagged_tight = deepflav_btag > gconf.WP_DeepFlav_tight;
-            switch (nt.Jet_hadronFlavour().at(jet_i))
+            switch (abs(nt.Jet_hadronFlavour().at(jet_i)))
             {
             case 0:
                 light_total_hist->Fill(jet_pt, jet_abseta);
@@ -92,16 +93,16 @@ public:
         TH2D* light_loose_eff_hist = (TH2D*)light_loose_hist->Clone("deepjet_eff_light_loose");
         TH2D* light_medium_eff_hist = (TH2D*)light_medium_hist->Clone("deepjet_eff_light_medium");
         TH2D* light_tight_eff_hist = (TH2D*)light_tight_hist->Clone("deepjet_eff_light_tight");
-        b_loose_eff_hist->Divide(b_total_hist);
-        b_medium_eff_hist->Divide(b_total_hist);
-        b_tight_eff_hist->Divide(b_total_hist);
-        c_loose_eff_hist->Divide(c_total_hist);
-        c_medium_eff_hist->Divide(c_total_hist);
-        c_tight_eff_hist->Divide(c_total_hist);
-        light_loose_eff_hist->Divide(light_total_hist);
-        light_medium_eff_hist->Divide(light_total_hist);
-        light_tight_eff_hist->Divide(light_total_hist);
-        // Write histograms
+        b_loose_eff_hist->Divide(b_loose_hist, b_total_hist, 1, 1, "B");
+        b_medium_eff_hist->Divide(b_medium_hist, b_total_hist, 1, 1, "B");
+        b_tight_eff_hist->Divide(b_tight_hist, b_total_hist, 1, 1, "B");
+        c_loose_eff_hist->Divide(c_loose_hist, c_total_hist, 1, 1, "B");
+        c_medium_eff_hist->Divide(c_medium_hist, c_total_hist, 1, 1, "B");
+        c_tight_eff_hist->Divide(c_tight_hist, c_total_hist, 1, 1, "B");
+        light_loose_eff_hist->Divide(light_loose_hist, light_total_hist, 1, 1, "B");
+        light_medium_eff_hist->Divide(light_medium_hist, light_total_hist, 1, 1, "B");
+        light_tight_eff_hist->Divide(light_tight_hist, light_total_hist, 1, 1, "B");
+        // Write efficiency histograms
         b_loose_eff_hist->Write();
         b_medium_eff_hist->Write();
         b_tight_eff_hist->Write();
@@ -111,6 +112,19 @@ public:
         light_loose_eff_hist->Write();
         light_medium_eff_hist->Write();
         light_tight_eff_hist->Write();
+        // Write numerator and denominator histograms
+        b_total_hist->Write();
+        b_loose_hist->Write();
+        b_medium_hist->Write();
+        b_tight_hist->Write();
+        c_total_hist->Write();
+        c_loose_hist->Write();
+        c_medium_hist->Write();
+        c_tight_hist->Write();
+        light_total_hist->Write();
+        light_loose_hist->Write();
+        light_medium_hist->Write();
+        light_tight_hist->Write();
     };
 };
 
