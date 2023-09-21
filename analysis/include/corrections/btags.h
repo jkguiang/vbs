@@ -51,6 +51,7 @@ public:
         // Note: the gzipped JSONs in cvmfs can only be read by correctionlib v2.1.x
         std::string json_path = "data/pog_jsons/BTV";
         std::string root_path = "studies/btageff/output_vbswh";
+        name = "TTToSemiLeptonic";
         switch (campaign)
         {
         case (RunIISummer20UL16APV):
