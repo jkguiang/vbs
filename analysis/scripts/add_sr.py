@@ -99,7 +99,7 @@ for name in vbs.df.name.unique():
     n_pass_raw = len(df)
     n_pass_wgt = df.event_weight.sum()
     next_cut = Cut(
-        "AllMerged_Preselection", 
+        "AllMerged_PreselectionDiverted", 
         n_pass=n_pass_raw,
         n_pass_weighted=n_pass_wgt,
         n_fail=(base_cut.n_fail - n_pass_raw),
