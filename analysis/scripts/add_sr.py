@@ -25,13 +25,17 @@ cli.add_argument(
     "--SR", type=str, default="",
     help="signal region cuts"
 )
+cli.add_argument(
+    "--basedir", type=str, default="studies",
+    help="Base directory for output"
+)
 args = cli.parse_args()
 
 # Get babies
-babies = sorted(glob.glob(f"studies/{args.study}/output_{args.tag}/Run2/inferences/*.root"))
+babies = sorted(glob.glob(f"{args.basedir}/{args.study}/output_{args.tag}/Run2/inferences/*.root"))
 sig_babies = [baby for baby in babies if "VBS" in baby]
-bkg_babies = [baby for baby in babies if "VBS" not in baby and "data" not in baby]
-data_babies = [baby for baby in babies if "data" in baby]
+bkg_babies = [baby for baby in babies if "VBS" not in baby and "data.root" not in baby]
+data_babies = [baby for baby in babies if "data.root" in baby]
 print("Signal:")
 print("\n".join(sig_babies))
 print("Background:")
@@ -71,7 +75,7 @@ for name in vbs.df.name.unique():
 
     df = vbs.sample_df(name)
 
-    cflow_file = f"studies/{args.study}/output_{args.tag}/Run2/{name}_cutflow.cflow"
+    cflow_file = f"{args.basedir}/{args.study}/output_{args.tag}/Run2/{name}_cutflow.cflow"
     cutflow = Cutflow.from_file(cflow_file)
 
     # Divert cutflow to a new path of cuts

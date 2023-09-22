@@ -116,12 +116,16 @@ if __name__ == "__main__":
         "--n_workers", type=int, default=8,
         help="Number of workers to run hadds"
     )
+    cli.add_argument(
+        "--basedir", type=str, default="studies",
+        help="Base directory for output"
+    )
     args = cli.parse_args()
 
     if args.tag:
-        output_dir=f"studies/{args.study}/output_{args.tag}"
+        output_dir=f"{args.basedir}/{args.study}/output_{args.tag}"
     else:
-        output_dir=f"studies/{args.study}/output"
+        output_dir=f"{args.basedir}/{args.study}/output"
 
     os.makedirs(f"{output_dir}/Run2", exist_ok=True)
 

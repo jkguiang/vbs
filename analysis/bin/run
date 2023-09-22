@@ -143,6 +143,10 @@ if __name__ == "__main__":
         help="Name of output ttree"
     )
     cli.add_argument(
+        "--basedir", type=str, default="studies",
+        help="Base directory for output"
+    )
+    cli.add_argument(
         "--n_workers", type=int, default=8,
         help="Maximum number of worker processes"
     )
@@ -188,9 +192,9 @@ if __name__ == "__main__":
         exit()
 
     if args.tag:
-        output_dir=f"studies/{args.study}/output_{args.tag}"
+        output_dir=f"{args.basedir}/{args.study}/output_{args.tag}"
     else:
-        output_dir=f"studies/{args.study}/output"
+        output_dir=f"{args.basedir}/{args.study}/output"
 
     os.makedirs(output_dir, exist_ok=True)
     logging.basicConfig(
