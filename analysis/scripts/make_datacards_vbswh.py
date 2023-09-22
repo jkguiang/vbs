@@ -100,7 +100,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
     with open(f"data/{SIG_NAME}_reweights.txt", "r") as f_in:
         reweight_names = f_in.read().splitlines()
 
-    os.makedirs(f"../combine/datacards/{SIG_NAME}", exist_ok=True)
+    os.makedirs(f"../combine/vbswh/datacards/{SIG_NAME}", exist_ok=True)
 
     babies = glob.glob(f"/data/userdata/jguiang/babies/vbswh/output_{TAG}/Run2/*.root")
     sig_babies = [b for b in babies if SIG_NAME in b]
@@ -171,7 +171,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
 
     SIGNAL_REGIONS = ["SR1", "SR2"]
 
-    for reweight_i in tqdm(range(vbswh.sig_reweights.shape[-1]), desc=f"Writing datacards to ../combine/datacards/{SIG_NAME}"):
+    for reweight_i in tqdm(range(vbswh.sig_reweights.shape[-1]), desc=f"Writing datacards to ../combine/vbswh/datacards/{SIG_NAME}"):
 
         SIG_SYSTS_LIMIT = SystematicsTable(samples=[SIG_NAME])
 
