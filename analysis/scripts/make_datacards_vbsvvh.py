@@ -204,7 +204,7 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
         deltas = np.array(deltas)
         systs.append(np.sqrt(np.sum(deltas**2))/count)
 
-    pdf_systs = Systematic("PDF variations", ABCD_REGIONS)
+    pdf_systs = Systematic("CMS_LHE_weights_pdf_vbsvvh", ABCD_REGIONS)
     pdf_systs.add_systs(systs)
     SIG_SYSTS_LIMIT.add_row(pdf_systs)
     # --------------------------------------------------------------------------------------
@@ -215,12 +215,12 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
     lhe_muR_weights = list(vbsvvh.df.columns[vbsvvh.df.columns.str.contains("muF1p0")])
     lhe_muF_weights = list(vbsvvh.df.columns[vbsvvh.df.columns.str.contains("muR1p0")])
 
-    muR_systs = Systematic("$\\mu_R$ scale", ABCD_REGIONS)
+    muR_systs = Systematic("CMS_LHE_weights_scale_muR_vbsvvh", ABCD_REGIONS)
     muR_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "unity", *lhe_muR_weights)
     )
 
-    muF_systs = Systematic("$\\mu_F$ scale", ABCD_REGIONS)
+    muF_systs = Systematic("CMS_LHE_weights_scale_muF_vbsvvh", ABCD_REGIONS)
     muF_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "unity", *lhe_muF_weights)
     )
@@ -234,12 +234,12 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
     isr_weights = list(vbsvvh.df.columns[vbsvvh.df.columns.str.contains("fsr1p0")])
     fsr_weights = list(vbsvvh.df.columns[vbsvvh.df.columns.str.contains("isr1p0")])
 
-    isr_sf_systs = Systematic("Parton shower ISR weights", ABCD_REGIONS)
+    isr_sf_systs = Systematic("CMS_PSWeight_ISR_vbsvvh", ABCD_REGIONS)
     isr_sf_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "unity", *isr_weights)
     )
 
-    fsr_sf_systs = Systematic("Parton shower FSR weights", ABCD_REGIONS)
+    fsr_sf_systs = Systematic("CMS_PSWeight_FSR_vbsvvh", ABCD_REGIONS)
     fsr_sf_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "unity", *fsr_weights)
     )
@@ -250,7 +250,7 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
 
 
     # -- Pileup reweighting ----------------------------------------------------------------
-    pu_sf_systs = Systematic("Pileup reweighting", ABCD_REGIONS)
+    pu_sf_systs = Systematic("CMS_vbsvvh_puWeight", ABCD_REGIONS)
     pu_sf_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "pu_sf", "pu_sf_dn", "pu_sf_up")
     )
@@ -259,7 +259,7 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
 
 
     # -- Pileup jet id ---------------------------------------------------------------------
-    puid_sf_systs = Systematic("Pileup jet ID", ABCD_REGIONS)
+    puid_sf_systs = Systematic("CMS_vbsvvh_puJetId", ABCD_REGIONS)
     puid_sf_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "puid_sf", "puid_sf_dn", "puid_sf_up")
     )
@@ -268,7 +268,7 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
 
 
     # -- L1 prefiring weight ---------------------------------------------------------------
-    prefire_sf_systs = Systematic("L1 pre-fire corrections", ABCD_REGIONS)
+    prefire_sf_systs = Systematic("CMS_PrefireWeight_13TeV", ABCD_REGIONS)
     prefire_sf_systs.add_systs(
         get_systs("VBSVVH", ABCD_REGIONS, "prefire_sf", "prefire_sf_up", "prefire_sf_dn")
     )
@@ -277,7 +277,7 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
 
 
     # -- MC statistical uncertainty --------------------------------------------------------
-    stat_systs = Systematic("Simulation stat. unc.", ABCD_REGIONS)
+    stat_systs = Systematic("CMS_vbsvvh_mcstat", ABCD_REGIONS)
     stat_systs.add_systs(
         [
             vbsvvh.sig_error(selection=R)/vbsvvh.sig_count(selection=R) for R in ABCD_REGIONS
@@ -303,7 +303,7 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
             "regionC": "AllMerged_RegionC",
             "regionD": "AllMerged_RegionD",
         },
-        "Jet energy scale"
+        "CMS_scale_j_13TeV"
     )
     SIG_SYSTS_LIMIT.add_row(jec_systs)
     # --------------------------------------------------------------------------------------
@@ -320,21 +320,21 @@ for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {
             "regionC": "AllMerged_RegionC",
             "regionD": "AllMerged_RegionD",
         },
-        "Jet energy resolution"
+        "CMS_res_j_13TeV"
     )
     SIG_SYSTS_LIMIT.add_row(jer_systs)
     # --------------------------------------------------------------------------------------
 
 
     # -- Luminosity ------------------------------------------------------------------------
-    lumi_systs = Systematic("Luminosity", ABCD_REGIONS)
+    lumi_systs = Systematic("lumi_13TeV_correlated", ABCD_REGIONS)
     lumi_systs.add_systs([0.016 for R in ABCD_REGIONS])
     SIG_SYSTS_LIMIT.add_row(lumi_systs)
     # --------------------------------------------------------------------------------------
 
 
     # -- H to bb BR ------------------------------------------------------------------------
-    hbb_br_systs = Systematic("\\Htobb BR", ABCD_REGIONS)
+    hbb_br_systs = Systematic("BR_hbb", ABCD_REGIONS)
     hbb_br_systs.add_systs([0.0127 for R in ABCD_REGIONS])
     SIG_SYSTS_LIMIT.add_row(hbb_br_systs)
     # --------------------------------------------------------------------------------------
