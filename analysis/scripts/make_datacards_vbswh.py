@@ -221,7 +221,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *lhe_muR_weights)
         )
 
-        muF_systs = Systematic("CMS_LHE_weights_scale_muR_vbswh", SIGNAL_REGIONS)
+        muF_systs = Systematic("CMS_LHE_weights_scale_muF_vbswh", SIGNAL_REGIONS)
         muF_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *lhe_muF_weights)
         )
