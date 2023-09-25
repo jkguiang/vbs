@@ -61,3 +61,6 @@ elif [[ $RHELVER == 8 ]]; then
     export CORRECTIONLIBDIR=$CMSSW_EXT/py3-correctionlib/2.1.0-6711d4d6283f175d9b6fd011bbaad506/lib/python3.9/site-packages/correctionlib
     export BOOSTDIR=$CMSSW_EXT/boost/1.80.0-7f4aeae1bffcf24aa4723f09435633c2
 fi
+
+# Add current working directory to Python PATH
+export PYTHONPATH=$PYTHONPATH:$PWD
