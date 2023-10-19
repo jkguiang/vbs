@@ -1,6 +1,7 @@
 #!/usr/bin/env python2
 # -*- coding: utf-8 -*
 import argparse
+import glob
 import time
 import os
 import sys
@@ -10,6 +11,21 @@ import importlib
 from metis.CondorTask import CondorTask
 from metis.StatsParser import StatsParser
 from metis.Utils import good_sites
+
+def check(samples, ceph_dir, tag, files_per_job):
+    for sample in samples:
+        name = sample.get_datasetname()
+        dir_name = name[1:].replace("/", "_")
+        sample_dir = "{0}/{1}/{2}_{1}".format(ceph_dir, tag, dir_name)
+        n_results = len(glob.glob("{}/output*.root".format(sample_dir)))
+
+        n_files = len(sample.get_files())
+        n_jobs = n_files//files_per_job + (n_files%files_per_job > 0)
+
+        if n_results != n_jobs:
+            print("Missing {0} outputs for {1}".format(n_jobs - n_results, name))
+        else:
+            print("All outputs found for {}".format(name))
 
 cli = argparse.ArgumentParser(description="Submit condor jobs")
 cli.add_argument(
@@ -33,7 +49,7 @@ cli.add_argument(
 )
 cli.add_argument(
     "--name", type=str, required=True,
-    help="name of directory to write skims to: /ceph/cms/store/user/jguiang/NAME"
+    help="full path of directory to write skims to"
 )
 cli.add_argument(
     "--samples", type=str, required=True,
@@ -70,6 +86,11 @@ cli.add_argument(
 cli.add_argument(
     "--n_inputs", type=int, default=3,
     help="Number of input files per job"
+)
+cli.add_argument(
+    "--check",
+    action="store_true",
+    help="Manually check how many outputs are missing for each job"
 )
 args = cli.parse_args()
 
@@ -138,6 +159,10 @@ if args.filter:
         if resp == "n":
             exit()
 
+if args.check:
+    check(samples, args.name, args.tag, args.n_inputs)
+    exit()
+
 if args.debug:
     samples = samples[:1]
     max_jobs = 1
@@ -160,7 +185,7 @@ for update_i in range(n_updates): # update every 30 mins
             condor_submit_params=condor_submit_params,
             cmssw_version=CMSSW_VERSION,
             scram_arch=SCRAM_ARCH,
-            input_executable="bin/condor_executable",          # your condor executable here
+            input_executable="scripts/condor_executable.sh",          # your condor executable here
             additional_input_files=additional_input_files,
             tarfile=PACKAGE,                                   # your tarfile with assorted goodies here
             special_dir="{0}/{1}".format(args.name, args.tag), # output files into /ceph/cms/store/<user>/<special_dir>
