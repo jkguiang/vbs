@@ -72,20 +72,16 @@ def get_systs_nonSF(sample_name, signal_regions, signal_regions_up, signal_regio
     return systs
 
 def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name):
-    
-    nominal_cutflow = Cutflow.from_file(nominal_cflow)
-    up_cutflow = Cutflow.from_file(up_cflow)
-    dn_cutflow = Cutflow.from_file(dn_cflow)
 
-    syst_up_cutflow = (up_cutflow - nominal_cutflow)/nominal_cutflow
-    syst_dn_cutflow = (nominal_cutflow - dn_cutflow)/nominal_cutflow
+    syst_up_cflow = (up_cflow - nominal_cflow)/nominal_cflow
+    syst_dn_cflow = (nominal_cflow - dn_cflow)/nominal_cflow
 
     systs = Systematic(name, signal_regions.keys())
     for SR, cut_name in signal_regions.items():
         systs.add_syst(
             max(
-                syst_up_cutflow[cut_name].n_pass,
-                syst_dn_cutflow[cut_name].n_pass
+                syst_up_cflow[cut_name].n_pass_weighted,
+                syst_dn_cflow[cut_name].n_pass_weighted
             ),
             signal_region=SR
         )
@@ -93,6 +89,7 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
     return systs
 
 TAG = "btagsf_fix"
+STUDY_DIR = "/data/userdata/jguiang/vbs_studies/vbswh"
 
 for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
 
@@ -100,13 +97,15 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
     with open(f"data/{SIG_NAME}_reweights.txt", "r") as f_in:
         reweight_names = f_in.read().splitlines()
 
-    os.makedirs(f"../combine/vbswh/datacards/{SIG_NAME}", exist_ok=True)
+    DATACARD_DIR = f"../combine/vbswh/datacards/{SIG_NAME}"
+    os.makedirs(DATACARD_DIR, exist_ok=True)
+    os.makedirs(f"{DATACARD_DIR}_unblinded", exist_ok=True)
 
-    babies = glob.glob(f"/data/userdata/jguiang/babies/vbswh/output_{TAG}/Run2/*.root")
+    babies = glob.glob(f"{STUDY_DIR}/output_{TAG}/Run2/*.root")
     sig_babies = [b for b in babies if SIG_NAME in b]
     print(f"Found {len(sig_babies)} signal babies:")
     print("\n".join(sig_babies))
-    bkg_babies = [b for b in babies if "Lambda" not in b and "VBSWH" not in b and "data" not in b]
+    bkg_babies = [b for b in babies if "Lambda" not in b and "VBSWH" not in b and "data.root" not in b]
     print(f"Found {len(bkg_babies)} background babies:")
     print("\n".join(bkg_babies))
     data_babies = [b for b in babies if "data.root" in b]
@@ -171,7 +170,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
 
     SIGNAL_REGIONS = ["SR1", "SR2"]
 
-    for reweight_i in tqdm(range(vbswh.sig_reweights.shape[-1]), desc=f"Writing datacards to ../combine/vbswh/datacards/{SIG_NAME}"):
+    for reweight_i in tqdm(range(vbswh.sig_reweights.shape[-1]), desc=f"Writing datacards to {DATACARD_DIR}"):
 
         SIG_SYSTS_LIMIT = SystematicsTable(samples=[SIG_NAME])
 
@@ -192,7 +191,7 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
                 
         pdf_ratio = pdf_sum/gen_sum
 
-        with uproot.open(f"/data/userdata/jguiang/babies/vbswh/output_{TAG}/Run2/{SIG_NAME}.root") as f:
+        with uproot.open(f"{STUDY_DIR}/output_{TAG}/Run2/{SIG_NAME}.root") as f:
             df = f.get("pdf_tree").arrays(library="pd")
             
         systs = []
@@ -357,25 +356,60 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         # --------------------------------------------------------------------------------------
 
         # -- Jet energy correction uncertainty -------------------------------------------------
-        jec_systs = get_jet_energy_systs(
-            f"../analysis/studies/vbswh/output_{TAG}/Run2/{SIG_NAME}_cutflow.cflow",
-            f"../analysis/studies/vbswh/output_{TAG}_jec_up/Run2/{SIG_NAME}_cutflow.cflow",
-            f"../analysis/studies/vbswh/output_{TAG}_jec_dn/Run2/{SIG_NAME}_cutflow.cflow",
-            {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
-            "Jet energy scale"
-        )
-        SIG_SYSTS_LIMIT.add_row(jec_systs.copy("CMS_scale_j_13TeV"))
+        # jec_systs = get_jet_energy_systs(
+        #     f"../analysis/studies/vbswh/output_{TAG}/Run2/{SIG_NAME}_cutflow.cflow",
+        #     f"../analysis/studies/vbswh/output_{TAG}_jec_up/Run2/{SIG_NAME}_cutflow.cflow",
+        #     f"../analysis/studies/vbswh/output_{TAG}_jec_dn/Run2/{SIG_NAME}_cutflow.cflow",
+        #     {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
+        #     "Jet energy scale"
+        # )
+        # SIG_SYSTS_LIMIT.add_row(jec_systs.copy("CMS_scale_j_13TeV"))
+        cflow = "VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn_Cutflow.cflow"
+        for year in ["2016preVFP", "2016postVFP", "2017", "2018"]:
+            nominal_cutflow = Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}/Run2/VBSWH_mkW_cutflow.cflow")
+            up_cutflow = Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}_jec_up/{year}/{cflow}")
+            dn_cutflow = Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}_jec_dn/{year}/{cflow}")
+            for nom_year in ["2016preVFP", "2016postVFP", "2017", "2018"]:
+                if year != nom_year:
+                    up_cutflow += Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}/{nom_year}/{cflow}")
+                    dn_cutflow += Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}/{nom_year}/{cflow}")
+                    
+            jec_systs = get_jet_energy_systs(
+                nominal_cutflow,
+                up_cutflow,
+                dn_cutflow,
+                {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
+                f"Jet energy scale"
+            )
+            SIG_SYSTS_LIMIT.add_row(jec_systs.copy(f"CMS_scale_j_13TeV_{year[2:]}"))
         # --------------------------------------------------------------------------------------
 
         # -- Jet energy resolution uncertainty -------------------------------------------------
-        jer_systs = get_jet_energy_systs(
-            f"../analysis/studies/vbswh/output_{TAG}/Run2/{SIG_NAME}_cutflow.cflow",
-            f"../analysis/studies/vbswh/output_{TAG}_jer_up/Run2/{SIG_NAME}_cutflow.cflow",
-            f"../analysis/studies/vbswh/output_{TAG}_jer_dn/Run2/{SIG_NAME}_cutflow.cflow",
-            {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
-            "Jet energy resolution"
-        )
-        SIG_SYSTS_LIMIT.add_row(jer_systs.copy("CMS_res_j_13TeV"))
+        # jer_systs = get_jet_energy_systs(
+        #     f"../analysis/studies/vbswh/output_{TAG}/Run2/{SIG_NAME}_cutflow.cflow",
+        #     f"../analysis/studies/vbswh/output_{TAG}_jer_up/Run2/{SIG_NAME}_cutflow.cflow",
+        #     f"../analysis/studies/vbswh/output_{TAG}_jer_dn/Run2/{SIG_NAME}_cutflow.cflow",
+        #     {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
+        #     "Jet energy resolution"
+        # )
+        # SIG_SYSTS_LIMIT.add_row(jer_systs.copy("CMS_res_j_13TeV"))
+        for year in ["2016preVFP", "2016postVFP", "2017", "2018"]:
+            nominal_cutflow = Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}/Run2/VBSWH_mkW_cutflow.cflow")
+            up_cutflow = Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}_jer_up/{year}/{cflow}")
+            dn_cutflow = Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}_jer_dn/{year}/{cflow}")
+            for nom_year in ["2016preVFP", "2016postVFP", "2017", "2018"]:
+                if year != nom_year:
+                    up_cutflow += Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}/{nom_year}/{cflow}")
+                    dn_cutflow += Cutflow.from_file(f"../analysis/studies/vbswh/output_{TAG}/{nom_year}/{cflow}")
+                    
+            jer_systs = get_jet_energy_systs(
+                nominal_cutflow,
+                up_cutflow,
+                dn_cutflow,
+                {"SR1": "XbbGt0p9_MSDLt150", "SR2": "STGt1500"},
+                "Jet energy resolution"
+            )
+            SIG_SYSTS_LIMIT.add_row(jer_systs.copy(f"CMS_res_j_13TeV_{year[2:]}"))
         # --------------------------------------------------------------------------------------
 
         # -- Luminosity ------------------------------------------------------------------------
@@ -406,11 +440,19 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
             datacard_systs[SIG_NAME][syst_obj.name] = [1 + systs["SR1"][0]]
             
         pred_bkg = AN_numbers["PredBkg"]
+
         datacard = Datacard(
             [round(pred_bkg)], # dummy value for observed
             {SIG_NAME: [vbswh.sig_count(selection="SR1")]},
             {"TotalBkg": [pred_bkg]},
             datacard_systs
         )
-            
-        datacard.write(f"../combine/vbswh/datacards/{SIG_NAME}/{reweight_names[reweight_i]}.dat")
+        datacard.write(f"{DATACARD_DIR}/{reweight_names[reweight_i]}.dat")
+
+        datacard_unblinded = Datacard(
+            [vbswh.data_count(selection="SR1")], # dummy value for observed
+            {SIG_NAME: [vbswh.sig_count(selection="SR1")]},
+            {"TotalBkg": [pred_bkg]},
+            datacard_systs
+        )
+        datacard_unblinded.write(f"{DATACARD_DIR}_unblinded/{reweight_names[reweight_i]}.dat")
