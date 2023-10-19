@@ -155,10 +155,10 @@ ABCD_REGIONS = ["regionA", "regionB", "regionC", "regionD"]
 
 with uproot.open(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/VBSVVH.root") as f:
     reweights = np.stack(f["rwgt_tree"].arrays(library="np")["reweights"])
-    n_events, n_rewights = reweights.shape
-
-# Insert trivial weight
-reweights = np.insert(reweights, 28, 1, axis=1)
+    # Insert trivial weight
+    reweights = np.insert(reweights, 28, 1, axis=1)
+    # Interpret reweights matrix shape
+    n_events, n_reweights = reweights.shape
 
 # grep -i "^launch" /path/to/PROCESS_reweight_card.dat | awk -F'=' '{print $2}' > data/PROCESS_reweights.txt
 with open("data/VBSVVH_reweights.txt", "r") as f_in:
@@ -167,7 +167,7 @@ with open("data/VBSVVH_reweights.txt", "r") as f_in:
 output_dir = "../combine/vbsvvh/datacards/VBSVVH"
 os.makedirs(output_dir, exist_ok=True)
 
-for reweight_i in tqdm(range(reweights.shape[-1]), desc=f"Writing datacards to {output_dir}"):
+for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_dir}"):
 
     SIG_SYSTS_LIMIT = SystematicsTable(
         samples=[b.split("/")[-1].replace(".root", "") for b in sig_babies]
