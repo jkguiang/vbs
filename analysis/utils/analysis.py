@@ -10,6 +10,8 @@ import yahist
 import mplhep as hep
 plt.style.use(hep.style.CMS)
 plt.rcParams.update({"figure.facecolor":  (1,1,1,0)})
+from mpl_toolkits.axes_grid1 import make_axes_locatable
+import matplotlib.colors as clr
 
 from utils.cutflow import Cut, Cutflow, CutflowCollection
 
@@ -22,7 +24,7 @@ class PandasAnalysis:
     def __init__(self, sig_root_files=None, bkg_root_files=None, data_root_files=None, 
                  ttree_name="Events", weight_columns=None, reweight_column=None, 
                  plots_dir=None, sample_labels={}, drop_columns=[], lumi=138, 
-                 cms_label="Preliminary", cms_size=None):
+                 cms_label="Preliminary", cms_size=None, stack_order=None, stack_order_pos=-1):
 
         if reweight_column:
             drop_columns.append(reweight_column)
@@ -30,6 +32,8 @@ class PandasAnalysis:
         self.lumi = lumi
         self.cms_label = cms_label
         self.cms_size = cms_size
+        self.stack_order = stack_order or []
+        self.stack_order_pos = stack_order_pos
         dfs = []
         self.sig_reweights = None
         # Load signal
@@ -463,6 +467,102 @@ class Optimization(PandasAnalysis):
 
         return hist_axes, ratio_axes
 
+    def plot_correlation2D(self, x_col, y_col, x_bins, y_bins, 
+                           sel=None, sample=None, flip=False, year=None, rebin=None, show_counts=False,
+                           x_label=None, y_label=None, x_lim=None, y_lim=None, 
+                           x_transf=lambda x: x, y_transf=lambda y: y):
+
+        x_label = x_label or x_col
+        y_label = y_label or y_col
+
+        if sample is None:
+            df = self.bkg_df(selection=sel)
+        else:
+            df = self.sample_df(sample, selection=sel)
+            
+        if not year is None:
+            df = df[df.year.abs() == year]
+            if year == 2016:
+                lumi = 36.33
+            elif year == 2017:
+                lumi = 41.48
+            elif year == 2018:
+                lumi = 59.83
+        else:
+            lumi = 138
+
+        # Plot 2D hist
+        hist2d = yahist.Hist2D(
+            (x_transf(df[x_col]), y_transf(df[y_col])),
+            bins=[x_bins, y_bins],
+            weights=df.event_weight
+        )
+        if flip:
+            hist2d = hist2d.transpose()
+        if not rebin is None:
+            hist2d = hist2d.rebin(rebin)
+
+        # UCSD colors
+        cmap = clr.LinearSegmentedColormap.from_list("trident", ["#182B49","#00629B", "#C69214", "#FFCD00"], N=256)
+        cmap.set_under("#182B49")
+
+        # Plot 2D hist and 1D profile
+        fig, axes = plt.subplots(figsize=(11, 11))
+        mpl_objs = hist2d.plot(
+            ax=axes, colorbar=False, counts=show_counts, 
+            counts_formatter="{:.2f}".format, counts_fontsize=6, 
+            cmap=cmap, zrange=(0, None), hide_empty=False
+        );
+        if flip:
+            axes.set_ylabel(x_label);
+            axes.set_xlabel(y_label);
+            hist2d.profile("x").plot(errors=True, color="white", fmt=".", label="Profile")
+            axes.set_ylim([x_bins[0], x_bins[-1]])
+            axes.set_xlim([y_bins[0], y_bins[-1]])
+        else:
+            axes.set_xlabel(x_label);
+            axes.set_ylabel(y_label);
+            # hist2d.profile("x").plot(errors=True, color="white", fmt=".", label=y_label+" profile")
+            hist2d.profile("x").plot(errors=True, color="white", fmt=".", label="Profile")
+            axes.set_xlim([x_bins[0], x_bins[-1]])
+            axes.set_ylim([y_bins[0], y_bins[-1]])
+
+        # Plot colorbar
+        mappable = mpl_objs[0]
+        fig = mappable.axes.figure
+        divider = make_axes_locatable(mappable.axes)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        cbar = fig.colorbar(mappable, cax=cax)
+        cbar.set_label(r"Count");
+
+        # Plot legend
+        legend = axes.legend(title="All background" if sample is None else self.sample_labels.get(sample, sample))
+        legend.get_title().set_color("white")
+        for label in legend.get_texts():
+            label.set_color("white")
+
+        # Add CMS label
+        hep.cms.label(
+            "Preliminary",
+            data=False,
+            lumi=lumi,
+            loc=0,
+            ax=axes,
+        );
+        
+        # Save plot
+        outfile = f"{self.plots_dir}/correlation2D_{x_col}_{y_col}_1Dprofile.pdf"
+        if not sample is None:
+            outfile = outfile.replace(".pdf", f"_{sample}.pdf")
+        if flip:
+            outfile = outfile.replace(".pdf", "_flipped.pdf")
+        if not year is None:
+            outfile = outfile.replace(".pdf", f"_{year}.pdf")
+            
+        plt.savefig(outfile, bbox_inches="tight")
+        plt.savefig(outfile.replace(".pdf", ".png"), bbox_inches="tight")
+        print(f"Wrote plot to {outfile}")
+
     def plot_sig_vs_bkg(self, column, bins, weights=None, selection="", transf=lambda x: x, 
                         raw=False, x_label="", logy=False, axes=None, norm=False, stacked=False, 
                         legend_loc="best", sig_scale=1):
@@ -498,7 +598,8 @@ class Optimization(PandasAnalysis):
                     bins=bins, 
                     weights=weights,
                     label=f"{sample_label} [{sum(weights):.1f} events]",
-                    color=self.bkg_colors[name] if self.bkg_colors else None
+                    color=self.bkg_colors[name] if self.bkg_colors else None,
+                    metadata={"sample_name": name}
                 )
                 bkg_hists.append(hist)
 
@@ -530,7 +631,24 @@ class Optimization(PandasAnalysis):
         # Plot everything
         if bkg_hists:
             bkg_hists.sort(key=lambda h: sum(h.counts))
+
+            hists_to_reorder = []
+            for sample_name in self.stack_order:
+                for hist in bkg_hists:
+                    if hist.metadata.get("sample_name") == sample_name:
+                        hists_to_reorder.append(hist)
+
+            for hist in hists_to_reorder:
+                bkg_hists.remove(hist)
+                if self.stack_order_pos == -1:
+                    bkg_hists.append(hist)
+                elif self.stack_order_pos < 0:
+                    bkg_hists.insert(self.stack_order_pos+1, hist)
+                else:
+                    bkg_hists.insert(self.stack_order_pos, hist)
+                    
             yahist.utils.plot_stack(bkg_hists, ax=axes, histtype="stepfilled", log=logy)
+
         bkg_hist.plot(ax=axes, alpha=0.5, log=logy)
         sig_hist.plot(ax=axes, linewidth=2, log=logy)
 
@@ -586,6 +704,91 @@ class Optimization(PandasAnalysis):
             plt.savefig(plot_file.replace(".pdf", ".png"), bbox_inches="tight")
 
         return axes
+
+    def plot_2D(self, x_col, y_col, x_bins, y_bins, 
+                sel=None, sample="bkg", flip=False, year=None, rebin=None, show_counts=False,
+                x_label=None, y_label=None, x_lim=None, y_lim=None, 
+                x_transf=lambda x: x, y_transf=lambda y: y):
+
+        x_label = x_label or x_col
+        y_label = y_label or y_col
+
+        if sample == "bkg":
+            df = self.bkg_df(selection=sel)
+        elif sample == "sig":
+            df = self.sig_df(selection=sel)
+        else:
+            df = self.sample_df(sample, selection=sel)
+            
+        if not year is None:
+            df = df[df.year.abs() == year]
+            if year == 2016:
+                lumi = 36.33
+            elif year == 2017:
+                lumi = 41.48
+            elif year == 2018:
+                lumi = 59.83
+        else:
+            lumi = 138
+
+        # Plot 2D hist
+        hist2d = yahist.Hist2D(
+            (x_transf(df[x_col]), y_transf(df[y_col])),
+            bins=[x_bins, y_bins],
+            weights=df.event_weight
+        )
+        if flip:
+            hist2d = hist2d.transpose()
+        if not rebin is None:
+            hist2d = hist2d.rebin(rebin)
+
+        # UCSD colors
+        cmap = clr.LinearSegmentedColormap.from_list("trident", ["#182B49","#00629B", "#C69214", "#FFCD00"], N=256)
+        cmap.set_under("#182B49")
+
+        # Plot 2D hist and 1D profile
+        fig, axes = plt.subplots(figsize=(11, 11))
+        mpl_objs = hist2d.plot(
+            ax=axes, colorbar=False, counts=show_counts, 
+            counts_formatter="{:.2f}".format, counts_fontsize=6, 
+            cmap=cmap, zrange=(0, None), hide_empty=False
+        );
+        if flip:
+            axes.set_ylabel(x_label);
+            axes.set_xlabel(y_label);
+        else:
+            axes.set_xlabel(x_label);
+            axes.set_ylabel(y_label);
+
+        # Plot colorbar
+        mappable = mpl_objs[0]
+        fig = mappable.axes.figure
+        divider = make_axes_locatable(mappable.axes)
+        cax = divider.append_axes("right", size="5%", pad=0.1)
+        cbar = fig.colorbar(mappable, cax=cax)
+        cbar.set_label(r"Count");
+
+        # Add CMS label
+        hep.cms.label(
+            "Preliminary",
+            data=False,
+            lumi=lumi,
+            loc=0,
+            ax=axes,
+        );
+        
+        # Save plot
+        outfile = f"{self.plots_dir}/hist2D_{sample}_{x_col}_{y_col}_1Dprofile.pdf"
+        if not sample is None:
+            outfile = outfile.replace(".pdf", f"_{sample}.pdf")
+        if flip:
+            outfile = outfile.replace(".pdf", "_flipped.pdf")
+        if not year is None:
+            outfile = outfile.replace(".pdf", f"_{year}.pdf")
+            
+        plt.savefig(outfile, bbox_inches="tight")
+        plt.savefig(outfile.replace(".pdf", ".png"), bbox_inches="tight")
+        print(f"Wrote plot to {outfile}")
 
     def fom_scan(self, variable, working_points, abs=False, show_raw=False, operator=">", 
                  base_selection="", fom=lambda s, b: s/np.sqrt(b)):
@@ -765,7 +968,8 @@ class Validation(PandasAnalysis):
                     bins=bins,
                     weights=weights,
                     label=f"{sample_label} [{bkg_df.event_weight[bkg_df.name == name].sum():.1f} events]",
-                    color=self.bkg_colors[name] if self.bkg_colors else None
+                    color=self.bkg_colors[name] if self.bkg_colors else None,
+                    metadata={"sample_name": name}
                 )
                 bkg_hists.append(hist)
 
@@ -779,6 +983,22 @@ class Validation(PandasAnalysis):
         # Plot stacked bkg hists
         if bkg_hists:
             bkg_hists.sort(key=lambda h: sum(h.counts))
+
+            hists_to_reorder = []
+            for sample_name in self.stack_order:
+                for hist in bkg_hists:
+                    if hist.metadata.get("sample_name") == sample_name:
+                        hists_to_reorder.append(hist)
+
+            for hist in hists_to_reorder:
+                bkg_hists.remove(hist)
+                if self.stack_order_pos == -1:
+                    bkg_hists.append(hist)
+                elif self.stack_order_pos < 0:
+                    bkg_hists.insert(self.stack_order_pos+1, hist)
+                else:
+                    bkg_hists.insert(self.stack_order_pos, hist)
+
             yahist.utils.plot_stack(bkg_hists, ax=hist_axes, histtype="stepfilled")
 
         # Plot hists and ratio
@@ -848,7 +1068,9 @@ class Validation(PandasAnalysis):
         if not logy:
             hist_axes.set_ylim(bottom=0)
         else:
-            hist_axes.set_ylim(bottom=0.1)
+            hist_axes.set_ylim(bottom=0.001)
+            if norm:
+                hist_axes.set_ylim(top=1)
             
         if norm:
             hist_axes.set_ylabel("a.u.")
