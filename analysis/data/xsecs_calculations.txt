@@ -34,7 +34,7 @@ VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn:
 VBSWH_negLambdaWZ_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn
 (0.437504 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.255502336
 
-VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn
+VBSWH_posLambdaWZ_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn (reweighted from SM)
 (0.0655874 pb xsec from MadGraph)*(0.5840 H->bb BR) = 0.0383030416
 
 VBSWH_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn
