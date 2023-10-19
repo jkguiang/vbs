@@ -176,16 +176,18 @@ if __name__ == "__main__":
             samples += glob.glob(f"{args.skimdir}/{skim}/*RunIISummer20UL16*/merged*.root") # Also picks up RunIISummer20UL16APV
             samples += glob.glob(f"{args.skimdir}/{skim}/*RunIISummer20UL17*/merged*.root")
             samples += glob.glob(f"{args.skimdir}/{skim}/*RunIISummer20UL18*/merged*.root")
+        elif skim[:4] == "bkg_":
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL16NanoAODAPVv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL16NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL17NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*UL18NanoAODv9*/merged*.root")
         elif skim[:5] == "data_":
             samples += glob.glob(f"{args.skimdir}/{skim}/*-HIPM_UL2016*NanoAODv9*/merged*.root")
             samples += glob.glob(f"{args.skimdir}/{skim}/*-UL2016*NanoAODv9*/merged*.root")
             samples += glob.glob(f"{args.skimdir}/{skim}/*-UL2017*NanoAODv9*/merged*.root")
             samples += glob.glob(f"{args.skimdir}/{skim}/*-UL2018*NanoAODv9*/merged*.root")
         else:
-            samples += glob.glob(f"{args.skimdir}/{skim}/*UL16NanoAODAPVv9*/merged*.root")
-            samples += glob.glob(f"{args.skimdir}/{skim}/*UL16NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{args.skimdir}/{skim}/*UL17NanoAODv9*/merged*.root")
-            samples += glob.glob(f"{args.skimdir}/{skim}/*UL18NanoAODv9*/merged*.root")
+            samples += glob.glob(f"{args.skimdir}/{skim}/*/merged*.root")
     if not samples:
         print("No samples found in these directories:")
         print("\n".join([f"{args.skimdir}/{skim}" for skim in skims]))
