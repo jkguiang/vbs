@@ -41,9 +41,10 @@ def merge(output_dir, sample_map, n_hadders=8):
             for year, group in groups.items():
                 f_out.write("{0}:\n{1}\n\n".format(year, '\n'.join(sorted(group))))
 
-    # Run hadd jobs
-    with Pool(processes=n_hadders) as pool:
-        list(tqdm(pool.imap(hadd_job, hadd_cmds), total=len(hadd_cmds), desc="Executing hadds"))
+    if n_hadders > 0:
+        # Run hadd jobs
+        with Pool(processes=n_hadders) as pool:
+            list(tqdm(pool.imap(hadd_job, hadd_cmds), total=len(hadd_cmds), desc="Executing hadds"))
 
     if merged_cutflows:
         return CutflowCollection(merged_cutflows)
