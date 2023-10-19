@@ -63,50 +63,50 @@ public:
             catch (const runtime_error& error) { /* do nothing */ }
             try { passed = (passed || nt.HLT_PFHT900()); }
             catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFHT650_TrimR0p1PT0p03Mass50()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFHT700_TrimR0p1PT0p03Mass50()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet450()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet360_TrimMass30()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8DiPFJet280_200_TrimMass30()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8DiPFJet280_200_TrimMass30_BTagCSV_p20()); }
-            catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFHT650_TrimR0p1PT0p03Mass50()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFHT700_TrimR0p1PT0p03Mass50()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet450()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet360_TrimMass30()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8DiPFJet280_200_TrimMass30()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8DiPFJet280_200_TrimMass30_BTagCSV_p20()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
             break;
         case (2017):
             try { passed = (passed || nt.HLT_PFHT1050()); }
             catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFHT800_TrimMass50()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_PFJet320()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_PFJet500()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet320()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet500()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet400_TrimMass30()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet420_TrimMass30()); }
-            catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFHT800_TrimMass50()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_PFJet320()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_PFJet500()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet320()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet500()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet400_TrimMass30()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet420_TrimMass30()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
             break;
         case (2018):
             try { passed = (passed || nt.HLT_PFHT1050()); }
             catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFHT800_TrimMass50()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_PFJet500()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet500()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet400_TrimMass30()); }
-            catch (const runtime_error& error) { /* do nothing */ }
-            try { passed = (passed || nt.HLT_AK8PFJet420_TrimMass30()); }
-            catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFHT800_TrimMass50()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_PFJet500()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet500()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet400_TrimMass30()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
+            // try { passed = (passed || nt.HLT_AK8PFJet420_TrimMass30()); }
+            // catch (const runtime_error& error) { /* do nothing */ }
             break;
         }
         if (!nt.isData() && passed)
