@@ -233,7 +233,7 @@ int main(int argc, char** argv)
         {
             nt.Init(ttree);
             analysis.init();
-            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            // TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
         },
         [&](int entry) 
         {
