@@ -7,7 +7,7 @@ import ROOT
 v_C2V = ["-2.0", "-1.75", "-1.5", "-1.25", "-1.0", "-0.75", "-0.5", "-0.25", "0.0", "0.1", "0.2", "0.3", "0.4", "0.5", "0.6", "0.7", "0.8", "0.9", "1.0", "1.1", "1.2", "1.3", "1.4", "1.5", "1.6", "1.7", "1.8", "1.9", "2.0", "2.25", "2.5", "2.75", "3.0", "3.25", "3.5", "3.75"]#,"4.0"]
 
 eos_path = "results"
-f_xs = "XS_C2V.json"
+f_xs = "xsecs_C2V.json"
 
 with open(f_xs, 'r') as f:
     xs_c2v = json.load(f)
@@ -24,7 +24,8 @@ for c in v_C2V:
     fo_al = ROOT.TFile(fn_al, "READ")
     fTree_al = fo_al.Get("limit")
 
-    scale = (xs_c2v["WWH_OS"][c] + xs_c2v["WWH_SS"][c] + xs_c2v["WZH"][c]) / (xs_c2v["WWH_OS"]["1.0"] + xs_c2v["WWH_SS"]["1.0"] + xs_c2v["WZH"]["1.0"])
+    scale = (xs_c2v["WWH_OS"][c] + xs_c2v["WWH_SS"][c] + xs_c2v["WZH"][c] + xs_c2v["ZZH"][c]) / (xs_c2v["WWH_OS"]["1.0"] + xs_c2v["WWH_SS"]["1.0"] + xs_c2v["WZH"]["1.0"] + xs_c2v["ZZH"]["1.0"])
+    #scale = (xs_c2v["WWH_OS"][c] + xs_c2v["WWH_SS"][c] + xs_c2v["WZH"][c]) / (xs_c2v["WWH_OS"]["1.0"] + xs_c2v["WWH_SS"]["1.0"] + xs_c2v["WZH"]["1.0"])
     #scale = xs_c2v["WWH_OS"][c] / xs_c2v["WWH_OS"]["1.0"]
     #scale = xs_c2v["WWH_OS"][c]
     
