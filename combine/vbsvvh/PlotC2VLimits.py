@@ -59,5 +59,5 @@ pt = ROOT.TPaveText(legend.GetX1NDC(),legend.GetY1NDC()-0.08,legend.GetX2NDC(),l
 pt.AddText("#kappa_{2V} = "+"({:.2f}, {:.2f})".format(lim_lo, lim_hi))
 pt.Draw("same")
 
-canv.SaveAs("C2V_Limit.png")
-canv.SaveAs("C2V_Limit.pdf")
+canv.SaveAs("/home/users/jguiang/public_html/vbsvvhjets_plots/limits/C2V_Limit.png")
+canv.SaveAs("/home/users/jguiang/public_html/vbsvvhjets_plots/limits/C2V_Limit.pdf")
