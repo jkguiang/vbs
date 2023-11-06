@@ -1,6 +1,7 @@
 #!/bin/env python
 
 import os
+import time
 import glob
 import argparse
 
@@ -23,25 +24,9 @@ class VBSOutput:
     def close(self):
         raise NotImplementedError()
 
-if __name__ == "__main__":
-    # CLI
-    parser = argparse.ArgumentParser(
-        description="Run inference at UCSD (not all models available, only part of config relevant)"
-    )
-    parser.add_argument("config_json", type=str, help="config JSON")
-    parser.add_argument("model", type=str, help="model PyTorch file")
-    parser.add_argument("baby_dir", type=str, help="directory containing analysis babies")
-    parser.add_argument(
-        "--other_model", type=str, default="",
-        help="other model PyTorch file (for double DisCo)"
-    )
-    parser.add_argument(
-        "--name", type=str, default="abcdnet",
-        help="name to be used for branches, i.e. NAME_score (default: 'abcdnet')"
-    )
-    args = parser.parse_args()
-
-    config = VBSConfig.from_json(args.config_json)
+def infer_ucsd(baby_dir, config_json, model_pt, other_model_pt=None, algo_name="abcdnet"):
+    print(f"Running inferences for {baby_dir}")
+    config = VBSConfig.from_json(config_json)
 
     if config.discotype == "single":
         from singledisco.infer import infer, OutputCSV, OutputROOT
@@ -55,22 +40,22 @@ if __name__ == "__main__":
     Model = getattr(models, config.model.name)
     if config.discotype == "single":
         model = Model.from_config(config).to(device)
-        model.load_state_dict(torch.load(args.model, map_location=device))
+        model.load_state_dict(torch.load(model_pt, map_location=device))
         model.eval()
     elif config.discotype == "double":
         model1, model2 = Model.from_config(config)
         model1 = model1.to(device)
         model2 = model2.to(device)
-        model1.load_state_dict(torch.load(args.model, map_location=device))
-        model2.load_state_dict(torch.load(args.other_model, map_location=device))
+        model1.load_state_dict(torch.load(model_pt, map_location=device))
+        model2.load_state_dict(torch.load(other_model_pt, map_location=device))
         model1.eval()
         model2.eval()
 
     times = []
-    out_dir = f"{args.baby_dir}/inferences"
+    out_dir = f"{baby_dir}/inferences"
     os.makedirs(out_dir, exist_ok=True)
     # Run inference on extra files (e.g. data)
-    for root_file in glob.glob(f"{args.baby_dir}/*.root"):
+    for root_file in glob.glob(f"{baby_dir}/*.root"):
         # Get data
         loader = DataLoader(ingress.ingress_file(config, root_file, -1, save=False))
         # Make file names
@@ -81,7 +66,7 @@ if __name__ == "__main__":
             root_file, new_root_file, 
             selection=config.ingress.get("selection", None), 
             ttree_name=config.ingress.ttree_name,
-            algo_name=args.name
+            algo_name=algo_name
         )
         if config.discotype == "single":
             times += infer(model, device, loader, output)
@@ -90,3 +75,57 @@ if __name__ == "__main__":
 
     print(f"Avg. inference time: {sum(times)/len(times)}s")
     print("\nDone.\n")
+
+def infer_ucsd_glob(baby_glob, config_json, model_pt, other_model_pt=None, algo_name="abcdnet"):
+    print(f"Watching for babies that match {baby_glob}")
+    print(f"Press ctrl+C to stop")
+    for baby_dir in glob.glob(baby_glob):
+        infer_ucsd(
+            baby_dir, 
+            config_json, 
+            model_pt, 
+            other_model_pt=other_model_pt, 
+            algo_name=algo_name
+        )
+
+if __name__ == "__main__":
+    # CLI
+    parser = argparse.ArgumentParser(
+        description="Run inference at UCSD (not all models available, only part of config relevant)"
+    )
+    parser.add_argument("config_json", type=str, help="config JSON")
+    parser.add_argument("model", type=str, help="model PyTorch file")
+    parser.add_argument(
+        "--baby_dir", type=str, default="",
+        help="directory containing analysis babies"
+    )
+    parser.add_argument(
+        "--baby_glob", type=str, default="",
+        help="globber for directories containing analysis babies (continues to run)"
+    )
+    parser.add_argument(
+        "--other_model", type=str, default="",
+        help="other model PyTorch file (for double DisCo)"
+    )
+    parser.add_argument(
+        "--algo_name", type=str, default="abcdnet",
+        help="name to be used for branches, i.e. NAME_score (default: 'abcdnet')"
+    )
+    args = parser.parse_args()
+
+    if args.baby_dir != "":
+        infer_ucsd(
+            args.baby_dir, 
+            args.config_json, 
+            args.model, 
+            other_model_pt=args.other_model, 
+            algo_name=args.algo_name
+        )
+    elif args.baby_glob != "":
+        infer_ucsd_glob(
+            args.baby_glob, 
+            args.config_json, 
+            args.model, 
+            other_model_pt=args.other_model, 
+            algo_name=args.algo_name
+        )
