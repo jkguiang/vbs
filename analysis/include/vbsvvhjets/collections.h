@@ -25,6 +25,8 @@ struct Analysis : Core::Analysis
     BTagSFs* btag_sfs;
     PileUpSFs* pu_sfs;
     PileUpJetIDSFs* puid_sfs;
+    VBSVVHXbbSFs* xbb_sfs;
+    VBSVVHXWqqSFs* xwqq_sfs;
     bool all_corrections;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
@@ -49,6 +51,8 @@ struct Analysis : Core::Analysis
         btag_sfs = nullptr;
         pu_sfs = nullptr;
         puid_sfs = nullptr;
+        xbb_sfs = nullptr;
+        xwqq_sfs = nullptr;
         all_corrections = false;
     };
 
@@ -104,15 +108,21 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("xbb_sf", 1.);
         arbol.newBranch<double>("xbb_sf_up", 1.);
         arbol.newBranch<double>("xbb_sf_dn", 1.);
+        arbol.newBranch<double>("xwqq_ld_vqq_sf", 1.);
+        arbol.newBranch<double>("xwqq_ld_vqq_sf_up", 1.);
+        arbol.newBranch<double>("xwqq_ld_vqq_sf_dn", 1.);
+        arbol.newBranch<double>("xwqq_tr_vqq_sf", 1.);
+        arbol.newBranch<double>("xwqq_tr_vqq_sf_up", 1.);
+        arbol.newBranch<double>("xwqq_tr_vqq_sf_dn", 1.);
     };
 
     virtual void initCorrections()
     {
         jes = new JetEnergyScales(cli.variation);
-        // lep_sfs = new LeptonSFsPKU(PKU::IDtight);     // TODO: figure out how to apply these for a lep veto
-        // hlt_sfs = new HLT1LepSFs();                   // TODO: add HT HLT sfs? If we are on the trigger plateau, not needed
         pu_sfs = new PileUpSFs();
         puid_sfs = new PileUpJetIDSFs();
+        xbb_sfs = new VBSVVHXbbSFs();
+        xwqq_sfs = new VBSVVHXWqqSFs();
         all_corrections = true;
     };
 
@@ -209,7 +219,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(allmerged_select_jets, allmerged_select_vbsjets, Right);
 
         // Save analysis variables
-        Cut* allmerged_save_vars = new SaveVariables("AllMerged_SaveVariables", *this, AllMerged);
+        Cut* allmerged_save_vars = new SaveVariables("AllMerged_SaveVariables", *this, AllMerged, xbb_sfs, xwqq_sfs);
         cutflow.insert(allmerged_select_vbsjets, allmerged_save_vars, Right);
 
         // Preselection
@@ -225,52 +235,33 @@ struct Analysis : Core::Analysis
             }
         );
         cutflow.insert(allmerged_save_vars, allmerged_presel, Right);
-
-        // Basic VBS jet requirements
-        Cut* allmerged_Mjjgt500 = new LambdaCut(
-            "AllMerged_MjjGt500", [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
-        );
-        cutflow.insert(allmerged_presel, allmerged_Mjjgt500, Right);
-        Cut* allmerged_detajjgt3 = new LambdaCut(
-            "AllMerged_detajjGt3", [&]() { return fabs(arbol.getLeaf<double>("deta_jj")) > 3; }
-        );
-        cutflow.insert(allmerged_Mjjgt500, allmerged_detajjgt3, Right);
         
-        // Preliminary cut tests
-        Cut* allmerged_prelim_cut1 = new LambdaCut(
-            "AllMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_xbb") > 0.9; }
+        // Signal region ParticleNet cuts
+        Cut* allmerged_xbb_cut = new LambdaCut(
+            "AllMerged_XbbGt0p9", 
+            [&]() { return arbol.getLeaf<double>("hbbfatjet_xbb") > 0.8; },
+            [&]() { return arbol.getLeaf<double>("xbb_sf"); }
         );
-        cutflow.insert(allmerged_detajjgt3, allmerged_prelim_cut1, Right);
-        Cut* allmerged_prelim_cut2 = new LambdaCut(
-            "AllMerged_XVqqGt0p9", 
+        cutflow.insert(allmerged_presel, allmerged_xbb_cut, Right);
+
+        Cut* allmerged_xwqq_cuts = new LambdaCut(
+            "AllMerged_XWqqCuts", 
             [&]() 
             { 
                 return (
-                    arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.9
-                    && arbol.getLeaf<double>("tr_vqqfatjet_xwqq") > 0.9
-                );
-            }
-        );
-        cutflow.insert(allmerged_prelim_cut1, allmerged_prelim_cut2, Right);
-        Cut* allmerged_prelim_cut3 = new LambdaCut(
-            "AllMerged_STGt1300", [&]() { return arbol.getLeaf<double>("ST") > 1300; }
-        );
-        cutflow.insert(allmerged_prelim_cut2, allmerged_prelim_cut3, Right);
-        Cut* allmerged_prelim_cut4 = new LambdaCut(
-            "AllMerged_HbbMSDLt150", [&]() { return arbol.getLeaf<double>("hbbfatjet_msoftdrop") < 150; }
-        );
-        cutflow.insert(allmerged_prelim_cut3, allmerged_prelim_cut4, Right);
-        Cut* allmerged_prelim_cut5 = new LambdaCut(
-            "AllMerged_VqqMSDLt120", 
+                    arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.8
+                    && arbol.getLeaf<double>("tr_vqqfatjet_xwqq") > 0.7
+                ); 
+            },
             [&]() 
             { 
                 return (
-                    arbol.getLeaf<double>("ld_vqqfatjet_msoftdrop") < 120
-                    && arbol.getLeaf<double>("tr_vqqfatjet_msoftdrop") < 120
+                    arbol.getLeaf<double>("xwqq_ld_vqq_sf")
+                    *arbol.getLeaf<double>("xwqq_tr_vqq_sf")
                 );
             }
         );
-        cutflow.insert(allmerged_prelim_cut4, allmerged_prelim_cut5, Right);
+        cutflow.insert(allmerged_xbb_cut, allmerged_xwqq_cuts, Right);
         /* ------------------------------------------------------ */
 
         /* ------------------ 2 fatjet channel ------------------ */
@@ -302,7 +293,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(semimerged_select_vbsjets, semimerged_select_vjets, Right);
 
         // Save analysis variables
-        Cut* semimerged_save_vars = new SaveVariables("SemiMerged_SaveVariables", *this, SemiMerged);
+        Cut* semimerged_save_vars = new SaveVariables("SemiMerged_SaveVariables", *this, SemiMerged, xbb_sfs, xwqq_sfs);
         cutflow.insert(semimerged_select_vjets, semimerged_save_vars, Right);
 
         // Basic VBS jet requirements
@@ -314,32 +305,6 @@ struct Analysis : Core::Analysis
             "SemiMerged_detajjGt3", [&]() { return fabs(arbol.getLeaf<double>("deta_jj")) > 3; }
         );
         cutflow.insert(semimerged_Mjjgt500, semimerged_detajjgt3, Right);
-        
-        // Preliminary cut tests
-        Cut* semimerged_prelim_cut1 = new LambdaCut(
-            "SemiMerged_XbbGt0p9", [&]() { return arbol.getLeaf<double>("hbbfatjet_xbb") > 0.9; }
-        );
-        cutflow.insert(semimerged_detajjgt3, semimerged_prelim_cut1, Right);
-        Cut* semimerged_prelim_cut2 = new LambdaCut(
-            "SemiMerged_XVqqGt0p9", [&]() { return arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.9; }
-        );
-        cutflow.insert(semimerged_prelim_cut1, semimerged_prelim_cut2, Right);
-        Cut* semimerged_prelim_cut3 = new LambdaCut(
-            "SemiMerged_STGt1300", [&]() { return arbol.getLeaf<double>("ST") > 1300; }
-        );
-        cutflow.insert(semimerged_prelim_cut2, semimerged_prelim_cut3, Right);
-        Cut* semimerged_prelim_cut4 = new LambdaCut(
-            "SemiMerged_HbbMSDLt150", [&]() { return arbol.getLeaf<double>("hbbfatjet_msoftdrop") < 150; }
-        );
-        cutflow.insert(semimerged_prelim_cut3, semimerged_prelim_cut4, Right);
-        Cut* semimerged_prelim_cut5 = new LambdaCut(
-            "SemiMerged_VqqMSDLt120", [&]() { return arbol.getLeaf<double>("ld_vqqfatjet_msoftdrop") < 120; }
-        );
-        cutflow.insert(semimerged_prelim_cut4, semimerged_prelim_cut5, Right);
-        Cut* semimerged_prelim_cut6 = new LambdaCut(
-            "SemiMerged_VqqMjjLt120", [&]() { return arbol.getLeaf<double>("vqqjets_Mjj") < 120; }
-        );
-        cutflow.insert(semimerged_prelim_cut5, semimerged_prelim_cut6, Right);
         /* ------------------------------------------------------ */
     };
 
@@ -349,11 +314,11 @@ struct Analysis : Core::Analysis
         if (all_corrections)
         {
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-            jes->init();
-            // lep_sfs->init(file_name);  // TODO: see Analysis::initCorrections
-            // hlt_sfs->init(file_name);  // TODO: see Analysis::initCorrections
+            jes->init(file_name);
             pu_sfs->init(file_name);
             puid_sfs->init(file_name);
+            xbb_sfs->init(file_name);
+            xwqq_sfs->init(file_name);
         }
     };
 };

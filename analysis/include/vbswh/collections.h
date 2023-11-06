@@ -93,7 +93,7 @@ struct Analysis : Core::Analysis
     BTagSFs* btag_sfs;
     PileUpSFs* pu_sfs;
     PileUpJetIDSFs* puid_sfs;
-    ParticleNetXbbSFs* xbb_sfs;
+    VBSWHXbbSFs* xbb_sfs;
     bool all_corrections;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
@@ -176,7 +176,7 @@ struct Analysis : Core::Analysis
         btag_sfs = new BTagSFs(cli.output_name, "M");
         pu_sfs = new PileUpSFs();
         puid_sfs = new PileUpJetIDSFs();
-        xbb_sfs = new ParticleNetXbbSFs();
+        xbb_sfs = new VBSWHXbbSFs();
         all_corrections = true;
     };
 
@@ -302,7 +302,7 @@ struct Analysis : Core::Analysis
         if (all_corrections)
         {
             TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
-            jes->init();
+            jes->init(file_name);
             lep_sfs->init(file_name);
             hlt_sfs->init(file_name);
             btag_sfs->init(file_name);

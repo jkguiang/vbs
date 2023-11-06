@@ -557,9 +557,16 @@ public:
         }
         else if (abs_lep_pdgID == 13)
         {
-            lep_sf = lep_sfs->getMuonSF(lep_pt, lep_eta);
-            lep_sf_up = lep_sf*(1. + lep_sfs->getMuonErrUp(lep_pt, lep_eta));
-            lep_sf_dn = lep_sf*(1. - lep_sfs->getMuonErrDn(lep_pt, lep_eta));
+            // lep_sf = lep_sfs->getMuonSF(lep_pt, lep_eta);
+            // lep_sf_up = lep_sf*(1. + lep_sfs->getMuonErrUp(lep_pt, lep_eta));
+            // lep_sf_dn = lep_sf*(1. - lep_sfs->getMuonErrDn(lep_pt, lep_eta));
+            lep_sf = lep_sfs->getMuonSF(min(lep_pt, 199.9), lep_eta);
+            lep_sf_up = lep_sf*(1. + lep_sfs->getMuonErrUp(min(lep_pt, 199.9), lep_eta));
+            lep_sf_dn = lep_sf*(1. - lep_sfs->getMuonErrDn(min(lep_pt, 199.9), lep_eta));
+        }
+        else
+        {
+            throw std::runtime_error("Error - found a lepton that is not an electron or muon by PDG ID");
         }
         arbol.setLeaf<double>("lep_id_sf", lep_sf);
         arbol.setLeaf<double>("lep_id_sf_up", lep_sf_up);
@@ -723,9 +730,9 @@ public:
 class SaveVariables : public Core::AnalysisCut
 {
 public:
-    ParticleNetXbbSFs* xbb_sfs;
+    VBSWHXbbSFs* xbb_sfs;
 
-    SaveVariables(std::string name, Core::Analysis& analysis, ParticleNetXbbSFs* xbb_sfs = nullptr) 
+    SaveVariables(std::string name, Core::Analysis& analysis, VBSWHXbbSFs* xbb_sfs = nullptr) 
     : AnalysisCut(name, analysis) 
     {
         this->xbb_sfs = xbb_sfs;

@@ -353,11 +353,16 @@ class SaveVariables : public Core::AnalysisCut
 {
 public:
     Channel channel;
+    VBSVVHXbbSFs* xbb_sfs;
+    VBSVVHXWqqSFs* xwqq_sfs;
 
-    SaveVariables(std::string name, Core::Analysis& analysis, Channel channel) 
+    SaveVariables(std::string name, Core::Analysis& analysis, Channel channel, VBSVVHXbbSFs* xbb_sfs = nullptr,
+                  VBSVVHXWqqSFs* xwqq_sfs = nullptr) 
     : Core::AnalysisCut(name, analysis) 
     {
         this->channel = channel;
+        this->xbb_sfs = xbb_sfs;
+        this->xwqq_sfs = xwqq_sfs;
     };
 
     bool evaluate()
@@ -396,6 +401,44 @@ public:
         {
             arbol.setLeaf<double>("alphaS_up", 1.);
             arbol.setLeaf<double>("alphaS_dn", 1.);
+        }
+
+        // Save scale factors for ParticleNet signal region cuts
+        if (cli.is_signal)
+        {
+            if (xbb_sfs != nullptr && arbol.getLeaf<double>("hbbfatjet_xbb") > 0.8)
+            {
+                double hbbfatjet_pt = arbol.getLeaf<double>("hbbfatjet_pt");
+                arbol.setLeaf<double>("xbb_sf", xbb_sfs->getSF(hbbfatjet_pt));
+                arbol.setLeaf<double>("xbb_sf_up", xbb_sfs->getSFUp(hbbfatjet_pt));
+                arbol.setLeaf<double>("xbb_sf_dn", xbb_sfs->getSFDn(hbbfatjet_pt));
+            }
+            if (xwqq_sfs != nullptr && arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.8)
+            {
+                double ld_vqqfatjet_pt = arbol.getLeaf<double>("ld_vqqfatjet_pt");
+                arbol.setLeaf<double>("xwqq_ld_vqq_sf", xwqq_sfs->getSF(ld_vqqfatjet_pt, "lead"));
+                arbol.setLeaf<double>("xwqq_ld_vqq_sf_up", xwqq_sfs->getSFUp(ld_vqqfatjet_pt, "lead"));
+                arbol.setLeaf<double>("xwqq_ld_vqq_sf_dn", xwqq_sfs->getSFDn(ld_vqqfatjet_pt, "lead"));
+            }
+            if (xwqq_sfs != nullptr && arbol.getLeaf<double>("tr_vqqfatjet_xwqq") > 0.7)
+            {
+                double tr_vqqfatjet_pt = arbol.getLeaf<double>("tr_vqqfatjet_pt");
+                arbol.setLeaf<double>("xwqq_tr_vqq_sf", xwqq_sfs->getSF(tr_vqqfatjet_pt, "trail"));
+                arbol.setLeaf<double>("xwqq_tr_vqq_sf_up", xwqq_sfs->getSFUp(tr_vqqfatjet_pt, "trail"));
+                arbol.setLeaf<double>("xwqq_tr_vqq_sf_dn", xwqq_sfs->getSFDn(tr_vqqfatjet_pt, "trail"));
+            }
+        }
+        else
+        {
+            arbol.setLeaf<double>("xbb_sf", 1.);
+            arbol.setLeaf<double>("xbb_sf_up", 1.);
+            arbol.setLeaf<double>("xbb_sf_dn", 1.);
+            arbol.setLeaf<double>("xwqq_ld_vqq_sf", 1.);
+            arbol.setLeaf<double>("xwqq_ld_vqq_sf_up", 1.);
+            arbol.setLeaf<double>("xwqq_ld_vqq_sf_dn", 1.);
+            arbol.setLeaf<double>("xwqq_tr_vqq_sf", 1.);
+            arbol.setLeaf<double>("xwqq_tr_vqq_sf_up", 1.);
+            arbol.setLeaf<double>("xwqq_tr_vqq_sf_dn", 1.);
         }
         return true;
     };
