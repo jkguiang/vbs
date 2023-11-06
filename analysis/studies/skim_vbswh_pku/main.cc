@@ -65,6 +65,15 @@ int main(int argc, char** argv)
     VBSWH::SkimmerPKU skimmer = VBSWH::SkimmerPKU(arbusto, nt, cli, cutflow);
     skimmer.initCutflow();
 
+    Cut* base = new LambdaCut(
+        "Base", 
+        [&]() { return true; },
+        [&]() { return cli.scale_factor; }
+    );
+    cutflow.replace("Base", base);
+
+    unsigned int lumi_nevents = int(40000*(1./cli.scale_factor));
+
     // Run looper
     tqdm bar;
     looper.run(
@@ -82,7 +91,7 @@ int main(int argc, char** argv)
         },
         [&](int entry) 
         {
-            if (cli.debug && looper.n_events_processed == 10000) { looper.stop(); }
+            if (cli.debug && looper.n_events_processed == lumi_nevents) { looper.stop(); }
             else
             {
                 // reset branches and globals
@@ -98,7 +107,8 @@ int main(int argc, char** argv)
     );
 
     // Wrap up
-    if (!cli.is_data) { cutflow.print(); }
+    cutflow.print();
+    cutflow.write(cli.output_dir);
 
     TTree* merged_runs = TTree::MergeTrees(runs);
     merged_runs->SetName("Runs");

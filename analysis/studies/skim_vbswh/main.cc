@@ -181,7 +181,7 @@ int main(int argc, char** argv)
         },
         [&](int entry) 
         {
-            if (cli.debug && looper.n_events_processed == 10000) { looper.stop(); }
+            if (cli.debug && looper.n_events_processed == 100000) { looper.stop(); }
             else
             {
                 // Reset branches and globals

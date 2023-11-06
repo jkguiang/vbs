@@ -53,7 +53,8 @@ int main(int argc, char** argv)
         { 
             nt.Init(ttree); 
             analysis.init();
-            jes->init();
+            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
+            jes->init(file_name);
         },
         [&](int entry) 
         {

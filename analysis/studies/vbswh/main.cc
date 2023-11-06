@@ -156,11 +156,8 @@ int main(int argc, char** argv)
     );
 
     // Wrap up
-    if (!cli.is_data)
-    {
-        cutflow.print();
-        cutflow.write(cli.output_dir);
-    }
+    cutflow.print();
+    cutflow.write(cli.output_dir);
     arbol.write();
     pdf_arbol.write();
     return 0;
