@@ -295,7 +295,7 @@ public:
                 }
             }
             // Apply JECs
-            if (jes != nullptr)
+            if (!nt.isData() && jes != nullptr)
             {
                 jet_p4 = jes->applyAK4JEC(jet_p4);
             }
@@ -504,7 +504,7 @@ public:
                 }
             }
             // Apply jet energy corrections
-            if (jes != nullptr)
+            if (!nt.isData() && jes != nullptr)
             {
                 fatjet_p4 = jes->applyAK8JEC(fatjet_p4);
             }

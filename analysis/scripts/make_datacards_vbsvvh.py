@@ -118,7 +118,9 @@ vbsvvh = PandasAnalysis(
     weight_columns=[
         "xsec_sf", 
         "pu_sf",
-        "prefire_sf"
+        "prefire_sf",
+        "xwqq_ld_vqq_sf",
+        "xwqq_tr_vqq_sf"
     ]
 )
 vbsvvh.df["unity"] = 1 # IMPORTANT
@@ -292,20 +294,68 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     # --------------------------------------------------------------------------------------
 
 
+    # -- ParticleNet XWqq scale factors -----------------------------------------------------
+    for year in [-2016, 2016, 2017, 2018]:
+        cms_year_str = get_year_str(year).replace("20", "")
+
+        xwqq_sf_systs = Systematic(f"CMS_vbsvvh_qTagWeightXWqq_ldVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
+        xwqq_sf_systs.add_systs(
+            get_systs("VBSVVH", ABCD_REGIONS, "xwqq_ld_vqq_sf", "xwqq_ld_vqq_sf_up", "xwqq_ld_vqq_sf_dn", year=year)
+        )
+        SIG_SYSTS_LIMIT.add_row(xwqq_sf_systs)
+
+        xwqq_sf_systs = Systematic(f"CMS_vbsvvh_qTagWeightXWqq_trVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
+        xwqq_sf_systs.add_systs(
+            get_systs("VBSVVH", ABCD_REGIONS, "xwqq_tr_vqq_sf", "xwqq_tr_vqq_sf_up", "xwqq_tr_vqq_sf_dn", year=year)
+        )
+        SIG_SYSTS_LIMIT.add_row(xwqq_sf_systs)
+    # --------------------------------------------------------------------------------------
+
+
     # -- Jet energy correction uncertainty -------------------------------------------------
-    jec_systs = get_jet_energy_systs(
-        f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow_ABCD.cflow",
-        f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_up/Run2/VBSVVH_cutflow_ABCD.cflow",
-        f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_dn/Run2/VBSVVH_cutflow_ABCD.cflow",
-        {
-            "regionA": "AllMerged_RegionA",
-            "regionB": "AllMerged_RegionB",
-            "regionC": "AllMerged_RegionC",
-            "regionD": "AllMerged_RegionD",
-        },
-        "CMS_scale_j_13TeV"
-    )
-    SIG_SYSTS_LIMIT.add_row(jec_systs)
+    jec_sources = [
+        "Absolute",
+        "Absolute_YEAR",
+        "BBEC1_YEAR",
+        "BBEC1",
+        "EC2_YEAR",
+        "EC2",
+        "FlavorQCD",
+        "HF_YEAR",
+        "HF",
+        "RelativeBal",
+        "RelativeSample_YEAR"
+    ]
+    for jec_i, jec_source in enumerate(jec_sources):
+        if "YEAR" in jec_source:
+            for year in ["2016postVFP", "2016preVFP", "2017", "2018"]:
+                jec_systs = get_jet_energy_systs(
+                    f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow_ABCD.cflow",
+                    f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_{year}_up/Run2/VBSVVH_cutflow_ABCD.cflow",
+                    f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_{year}_dn/Run2/VBSVVH_cutflow_ABCD.cflow",
+                    {
+                        "regionA": "AllMerged_RegionA",
+                        "regionB": "AllMerged_RegionB",
+                        "regionC": "AllMerged_RegionC",
+                        "regionD": "AllMerged_RegionD",
+                    },
+                    f"CMS_scale_j_{jec_source.replace('YEAR', year)}_13TeV"
+                )
+                SIG_SYSTS_LIMIT.add_row(jec_systs)
+        else:
+            jec_systs = get_jet_energy_systs(
+                f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow_ABCD.cflow",
+                f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_up/Run2/VBSVVH_cutflow_ABCD.cflow",
+                f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_dn/Run2/VBSVVH_cutflow_ABCD.cflow",
+                {
+                    "regionA": "AllMerged_RegionA",
+                    "regionB": "AllMerged_RegionB",
+                    "regionC": "AllMerged_RegionC",
+                    "regionD": "AllMerged_RegionD",
+                },
+                f"CMS_scale_j_{jec_source}_13TeV"
+            )
+            SIG_SYSTS_LIMIT.add_row(jec_systs)
     # --------------------------------------------------------------------------------------
 
 
@@ -352,7 +402,10 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         systs = syst_obj.get_systs()
         datacard_systs["TotalSig"][syst_obj.name] = [1 + systs[R][0] for R in ABCD_REGIONS]
 
+    # Blinded yields
     ABCD_yields = [round(vbsvvh.bkg_count(selection=ABCD_REGIONS[0])), *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
+    # Unblinded yields
+    # ABCD_yields = [vbsvvh.data_count(selection=R) for R in ABCD_REGIONS]
 
     datacard = DatacardABCD(
         ABCD_yields, # dummy value for observed in region A
