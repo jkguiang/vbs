@@ -91,6 +91,18 @@ OTHER_SAMPLE_MAP = {
         "2016postVFP": ["VBSWH_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn"],
         "2017": ["VBSWH_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn"],
         "2018": ["VBSWH_kWkZscan_m2to2_Mjj100toInf_Htobb_dipoleRecoilOn"]
+    },
+    "VBSWH_SM": {
+        "2016preVFP": ["VBFWH_HToBB_WToLNu_M-125_dipoleRecoilOn"],
+        "2016postVFP": ["VBFWH_HToBB_WToLNu_M-125_dipoleRecoilOn"],
+        "2017": ["VBFWH_HToBB_WToLNu_M-125_dipoleRecoilOn"],
+        "2018": ["VBFWH_HToBB_WToLNu_M-125_dipoleRecoilOn"]
+    },
+    "VVJJ": {
+        "2016preVFP": ["WWJJ*", "WZJJ*", "ZZJJ*"],
+        "2016postVFP": ["WWJJ*", "WZJJ*", "ZZJJ*"],
+        "2017": ["WWJJ*", "WZJJ*", "ZZJJ*"],
+        "2018": ["WWJJ*", "WZJJ*", "ZZJJ*"]
     }
 }
 
@@ -129,33 +141,49 @@ if __name__ == "__main__":
 
     os.makedirs(f"{output_dir}/Run2", exist_ok=True)
 
-    # Get Cutflow objects for background samples
-    cutflows = merge(output_dir, BKG_SAMPLE_MAP, n_hadders=args.n_workers)
-    cutflows["TotalBkg"] = cutflows.sum()
-    # Get Cutflow objects for signal samples
-    cutflows += merge(output_dir, SIG_SAMPLE_MAP, n_hadders=args.n_workers)
-    cutflows.reorder(["VH", "EWKWLep", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW"])
+    for year in ["2016preVFP", "2016postVFP", "2017", "2018", "Run2"]:
+        if year == "Run2":
+            n_workers = args.n_workers
+            bkg_sample_map   = BKG_SAMPLE_MAP
+            sig_sample_map   = SIG_SAMPLE_MAP
+            data_sample_map  = DATA_SAMPLE_MAP
+            other_sample_map = OTHER_SAMPLE_MAP
+        else:
+            n_workers = 0
+            bkg_sample_map   = {k: {year: v[year]} for k, v in BKG_SAMPLE_MAP.items()}
+            sig_sample_map   = {k: {year: v[year]} for k, v in SIG_SAMPLE_MAP.items()}
+            data_sample_map  = {k: {year: v[year]} for k, v in DATA_SAMPLE_MAP.items()}
+            other_sample_map = {k: {year: v[year]} for k, v in OTHER_SAMPLE_MAP.items()}
 
-    # Write .cflow files
-    for group_name, cutflow in cutflows.items():
-        cutflow.write_cflow(f"{output_dir}/Run2/{group_name}_cutflow.cflow")
-    # Write CSV
-    cutflows.rename({
-        "EWKWLep": "EWK W", 
-        "TTX": "TTbar+X", 
-        "WJets": "W+Jets", 
-        "VBSWH_mkW": "VBSWH (BSM)",
-        "VBSWH_SM": "VBSWH (SM)"
-    })
-    for terminal_cut_name in args.terminals if args.terminals else cutflows.terminal_cut_names:
-        cutflows.write_csv(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.csv", terminal_cut_name)
-        cutflows.write_txt(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.txt", terminal_cut_name)
-        cutflows.write_tex(f"{output_dir}/Run2/cutflow_{terminal_cut_name}.tex", terminal_cut_name)
+        # Get Cutflow objects for background samples
+        cutflows = merge(output_dir, bkg_sample_map, n_hadders=n_workers)
+        cutflows["TotalBkg"] = cutflows.sum()
+        # Merge data samples and DO NOT save Cutflow object
+        cutflows += merge(output_dir, data_sample_map, n_hadders=n_workers)
+        # Get Cutflow objects for signal samples
+        cutflows += merge(output_dir, sig_sample_map, n_hadders=n_workers)
+        cutflows.reorder(["VH", "EWKWLep", "Bosons", "WJets", "SingleTop", "TTX", "TTbar1L", "TTbar2L", "TotalBkg", "VBSWH_mkW", "data"])
 
-    # Merge data samples and DO NOT save Cutflow object
-    merge(output_dir, DATA_SAMPLE_MAP, n_hadders=args.n_workers)
-    # Merge other samples
-    other_cutflows = merge(output_dir, OTHER_SAMPLE_MAP, n_hadders=args.n_workers)
-    # Write .cflow files
-    for group_name, cutflow in other_cutflows.items():
-        cutflow.write_cflow(f"{output_dir}/Run2/{group_name}_cutflow.cflow")
+        # Write individual cutflows
+        if year == "Run2":
+            # Write .cflow files
+            for group_name, cutflow in cutflows.items():
+                cutflow.write_cflow(f"{output_dir}/{year}/{group_name}_cutflow.cflow")
+            # Merge other samples
+            other_cutflows = merge(output_dir, other_sample_map, n_hadders=n_workers)
+            # Write .cflow files
+            for group_name, cutflow in other_cutflows.items():
+                cutflow.write_cflow(f"{output_dir}/{year}/{group_name}_cutflow.cflow")
+
+        # Write CSV
+        cutflows.rename({
+            "EWKWLep": "EWK W", 
+            "TTX": "TTbar+X", 
+            "WJets": "W+Jets", 
+            "VBSWH_mkW": "VBSWH (BSM)",
+            "VBSWH_SM": "VBSWH (SM)"
+        })
+        for terminal_cut_name in args.terminals if args.terminals else cutflows.terminal_cut_names:
+            cutflows.write_csv(f"{output_dir}/{year}/cutflow_{terminal_cut_name}.csv", terminal_cut_name)
+            cutflows.write_txt(f"{output_dir}/{year}/cutflow_{terminal_cut_name}.txt", terminal_cut_name)
+            cutflows.write_tex(f"{output_dir}/{year}/cutflow_{terminal_cut_name}.tex", terminal_cut_name)
