@@ -62,8 +62,9 @@ class Datacard:
                         self.systs[label_i][syst_i] = f"{syst_value:{cw}.4f}" 
                 elif sample_label in self.bkg_labels:
                     for value_i, syst_value in enumerate(systs):
-                        syst_i = self.n_obs*self.n_sig + value_i + self.bkg_labels.index(sample_label)
-                        self.systs[label_i][syst_i] = f"{syst_value:{cw}.4f}"  
+                        if syst_value >= 0:
+                            syst_i = self.n_obs*self.n_sig + value_i + self.bkg_labels.index(sample_label)
+                            self.systs[label_i][syst_i] = f"{syst_value:{cw}.4f}"  
                     
         hw = max([len(l) for l in self.syst_labels])+2
         hw = max(hw, 12)
