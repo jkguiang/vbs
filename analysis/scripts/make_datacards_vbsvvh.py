@@ -384,9 +384,9 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
 
     # -- H to bb BR ------------------------------------------------------------------------
-    hbb_br_systs = Systematic("BR_hbb", ABCD_REGIONS)
-    hbb_br_systs.add_systs([0.0127 for R in ABCD_REGIONS])
-    SIG_SYSTS_LIMIT.add_row(hbb_br_systs)
+    # hbb_br_systs = Systematic("BR_hbb", ABCD_REGIONS)
+    # hbb_br_systs.add_systs([0.0127 for R in ABCD_REGIONS])
+    # SIG_SYSTS_LIMIT.add_row(hbb_br_systs)
     # --------------------------------------------------------------------------------------
 
 
@@ -401,6 +401,10 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     for syst_obj in SIG_SYSTS_LIMIT.systs:
         systs = syst_obj.get_systs()
         datacard_systs["TotalSig"][syst_obj.name] = [1 + systs[R][0] for R in ABCD_REGIONS]
+
+    for R in ABCD_REGIONS[1:]:
+        syst = 1 + vbsvvh.data_error(selection=R)/vbsvvh.data_count(selection=R)
+        datacard_systs["TotalBkg"]["CMS_vbsvvhjets_abcd_stat"].append(syst)
 
     # Blinded yields
     ABCD_yields = [round(vbsvvh.bkg_count(selection=ABCD_REGIONS[0])), *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
