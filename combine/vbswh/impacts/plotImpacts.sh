@@ -1,9 +1,11 @@
 NAME=vbswh
 if [[ "$1" == "--unblind" ]]; then
-    NAME=vbswh_unblinded
-elif [[ "$1" != "--expectSignal=1" ]]; then
-    echo "ERROR: $1 not a recognized argument"
-    exit 1
+    NAME=${NAME}_unblinded
+elif [[ "$1" != "" ]]; then
+    if [[ "$1" != "--expectSignal=1" ]]; then
+        echo "ERROR: $1 not a recognized argument"
+        exit 1
+    fi
 fi
 
 # Compute impacts
