@@ -181,16 +181,23 @@ class DisCoDataset(Dataset):
         fig, all_axes = plt.subplots(n_rows, n_cols, figsize=(20, 20))
         for row in range(n_rows):
             for col in range(n_cols):
+                if n_features > 2:
+                    axes = all_axes[row][col]
+                elif n_features == 2:
+                    axes = all_axes[col]
+                elif n_features == 1:
+                    axes = all_axes
+
                 feature_i = row*n_cols + col
                 if feature_i >= n_features:
-                    fig.delaxes(all_axes[row][col])
+                    fig.delaxes(axes)
                     continue
-
+                
                 self.plot_variable(
                     self.features[feature_i],
                     config.ingress.features[feature_i],
                     norm=True,
-                    axes=all_axes[row][col],
+                    axes=axes,
                     integrals=False
                 )
 
