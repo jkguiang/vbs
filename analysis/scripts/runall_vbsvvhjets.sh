@@ -11,6 +11,10 @@ mkdir -p $BASEDIR
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=$TAG
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=$TAG
 
+# Run without ParticleNet corrections
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=${TAG}_nofix --var=nofix
+./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_nofix
+
 # Run JEC variations (OLD)
 # ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=${TAG}_jec_up --var=jec_up --no_make
 # ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=${TAG}_jec_dn --var=jec_dn --no_make
@@ -102,6 +106,3 @@ for JEC in $JECS; do
         done
     done
 done
-
-# Keep a copy on /home -- NOT NEEDED, done later (c.f. addall_vbsvvhjets.sh)
-# cp -R $BASEDIR/vbsvvhjets/output_${TAG}* studies/vbsvvhjets/

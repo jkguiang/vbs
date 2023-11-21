@@ -885,7 +885,8 @@ class Validation(PandasAnalysis):
 
     def plot_data_vs_mc(self, column, bins, weights=None, blinded_range=None, blinded_box=True, autoblind=True,
                         sig_scale=0, selection="", x_label="", logy=False, transf=lambda x: x, norm=False, 
-                        stacked=False, axes=None, return_hists=False, legend_loc="best", ratio_ylim=[0, 2]):
+                        stacked=False, axes=None, return_hists=False, legend_loc="best", ratio_ylim=[0, 2],
+                        group_hists={}, legend_counts=True):
         if not axes:
             fig = plt.figure()
             gs = gridspec.GridSpec(ncols=1, nrows=2, figure=fig, height_ratios=[2, 0.65], hspace=0.08)
@@ -921,14 +922,14 @@ class Validation(PandasAnalysis):
             transf(data_df[column]),
             bins=bins,
             weights=data_weights,
-            label=f"Data [{len(data_df)} events]",
+            label=f"Data [{len(data_df)} events]" if legend_counts else "Data",
             color="k"
         )
         bkg_hist = yahist.Hist1D(
             transf(bkg_df[column]),
             bins=bins,
             weights=bkg_weights,
-            label=f"Total background [{bkg_df.event_weight.sum():0.1f} events]",
+            label=f"Total background [{bkg_df.event_weight.sum():0.1f} events]" if legend_counts else "Total background",
             color="k"
         )
 
@@ -936,7 +937,7 @@ class Validation(PandasAnalysis):
             transf(sig_df[column]),
             bins=bins,
             weights=sig_weights,
-            label=f"Total signal [{sig_df.event_weight.sum():0.1f} events]",
+            label=f"Total signal [{sig_df.event_weight.sum():0.1f} events]" if legend_counts else "Total signal",
             color="r"
         )
 
@@ -956,6 +957,7 @@ class Validation(PandasAnalysis):
             data_hist.counts[autoblind_bins] = 0
 
         # Get stacked backgrounds
+        grouped_hists = {}
         bkg_hists = []
         if stacked:
             for name in bkg_df.name.unique():
@@ -963,15 +965,37 @@ class Validation(PandasAnalysis):
                 if norm:
                     weights /= bkg_df.event_weight.sum()
                 sample_label = self.sample_labels[name] if name in self.sample_labels else name
+                if legend_counts:
+                    label = f"{sample_label} [{bkg_df.event_weight[bkg_df.name == name].sum():.1f} events]" 
+                else:
+                    label = sample_label
+
                 hist = yahist.Hist1D(
                     transf(bkg_df[bkg_df.name == name][column]),
                     bins=bins,
                     weights=weights,
-                    label=f"{sample_label} [{bkg_df.event_weight[bkg_df.name == name].sum():.1f} events]",
+                    label=label,
                     color=self.bkg_colors[name] if self.bkg_colors else None,
                     metadata={"sample_name": name}
                 )
-                bkg_hists.append(hist)
+
+                in_group = False
+                for group_name, sample_names in group_hists.items():
+                    if name in sample_names:
+                        hist.metadata["label"] = group_name
+                        in_group = True
+                        if group_name in grouped_hists:
+                            grouped_hists[group_name] += hist
+                        else:
+                            grouped_hists[group_name] = hist
+
+                if not in_group:
+                    bkg_hists.append(hist)
+
+        for group_name, hist in grouped_hists.items():
+            hist.metadata["sample_name"] = group_name
+
+        bkg_hists += grouped_hists.values()
 
         # Get ratio
         ratio_hist = data_hist/bkg_hist
@@ -1009,7 +1033,10 @@ class Validation(PandasAnalysis):
         if sig_scale > 0:
             if sig_scale != 1:
                 sig_hist *= sig_scale
-                sig_hist.metadata["label"] = f"Total signal (x{sig_scale}) [{np.sum(sig_hist.counts):0.1f} events]"
+                if legend_counts:
+                    sig_hist.metadata["label"] = f"Total signal (x{sig_scale}) [{np.sum(sig_hist.counts):0.1f} events]"
+                else:
+                    sig_hist.metadata["label"] = f"Total signal (x{sig_scale})"
             sig_hist.plot(ax=hist_axes, linewidth=2)
 
         # Get bkg MC bin counts for error calculation (again in case of norm)

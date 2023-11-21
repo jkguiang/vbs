@@ -215,12 +215,12 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
         lhe_muR_weights = list(vbswh.df.columns[vbswh.df.columns.str.contains("muF1p0")])
         lhe_muF_weights = list(vbswh.df.columns[vbswh.df.columns.str.contains("muR1p0")])
 
-        muR_systs = Systematic("CMS_LHE_weights_scale_muR_vbswh", SIGNAL_REGIONS)
+        muR_systs = Systematic("CMS_LHE_weights_scale_muR_vbsvh", SIGNAL_REGIONS)
         muR_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *lhe_muR_weights)
         )
 
-        muF_systs = Systematic("CMS_LHE_weights_scale_muF_vbswh", SIGNAL_REGIONS)
+        muF_systs = Systematic("CMS_LHE_weights_scale_muF_vbsvh", SIGNAL_REGIONS)
         muF_systs.add_systs(
             get_systs(SIG_NAME, SIGNAL_REGIONS, "unity", *lhe_muF_weights)
         )
@@ -429,8 +429,8 @@ for SIG_NAME in ["VBSWH_posLambda", "VBSWH_negLambda"]:
 
         datacard_systs = {
             "TotalBkg": {
-                "abcd_syst": [1 + AN_numbers["BkgEstTotalSystErr"]/100],
-                "abcd_stat": [1 + AN_numbers["BkgEstStatErr"]/100]
+                "CMS_vbswhboosted_abcd_syst": [1 + AN_numbers["BkgEstTotalSystErr"]/100],
+                "CMS_vbswhboosted_abcd_stat": [1 + AN_numbers["BkgEstStatErr"]/100]
             }
         }
 
