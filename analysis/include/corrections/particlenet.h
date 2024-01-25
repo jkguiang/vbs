@@ -165,111 +165,114 @@ public:
 struct VBSVVHXbbSFs : NanoSFsUL
 {
 private:
-    // TODO: replace this with sfs from Lynn! These are just copied from VBSWH!!
     double boohftCalib(std::string year, double pt, std::string var = "nominal")
     {
         if (year == "2018")
         {
-            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn_bb_ULNanoV9_PNetXbbVsQCD_ak8_2018/4_fit/index.html:
-               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
-               | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.000** [-0.024/+0.024] | **1.029** [-0.023/+0.034] | **1.026** [-0.016/+0.025] |
-            */
-            if (pt >= 250 && pt < 500)
+            if (pt >= 300 && pt < 400)
             {
-                if (var == "nominal") { return 1.000; }
-                else if (var == "up") { return 1.000+0.024; }
-                else if (var == "dn") { return 1.000-0.024; }
+                if (var == "nominal") { return 0.937; }
+                else if (var == "up") { return 0.937+0.043; }
+                else if (var == "dn") { return 0.937-0.054; }
             }
-            else if (pt >= 500 && pt < 700)
+            else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 1.029; }
-                else if (var == "up") { return 1.029+0.034; }
-                else if (var == "dn") { return 1.029-0.023; }
+                if (var == "nominal") { return 0.869; }
+                else if (var == "up") { return 0.869+0.087; }
+                else if (var == "dn") { return 0.869-0.092; }
             }
-            else if (pt >= 700)
+            else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 1.026; }
-                else if (var == "up") { return 1.026+0.025; }
-                else if (var == "dn") { return 1.026-0.016; }
+                if (var == "nominal") { return 1.015; }
+                else if (var == "up") { return 1.015+0.040; }
+                else if (var == "dn") { return 1.015-0.040; }
+            }
+            else if (pt >= 600)
+            {
+                if (var == "nominal") { return 0.974; }
+                else if (var == "up") { return 0.974+0.033; }
+                else if (var == "dn") { return 0.974-0.041; }
             }
         }
         else if (year == "2017")
         {
-            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn_bb_ULNanoV9_PNetXbbVsQCD_ak8_2017/4_fit/index.html:
-               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
-               | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.021** [-0.024/+0.028] | **1.018** [-0.022/+0.031] | **1.010** [-0.018/+0.019] |
-            */
-            if (pt >= 250 && pt < 500)
+            if (pt >= 300 && pt < 400)
             {
-                if (var == "nominal") { return 1.021; }
-                else if (var == "up") { return 1.021+0.028; }
-                else if (var == "dn") { return 1.021-0.024; }
+                if (var == "nominal") { return 0.963; }
+                else if (var == "up") { return 0.963+0.069; }
+                else if (var == "dn") { return 0.963-0.072; }
             }
-            else if (pt >= 500 && pt < 700)
+            else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 1.018; }
-                else if (var == "up") { return 1.018+0.031; }
-                else if (var == "dn") { return 1.018-0.022; }
+                if (var == "nominal") { return 0.994; }
+                else if (var == "up") { return 0.994+0.048; }
+                else if (var == "dn") { return 0.994-0.047; }
             }
-            else if (pt >= 700)
+            else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 1.010; }
-                else if (var == "up") { return 1.010+0.019; }
-                else if (var == "dn") { return 1.010-0.018; }
+                if (var == "nominal") { return 1.038; }
+                else if (var == "up") { return 1.038+0.059; }
+                else if (var == "dn") { return 1.038-0.055; }
+            }
+            else if (pt >= 600)
+            {
+                if (var == "nominal") { return 0.992; }
+                else if (var == "up") { return 0.992+0.034; }
+                else if (var == "dn") { return 0.992-0.037; }
             }
         }
         else if (year == "2016postVFP")
         {
-            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016/4_fit/index.html:
-               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
-               | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.044** [-0.040/+0.052] | **1.081** [-0.065/+0.080] | **0.996** [-0.039/+0.035] |
-            */
-            if (pt >= 250 && pt < 500)
+            if (pt >= 300 && pt < 400)
             {
-                if (var == "nominal") { return 1.044; }
-                else if (var == "up") { return 1.044+0.052; }
-                else if (var == "dn") { return 1.044-0.040; }
+                if (var == "nominal") { return 0.995; }
+                else if (var == "up") { return 0.995+0.041; }
+                else if (var == "dn") { return 0.995-0.042; }
             }
-            else if (pt >= 500 && pt < 700)
+            else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 1.081; }
-                else if (var == "up") { return 1.081+0.080; }
-                else if (var == "dn") { return 1.081-0.065; }
+                if (var == "nominal") { return 1.027; }
+                else if (var == "up") { return 1.027+0.045; }
+                else if (var == "dn") { return 1.027-0.035; }
             }
-            else if (pt >= 700)
+            else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 0.996; }
-                else if (var == "up") { return 0.996+0.035; }
-                else if (var == "dn") { return 0.996-0.039; }
+                if (var == "nominal") { return 1.104; }
+                else if (var == "up") { return 1.104+0.105; }
+                else if (var == "dn") { return 1.104-0.084; }
+            }
+            else if (pt >= 600)
+            {
+                if (var == "nominal") { return 1.004; }
+                else if (var == "up") { return 1.004+0.070; }
+                else if (var == "dn") { return 1.004-0.063; }
             }
         }
         else if (year == "2016preVFP")
         {
-            /* Markdown table from web/VBSWH_mkW_Mjj100toInf_Htobb_dipoleRecoilOn_bb_ULNanoV9_PNetXbbVsQCD_ak8_2016APV/4_fit/index.html:
-               |       | pT [250, 500) | pT [500, 700) | pT [700, +inf) |
-               | :---: | :---: | :---: | :---: |
-               | **High Purity** WP | **1.008** [-0.063/+0.064] | **1.027** [-0.055/+0.070] | **1.014** [-0.055/+0.057] |
-            */
-            if (pt >= 250 && pt < 500)
+            if (pt >= 300 && pt < 400)
             {
-                if (var == "nominal") { return 1.008; }
-                else if (var == "up") { return 1.008+0.064; }
-                else if (var == "dn") { return 1.008-0.063; }
+                if (var == "nominal") { return 1.039; }
+                else if (var == "up") { return 1.039+0.075; }
+                else if (var == "dn") { return 1.039-0.064; }
             }
-            else if (pt >= 500 && pt < 700)
+            else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 1.027; }
-                else if (var == "up") { return 1.027+0.070; }
-                else if (var == "dn") { return 1.027-0.055; }
+                if (var == "nominal") { return 1.064; }
+                else if (var == "up") { return 1.064+0.092; }
+                else if (var == "dn") { return 1.064-0.079; }
             }
-            else if (pt >= 700)
+            else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 1.014; }
-                else if (var == "up") { return 1.014+0.057; }
-                else if (var == "dn") { return 1.014-0.055; }
+                if (var == "nominal") { return 1.083; }
+                else if (var == "up") { return 1.083+0.115; }
+                else if (var == "dn") { return 1.083-0.102; }
+            }
+            else if (pt >= 600)
+            {
+                if (var == "nominal") { return 0.985; }
+                else if (var == "up") { return 0.985+0.106; }
+                else if (var == "dn") { return 0.985-0.107; }
             }
         }
         return 1.;

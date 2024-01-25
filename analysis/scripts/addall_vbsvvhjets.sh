@@ -1,7 +1,7 @@
 SR_X="abcdnet_score > 0.89"
 SR_Y="abs_deta_jj > 5"
 SR_GLOBAL="hbbfatjet_xbb > 0.8 and ld_vqqfatjet_xwqq > 0.8 and tr_vqqfatjet_xwqq > 0.7"
-TAG=abcdnet_v1
+TAG=abcdnet_v2
 BASEDIR=/data/userdata/jguiang/vbs_studies
 
 if [[ "$BASEDIR" != "studies" ]]; then

@@ -92,7 +92,7 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
         
     return systs
 
-TAG = "abcdnet_v1"
+TAG = "abcdnet_v2"
 BASEDIR = "/data/userdata/jguiang/vbs_studies"
 
 babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/inferences/*.root")
@@ -290,20 +290,26 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
 
     # -- ParticleNet Xbb scale factors -----------------------------------------------------
-    # FIXME: add these!
+    for year in [-2016, 2016, 2017, 2018]:
+        cms_year_str = get_year_str(year).replace("20", "")
+        xbb_sf_systs = Systematic(f"CMS_vbswhboosted_bTagWeightXbb_13TeV_{cms_year_str}", ABCD_REGIONS)
+        xbb_sf_systs.add_systs(
+            get_systs("VBSVVH", ABCD_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up", year=year)
+        )
+        SIG_SYSTS_LIMIT.add_row(xbb_sf_systs)
     # --------------------------------------------------------------------------------------
 
 
     # -- ParticleNet XWqq scale factors -----------------------------------------------------
     for year in [-2016, 2016, 2017, 2018]:
         cms_year_str = get_year_str(year).replace("20", "")
-
+        # Leading V->qq jet
         xwqq_sf_systs = Systematic(f"CMS_vbsvvh_qTagWeightXWqq_ldVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
         xwqq_sf_systs.add_systs(
             get_systs("VBSVVH", ABCD_REGIONS, "xwqq_ld_vqq_sf", "xwqq_ld_vqq_sf_up", "xwqq_ld_vqq_sf_dn", year=year)
         )
         SIG_SYSTS_LIMIT.add_row(xwqq_sf_systs)
-
+        # Trailing V->qq jet
         xwqq_sf_systs = Systematic(f"CMS_vbsvvh_qTagWeightXWqq_trVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
         xwqq_sf_systs.add_systs(
             get_systs("VBSVVH", ABCD_REGIONS, "xwqq_tr_vqq_sf", "xwqq_tr_vqq_sf_up", "xwqq_tr_vqq_sf_dn", year=year)
