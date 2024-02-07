@@ -14,3 +14,5 @@ for BABYDIR in $BASEDIR/vbsvvhjets/output_${TAG}*; do
     python scripts/add_abcd_regions.py vbsvvhjets --basedir=$BASEDIR --tag=$BABYTAG --SR_x="$SR_X" --SR_y="$SR_Y" --SR_global="$SR_GLOBAL"
     cp -R $BABYDIR studies/vbsvvhjets/
 done
+
+cp /data/userdata/jguiang/bfscan_results/* studies/vbsvvhjets/output_$TAG/

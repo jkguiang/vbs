@@ -13,7 +13,6 @@
 
 struct JetEnergyScales
 {
-
     std::vector<JetCorrectionUncertainty*> jec_uncs;
     JetCorrectionUncertainty* ak8_jec_unc;
     JetResolutionUncertainty* jer_unc;
