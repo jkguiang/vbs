@@ -120,7 +120,8 @@ vbsvvh = PandasAnalysis(
         "pu_sf",
         "prefire_sf",
         "xwqq_ld_vqq_sf",
-        "xwqq_tr_vqq_sf"
+        "xwqq_tr_vqq_sf",
+        "xbb_sf"
     ]
 )
 vbsvvh.df["unity"] = 1 # IMPORTANT

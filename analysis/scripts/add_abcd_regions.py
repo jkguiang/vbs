@@ -127,6 +127,7 @@ for name in vbs.df.name.unique():
 
     # Make global SR cuts
     df = df.query(args.SR_global)
+    df.event_weight *= df.xbb_sf*df.xwqq_ld_vqq_sf*df.xwqq_tr_vqq_sf
     n_pass_raw = len(df)
     n_pass_wgt = df.event_weight.sum()
     global_cut = Cut(
