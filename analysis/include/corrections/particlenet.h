@@ -169,114 +169,134 @@ private:
     {
         if (year == "2018")
         {
+            /* Markdown table from web/H_bb_PNetXbbVsQCD-JGuiang_ChangedCut_2018/4_fit/index.html:
+               |       | pT [300, 400) | pT [400, 500) | pT [500, 600) | pT [600, +∞) |
+               | :---: | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **0.875** [-0.077/+0.071] | **0.895** [-0.102/+0.100] | **1.030** [-0.078/+0.081] | **0.933** [-0.095/+0.093] |
+            */
             if (pt >= 300 && pt < 400)
             {
-                if (var == "nominal") { return 0.937; }
-                else if (var == "up") { return 0.937+0.043; }
-                else if (var == "dn") { return 0.937-0.054; }
+                if (var == "nominal") { return 0.875; }
+                else if (var == "up") { return 0.875+0.071; }
+                else if (var == "dn") { return 0.875-0.077; }
             }
             else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 0.869; }
-                else if (var == "up") { return 0.869+0.087; }
-                else if (var == "dn") { return 0.869-0.092; }
+                if (var == "nominal") { return 0.895; }
+                else if (var == "up") { return 0.895+0.100; }
+                else if (var == "dn") { return 0.895-0.102; }
             }
             else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 1.015; }
-                else if (var == "up") { return 1.015+0.040; }
-                else if (var == "dn") { return 1.015-0.040; }
+                if (var == "nominal") { return 1.030; }
+                else if (var == "up") { return 1.030+0.081; }
+                else if (var == "dn") { return 1.030-0.078; }
             }
             else if (pt >= 600)
             {
-                if (var == "nominal") { return 0.974; }
-                else if (var == "up") { return 0.974+0.033; }
-                else if (var == "dn") { return 0.974-0.041; }
+                if (var == "nominal") { return 0.933; }
+                else if (var == "up") { return 0.933+0.093; }
+                else if (var == "dn") { return 0.933-0.095; }
             }
         }
-        else if (year == "2017")
+        if (year == "2017")
         {
+            /* Markdown table from web/H_bb_PNetXbbVsQCD-JGuiang_ChangedCut_2017/4_fit/index.html:
+               |       | pT [300, 400) | pT [400, 500) | pT [500, 600) | pT [600, +∞) |
+               | :---: | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **0.996** [-0.225/+0.226] | **1.068** [-0.131/+0.138] | **1.012** [-0.202/+0.202] | **1.062** [-0.061/+0.070] |
+            */
             if (pt >= 300 && pt < 400)
             {
-                if (var == "nominal") { return 0.963; }
-                else if (var == "up") { return 0.963+0.069; }
-                else if (var == "dn") { return 0.963-0.072; }
+                if (var == "nominal") { return 0.996; }
+                else if (var == "up") { return 0.996+0.226; }
+                else if (var == "dn") { return 0.996-0.225; }
             }
             else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 0.994; }
-                else if (var == "up") { return 0.994+0.048; }
-                else if (var == "dn") { return 0.994-0.047; }
+                if (var == "nominal") { return 1.068; }
+                else if (var == "up") { return 1.068+0.138; }
+                else if (var == "dn") { return 1.068-0.131; }
             }
             else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 1.038; }
-                else if (var == "up") { return 1.038+0.059; }
-                else if (var == "dn") { return 1.038-0.055; }
+                if (var == "nominal") { return 1.012; }
+                else if (var == "up") { return 1.012+0.202; }
+                else if (var == "dn") { return 1.012-0.202; }
             }
             else if (pt >= 600)
             {
-                if (var == "nominal") { return 0.992; }
-                else if (var == "up") { return 0.992+0.034; }
-                else if (var == "dn") { return 0.992-0.037; }
+                if (var == "nominal") { return 1.062; }
+                else if (var == "up") { return 1.062+0.070; }
+                else if (var == "dn") { return 1.062-0.061; }
             }
         }
-        else if (year == "2016postVFP")
+        if (year == "2016postVFP")
         {
+            /* Markdown table from web/H_bb_PNetXbbVsQCD-JGuiang_ChangedCut_2016/4_fit/index.html:
+               |       | pT [300, 400) | pT [400, 500) | pT [500, 600) | pT [600, +∞) |
+               | :---: | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **1.027** [-0.096/+0.098] | **1.139** [-0.074/+0.093] | **1.147** [-0.124/+0.137] | **1.279** [-0.223/+0.250] |
+            */
             if (pt >= 300 && pt < 400)
-            {
-                if (var == "nominal") { return 0.995; }
-                else if (var == "up") { return 0.995+0.041; }
-                else if (var == "dn") { return 0.995-0.042; }
-            }
-            else if (pt >= 400 && pt < 500)
             {
                 if (var == "nominal") { return 1.027; }
-                else if (var == "up") { return 1.027+0.045; }
-                else if (var == "dn") { return 1.027-0.035; }
-            }
-            else if (pt >= 500 && pt < 600)
-            {
-                if (var == "nominal") { return 1.104; }
-                else if (var == "up") { return 1.104+0.105; }
-                else if (var == "dn") { return 1.104-0.084; }
-            }
-            else if (pt >= 600)
-            {
-                if (var == "nominal") { return 1.004; }
-                else if (var == "up") { return 1.004+0.070; }
-                else if (var == "dn") { return 1.004-0.063; }
-            }
-        }
-        else if (year == "2016preVFP")
-        {
-            if (pt >= 300 && pt < 400)
-            {
-                if (var == "nominal") { return 1.039; }
-                else if (var == "up") { return 1.039+0.075; }
-                else if (var == "dn") { return 1.039-0.064; }
+                else if (var == "up") { return 1.027+0.098; }
+                else if (var == "dn") { return 1.027-0.096; }
             }
             else if (pt >= 400 && pt < 500)
             {
-                if (var == "nominal") { return 1.064; }
-                else if (var == "up") { return 1.064+0.092; }
-                else if (var == "dn") { return 1.064-0.079; }
+                if (var == "nominal") { return 1.139; }
+                else if (var == "up") { return 1.139+0.093; }
+                else if (var == "dn") { return 1.139-0.074; }
             }
             else if (pt >= 500 && pt < 600)
             {
-                if (var == "nominal") { return 1.083; }
-                else if (var == "up") { return 1.083+0.115; }
-                else if (var == "dn") { return 1.083-0.102; }
+                if (var == "nominal") { return 1.147; }
+                else if (var == "up") { return 1.147+0.137; }
+                else if (var == "dn") { return 1.147-0.124; }
             }
             else if (pt >= 600)
             {
-                if (var == "nominal") { return 0.985; }
-                else if (var == "up") { return 0.985+0.106; }
-                else if (var == "dn") { return 0.985-0.107; }
+                if (var == "nominal") { return 1.279; }
+                else if (var == "up") { return 1.279+0.250; }
+                else if (var == "dn") { return 1.279-0.223; }
+            }
+        }
+        if (year == "2016preVFP")
+        {
+            /* Markdown table from web/H_bb_PNetXbbVsQCD-JGuiang_ChangedCut_2016APV/4_fit/index.html:
+               |       | pT [300, 400) | pT [400, 500) | pT [500, 600) | pT [600, +∞) |
+               | :---: | :---: | :---: | :---: | :---: |
+               | **High Purity** WP | **1.163** [-0.107/+0.119] | **1.151** [-0.129/+0.137] | **1.210** [-0.211/+0.232] | **1.288** [-0.324/+0.345] |
+            */
+            if (pt >= 300 && pt < 400)
+            {
+                if (var == "nominal") { return 1.163; }
+                else if (var == "up") { return 1.163+0.119; }
+                else if (var == "dn") { return 1.163-0.107; }
+            }
+            else if (pt >= 400 && pt < 500)
+            {
+                if (var == "nominal") { return 1.151; }
+                else if (var == "up") { return 1.151+0.137; }
+                else if (var == "dn") { return 1.151-0.129; }
+            }
+            else if (pt >= 500 && pt < 600)
+            {
+                if (var == "nominal") { return 1.210; }
+                else if (var == "up") { return 1.210+0.232; }
+                else if (var == "dn") { return 1.210-0.211; }
+            }
+            else if (pt >= 600)
+            {
+                if (var == "nominal") { return 1.288; }
+                else if (var == "up") { return 1.288+0.345; }
+                else if (var == "dn") { return 1.288-0.324; }
             }
         }
         return 1.;
-    };
+    }
 public:
     std::string year_str;
 
