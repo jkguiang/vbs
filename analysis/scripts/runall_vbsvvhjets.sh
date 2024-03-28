@@ -1,4 +1,4 @@
-TAG=abcdnet_v2
+TAG=abcdnet_v3
 N_WORKERS=64
 
 BASEDIR=/data/userdata/jguiang/vbs_studies

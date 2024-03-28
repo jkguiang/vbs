@@ -58,8 +58,9 @@ class Datacard:
                 # Assign syst values
                 if sample_label in self.sig_labels:
                     for value_i, syst_value in enumerate(systs):
-                        syst_i = value_i + self.sig_labels.index(sample_label)
-                        self.systs[label_i][syst_i] = f"{syst_value:{cw}.4f}" 
+                        if syst_value >= 0:
+                            syst_i = value_i + self.sig_labels.index(sample_label)
+                            self.systs[label_i][syst_i] = f"{syst_value:{cw}.4f}" 
                 elif sample_label in self.bkg_labels:
                     for value_i, syst_value in enumerate(systs):
                         if syst_value >= 0:
@@ -129,7 +130,8 @@ class Datacard:
 
 class DatacardABCD(Datacard):
     def __init__(self, *args, **kwargs):
-        super().__init__(*args, **kwargs)
+        self.rparam_labels = kwargs.get("rparam_labels", ["a", "b", "c", "d"])
+        super().__init__(*args)
         self.bin_labels = ["A", "B", "C", "D"]
 
     def fill(self):
@@ -137,7 +139,7 @@ class DatacardABCD(Datacard):
         cw = self.column_width
         hw = self.header_width
         # Rateparams
-        self.content += f"{'a rateParam':<{hw}}  A  {self.bkg_labels[0]:>{cw}} (@0*@1/@2) b,c,d\n"
-        self.content += f"{'b rateParam':<{hw}}  B  {self.bkg_labels[0]:>{cw}} {self.obs[1]}\n"
-        self.content += f"{'c rateParam':<{hw}}  C  {self.bkg_labels[0]:>{cw}} {self.obs[2]}\n"
-        self.content += f"{'d rateParam':<{hw}}  D  {self.bkg_labels[0]:>{cw}} {self.obs[3]}"
+        self.content += f"{self.rparam_labels[0]+' rateParam':<{hw}}  A  {self.bkg_labels[0]:>{cw}} (@0*@1/@2) {','.join(self.rparam_labels[1:])}\n"
+        self.content += f"{self.rparam_labels[1]+' rateParam':<{hw}}  B  {self.bkg_labels[0]:>{cw}} {self.obs[1]}\n"
+        self.content += f"{self.rparam_labels[2]+' rateParam':<{hw}}  C  {self.bkg_labels[0]:>{cw}} {self.obs[2]}\n"
+        self.content += f"{self.rparam_labels[3]+' rateParam':<{hw}}  D  {self.bkg_labels[0]:>{cw}} {self.obs[3]}"

@@ -92,7 +92,7 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
         
     return systs
 
-TAG = "abcdnet_v2"
+TAG = "abcdnet_v3"
 BASEDIR = "/data/userdata/jguiang/vbs_studies"
 
 babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/inferences/*.root")
@@ -280,20 +280,26 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
 
     # -- MC statistical uncertainty --------------------------------------------------------
-    stat_systs = Systematic("CMS_vbsvvh_mcstat", ABCD_REGIONS)
-    stat_systs.add_systs(
-        [
-            vbsvvh.sig_error(selection=R)/vbsvvh.sig_count(selection=R) for R in ABCD_REGIONS
-        ]
-    )
-    SIG_SYSTS_LIMIT.add_row(stat_systs)
+    # stat_systs = Systematic("CMS_vbsvvh_mcstat", ABCD_REGIONS)
+    # stat_systs.add_systs(
+    #     [
+    #         vbsvvh.sig_error(selection=R)/vbsvvh.sig_count(selection=R) for R in ABCD_REGIONS
+    #     ]
+    # )
+    # SIG_SYSTS_LIMIT.add_row(stat_systs)
+    for i, (region, R) in enumerate(zip(ABCD_REGIONS, ["A", "B", "C" , "D"])):
+        stat_systs = Systematic(f"CMS_vbsvvhjets_mcstat{R}", ABCD_REGIONS)
+        temp_systs = [-999, -999, -999, -999]
+        temp_systs[i] = vbsvvh.sig_error(selection=region)/vbsvvh.sig_count(selection=region)
+        stat_systs.add_systs(temp_systs)
+        SIG_SYSTS_LIMIT.add_row(stat_systs)
     # --------------------------------------------------------------------------------------
 
 
     # -- ParticleNet Xbb scale factors -----------------------------------------------------
     for year in [-2016, 2016, 2017, 2018]:
         cms_year_str = get_year_str(year).replace("20", "")
-        xbb_sf_systs = Systematic(f"CMS_vbswhboosted_bTagWeightXbb_13TeV_{cms_year_str}", ABCD_REGIONS)
+        xbb_sf_systs = Systematic(f"CMS_vbsvvhjets_bTagWeightXbb_13TeV_{cms_year_str}", ABCD_REGIONS)
         xbb_sf_systs.add_systs(
             get_systs("VBSVVH", ABCD_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up", year=year)
         )
@@ -305,13 +311,13 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     for year in [-2016, 2016, 2017, 2018]:
         cms_year_str = get_year_str(year).replace("20", "")
         # Leading V->qq jet
-        xwqq_sf_systs = Systematic(f"CMS_vbsvvh_qTagWeightXWqq_ldVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
+        xwqq_sf_systs = Systematic(f"CMS_vbsvvhjets_qTagWeightXWqq_ldVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
         xwqq_sf_systs.add_systs(
             get_systs("VBSVVH", ABCD_REGIONS, "xwqq_ld_vqq_sf", "xwqq_ld_vqq_sf_up", "xwqq_ld_vqq_sf_dn", year=year)
         )
         SIG_SYSTS_LIMIT.add_row(xwqq_sf_systs)
         # Trailing V->qq jet
-        xwqq_sf_systs = Systematic(f"CMS_vbsvvh_qTagWeightXWqq_trVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
+        xwqq_sf_systs = Systematic(f"CMS_vbsvvhjets_qTagWeightXWqq_trVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
         xwqq_sf_systs.add_systs(
             get_systs("VBSVVH", ABCD_REGIONS, "xwqq_tr_vqq_sf", "xwqq_tr_vqq_sf_up", "xwqq_tr_vqq_sf_dn", year=year)
         )
@@ -400,7 +406,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     datacard_systs = {
         "TotalBkg": {
             "CMS_vbsvvhjets_abcd_syst": [1 + 25.4/100],
-            "CMS_vbsvvhjets_abcd_stat": [1 + 34.0/100]
+            # "CMS_vbsvvhjets_abcd_stat": [1 + 34.0/100]
         },
         "TotalSig": {}
     }
@@ -409,9 +415,11 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         systs = syst_obj.get_systs()
         datacard_systs["TotalSig"][syst_obj.name] = [1 + systs[R][0] for R in ABCD_REGIONS]
 
-    for R in ABCD_REGIONS[1:]:
-        syst = 1 + vbsvvh.data_error(selection=R)/vbsvvh.data_count(selection=R)
-        datacard_systs["TotalBkg"]["CMS_vbsvvhjets_abcd_stat"].append(syst)
+    for i, (region, R) in enumerate(zip(ABCD_REGIONS[1:], ["B", "C", "D"])):
+        syst = 1 + vbsvvh.data_error(selection=region)/vbsvvh.data_count(selection=region)
+        temp_systs = [syst, -999, -999, -999]
+        temp_systs[i+1] = syst
+        datacard_systs["TotalBkg"][f"CMS_vbsvvhjets_abcd_stat{R}"] = temp_systs
 
     # Blinded yields
     ABCD_yields = [round(vbsvvh.bkg_count(selection=ABCD_REGIONS[0])), *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
@@ -421,9 +429,9 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     datacard = DatacardABCD(
         ABCD_yields, # dummy value for observed in region A
         {"TotalSig": [vbsvvh.sig_count(selection=R) for R in ABCD_REGIONS]},
-        # {"TotalBkg": [vbsvvh.bkg_count(selection=R) for R in ABCD_REGIONS]},
         {"TotalBkg": [1.0 for R in ABCD_REGIONS]},
-        datacard_systs
+        datacard_systs,
+        rparam_labels=["vbsvvhjets_a", "vbsvvhjets_b", "vbsvvhjets_c", "vbsvvhjets_d"]
     )
     datacard.fill()
 

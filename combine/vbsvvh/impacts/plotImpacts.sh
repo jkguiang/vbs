@@ -26,8 +26,10 @@ elif [[ "$1" == "--expectSignal=1" ]]; then
     rm -f ${NAME}_expectSignal1_impacts.root
     text2workspace.py $DATACARD -m 125 -o ${NAME}_expectSignal1_impacts.root
     # Set up impacts
-    combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 --doInitialFit --robustFit 1 -t -1 --expectSignal=1 --rMin=-20
-    combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 --robustFit 1 --doFits -t -1 --expectSignal=1 --rMin=-20
+    combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 --doInitialFit --robustFit 1 --expectSignal=1 --rMin=-20
+    combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 --robustFit 1 --doFits --expectSignal=1 --rMin=-20
+    # combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 --doInitialFit --robustFit 1 -t -1 --expectSignal=1 --rMin=-20
+    # combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 --robustFit 1 --doFits -t -1 --expectSignal=1 --rMin=-20
     combineTool.py -M Impacts -d ${NAME}_expectSignal1_impacts.root -m 125 -o ${NAME}_expectSignal1_impacts.json --rMin=-20
     # Make plot
     plotImpacts.py -i ${NAME}_expectSignal1_impacts.json -o ${NAME}_expectSignal1_impacts
