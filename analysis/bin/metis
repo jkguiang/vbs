@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python
 # -*- coding: utf-8 -*
 import argparse
 import glob
@@ -68,7 +68,7 @@ cli.add_argument(
     help="File transfer protocol for XRootD to use for reading files"
 )
 cli.add_argument(
-    "--xrootd_host", type=str, default="xcache-redirector.t2.ucsd.edu:2042",
+    "--xrootd_host", type=str, default="cmsxrootd.fnal.gov",
     help="<IP>:<port> of desired XRootD host for reading files"
 )
 cli.add_argument(
@@ -103,6 +103,8 @@ if args.python2:
 else:
     CMSSW_VERSION = "CMSSW_12_2_0"
     SCRAM_ARCH = "slc7_amd64_gcc900"
+    # CMSSW_VERSION = "CMSSW_12_5_0"
+    # SCRAM_ARCH = "el8_amd64_gcc11"
 
 PACKAGE = "packages/{}.tar.gz".format(args.study)
 if not os.path.isfile(PACKAGE):
