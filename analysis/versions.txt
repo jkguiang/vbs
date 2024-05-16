@@ -1,0 +1,8 @@
+VBSVVH
+abcdnet_v3: 
+    - fixed issue where OS & SS VBS WWH xsecs were switched
+abcdnet_v4: 
+    - using central signal samples
+abcdnet_v5: 
+    - using new HEM prescription
+    - ParticleNet XWqq uncertainty doubled for pt > 800
