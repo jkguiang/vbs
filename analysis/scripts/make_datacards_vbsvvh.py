@@ -92,7 +92,7 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
         
     return systs
 
-TAG = "abcdnet_v3"
+TAG = "abcdnet_v5"
 BASEDIR = "/data/userdata/jguiang/vbs_studies"
 
 babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/inferences/*.root")

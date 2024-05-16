@@ -348,6 +348,8 @@ private:
     double boohftCalib(std::string year, double pt, std::string wp, std::string var)
     {
         // From these slides: https://docs.google.com/presentation/d/1Y39avmA0bSe2hpPdqdM6RZr6s9N_h3iQEVLihOwebJY/edit?usp=sharing
+        float unc_mult = (pt > 800) ? 2.0 : 1.0;
+
         if (year == "2018")
         {
             if (pt >= 200 && pt < 300)
@@ -390,15 +392,15 @@ private:
                 {
                     // XWqq > 0.7 (for trailing Vqq fat jet)
                     if (var == "nominal") { return 0.85; }
-                    else if (var == "up") { return 0.85+0.04; }
-                    else if (var == "dn") { return 0.85-0.04; }
+                    else if (var == "up") { return 0.85+0.04*unc_mult; }
+                    else if (var == "dn") { return 0.85-0.04*unc_mult; }
                 }
                 else if (wp == "lead")
                 {
                     // XWqq > 0.8 (for leading Vqq fat jet)
                     if (var == "nominal") { return 0.82; }
-                    else if (var == "up") { return 0.82+0.04; }
-                    else if (var == "dn") { return 0.82-0.04; }
+                    else if (var == "up") { return 0.82+0.04*unc_mult; }
+                    else if (var == "dn") { return 0.82-0.04*unc_mult; }
                 }
             }
         }
@@ -444,15 +446,15 @@ private:
                 {
                     // XWqq > 0.7 (for trailing Vqq fat jet)
                     if (var == "nominal") { return 0.93; }
-                    else if (var == "up") { return 0.93+0.04; }
-                    else if (var == "dn") { return 0.93-0.04; }
+                    else if (var == "up") { return 0.93+0.04*unc_mult; }
+                    else if (var == "dn") { return 0.93-0.04*unc_mult; }
                 }
                 else if (wp == "lead")
                 {
                     // XWqq > 0.8 (for leading Vqq fat jet)
                     if (var == "nominal") { return 0.91; }
-                    else if (var == "up") { return 0.91+0.05; }
-                    else if (var == "dn") { return 0.91-0.04; }
+                    else if (var == "up") { return 0.91+0.05*unc_mult; }
+                    else if (var == "dn") { return 0.91-0.04*unc_mult; }
                 }
             }
         }
@@ -498,15 +500,15 @@ private:
                 {
                     // XWqq > 0.7 (for trailing Vqq fat jet)
                     if (var == "nominal") { return 0.85; }
-                    else if (var == "up") { return 0.85+0.07; }
-                    else if (var == "dn") { return 0.85-0.06; }
+                    else if (var == "up") { return 0.85+0.07*unc_mult; }
+                    else if (var == "dn") { return 0.85-0.06*unc_mult; }
                 }
                 else if (wp == "lead")
                 {
                     // XWqq > 0.8 (for leading Vqq fat jet)
                     if (var == "nominal") { return 0.85; }
-                    else if (var == "up") { return 0.85+0.07; }
-                    else if (var == "dn") { return 0.85-0.07; }
+                    else if (var == "up") { return 0.85+0.07*unc_mult; }
+                    else if (var == "dn") { return 0.85-0.07*unc_mult; }
                 }
             }
         }
@@ -552,15 +554,15 @@ private:
                 {
                     // XWqq > 0.7 (for trailing Vqq fat jet)
                     if (var == "nominal") { return 0.94; }
-                    else if (var == "up") { return 0.94+0.06; }
-                    else if (var == "dn") { return 0.94-0.06; }
+                    else if (var == "up") { return 0.94+0.06*unc_mult; }
+                    else if (var == "dn") { return 0.94-0.06*unc_mult; }
                 }
                 else if (wp == "lead")
                 {
                     // XWqq > 0.8 (for leading Vqq fat jet)
                     if (var == "nominal") { return 0.91; }
-                    else if (var == "up") { return 0.91+0.07; }
-                    else if (var == "dn") { return 0.91-0.06; }
+                    else if (var == "up") { return 0.91+0.07*unc_mult; }
+                    else if (var == "dn") { return 0.91-0.06*unc_mult; }
                 }
             }
         }

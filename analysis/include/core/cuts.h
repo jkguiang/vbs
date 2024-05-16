@@ -278,7 +278,7 @@ public:
             // Subtract uncorrected jet pt
             met_x -= jet_p4.px();
             met_y -= jet_p4.py();
-            // Apply HEM prescription
+            /* Old HEM prescription
             if (!nt.isData()
                 && nt.year() == 2018
                 && nt.event() % 1961 < 1286 
@@ -292,6 +292,30 @@ public:
                 else if (jet_eta > -3.0 && jet_eta < -2.5)
                 {
                     jet_p4 *= 0.65;
+                }
+            }
+            */
+            // New HEM prescription
+            if (nt.year() == 2018
+                && ((nt.isData() && nt.run() > 319077) || (!nt.isData() && nt.event() % 1961 < 1286))
+                && jet_p4.pt() > 15
+                && jet_p4.phi() > -1.57 && jet_p4.phi() < -0.87
+                && jet_p4.eta() > -3.20 && jet_p4.eta() < -1.30)
+            {
+                bool passes_ids = true;
+                // Check jet ID
+                int jet_id = nt.Jet_jetId().at(jet_i);
+                if (nt.year() == 2016 && jet_id < 1) { passes_ids = false; }
+                if (nt.year() > 2016 && jet_id < 2) { passes_ids = false; }
+                // Check PU ID
+                if (jet_p4.pt() < 50 && nt.Jet_puId().at(jet_i) == 0)
+                {
+                    passes_ids = false;
+                }
+                // Veto event if this jet passes the IDs above
+                if (passes_ids)
+                {
+                    return false;
                 }
             }
             // Apply JECs
