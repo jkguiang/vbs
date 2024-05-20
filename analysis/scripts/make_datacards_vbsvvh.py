@@ -404,7 +404,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
 
     datacard_systs = {
-        "TotalBkg": {
+        "TotalBkg_AllHad": {
             "CMS_vbsvvhjets_abcd_syst": [1 + 25.4/100],
             # "CMS_vbsvvhjets_abcd_stat": [1 + 34.0/100]
         },
@@ -415,11 +415,11 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         systs = syst_obj.get_systs()
         datacard_systs["TotalSig"][syst_obj.name] = [1 + systs[R][0] for R in ABCD_REGIONS]
 
-    for i, (region, R) in enumerate(zip(ABCD_REGIONS[1:], ["B", "C", "D"])):
-        syst = 1 + vbsvvh.data_error(selection=region)/vbsvvh.data_count(selection=region)
-        temp_systs = [syst, -999, -999, -999]
-        temp_systs[i+1] = syst
-        datacard_systs["TotalBkg"][f"CMS_vbsvvhjets_abcd_stat{R}"] = temp_systs
+    # for i, (region, R) in enumerate(zip(ABCD_REGIONS[1:], ["B", "C", "D"])):
+    #     syst = 1 + vbsvvh.data_error(selection=region)/vbsvvh.data_count(selection=region)
+    #     temp_systs = [syst, -999, -999, -999]
+    #     temp_systs[i+1] = syst
+    #     datacard_systs["TotalBkg_AllHad"][f"CMS_vbsvvhjets_abcd_stat{R}"] = temp_systs
 
     # Blinded yields
     ABCD_yields = [round(vbsvvh.bkg_count(selection=ABCD_REGIONS[0])), *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
@@ -429,7 +429,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     datacard = DatacardABCD(
         ABCD_yields, # dummy value for observed in region A
         {"TotalSig": [vbsvvh.sig_count(selection=R) for R in ABCD_REGIONS]},
-        {"TotalBkg": [1.0 for R in ABCD_REGIONS]},
+        {"TotalBkg_AllHad": [1.0 for R in ABCD_REGIONS]},
         datacard_systs,
         rparam_labels=["vbsvvhjets_a", "vbsvvhjets_b", "vbsvvhjets_c", "vbsvvhjets_d"]
     )
