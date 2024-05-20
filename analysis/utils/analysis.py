@@ -1027,8 +1027,8 @@ class Validation(PandasAnalysis):
 
         # Plot hists and ratio
         bkg_hist.plot(ax=hist_axes, alpha=0.5, zorder=1)
-        data_hist.plot(ax=hist_axes, errors=True, zorder=1.2)
-        ratio_hist.plot(ax=ratio_axes, errors=True, color="k", zorder=1.2)
+        data_hist.plot(ax=hist_axes, errors=True, errors_binwidth=False, zorder=1.2)
+        ratio_hist.plot(ax=ratio_axes, errors=True, errors_binwidth=False, color="k", zorder=1.2)
 
         if sig_scale > 0:
             if sig_scale != 1:
