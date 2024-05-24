@@ -1,3 +1,5 @@
+source /cvmfs/cms.cern.ch/cmsset_default.sh  > /dev/null 2>&1
+
 # Determine the RHEL (Red Hat Enterprise Linux) version
 RHELREL=$(cat /etc/redhat-release)
 if [[ "$(hostname)" == "uaf-10.t2.ucsd.edu" ]]; then
