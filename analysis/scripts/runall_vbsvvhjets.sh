@@ -1,8 +1,13 @@
-TAG=abcdnet_v5
+TAG=$1
 N_WORKERS=64
 
-BASEDIR=/data/userdata/jguiang/vbs_studies
-SKIMDIR=/data/userdata/jguiang/nanoaod/VBSVVHSkim
+if [[ "$TAG" == "" ]]; then
+    echo "No tag provided"
+    exit 1
+fi
+
+BASEDIR=/data/userdata/$USER/vbs_studies
+SKIMDIR=/data/userdata/$USER/nanoaod/VBSVVHSkim
 SKIMTAG=0lep_2ak4_2ak8_ttH
 
 mkdir -p $BASEDIR

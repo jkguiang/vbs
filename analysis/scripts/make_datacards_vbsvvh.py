@@ -1,5 +1,6 @@
-import uproot
+import sys
 import os
+import uproot
 import glob
 import json
 import pandas as pd
@@ -92,8 +93,8 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
         
     return systs
 
-TAG = "abcdnet_v5"
-BASEDIR = "/data/userdata/jguiang/vbs_studies"
+TAG = sys.argv[1]
+BASEDIR = f"/data/userdata/os.getenv('USER')/vbs_studies"
 
 babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/inferences/*.root")
 babies = [baby for baby in babies if "Lambda" not in baby]

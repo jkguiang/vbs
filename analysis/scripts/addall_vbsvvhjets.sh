@@ -1,8 +1,12 @@
 SR_X="abcdnet_score > 0.89"
 SR_Y="abs_deta_jj > 5"
 SR_GLOBAL="hbbfatjet_xbb > 0.8 and ld_vqqfatjet_xwqq > 0.8 and tr_vqqfatjet_xwqq > 0.7"
-TAG=abcdnet_v5
-BASEDIR=/data/userdata/jguiang/vbs_studies
+TAG=$1
+if [[ "$TAG" == "" ]]; then
+    echo "No tag provided"
+    exit 1
+fi
+BASEDIR=/data/userdata/$USER/vbs_studies
 
 if [[ "$BASEDIR" != "studies" ]]; then
     rm -rf studies/vbsvvhjets/output_${TAG}*
@@ -16,4 +20,4 @@ for BABYDIR in $BASEDIR/vbsvvhjets/output_${TAG}*; do
     cp -R $BABYDIR studies/vbsvvhjets/
 done
 
-cp /data/userdata/jguiang/bfscan_results/* studies/vbsvvhjets/output_$TAG/
+cp /data/userdata/$USER/bfscan_results/* studies/vbsvvhjets/output_$TAG/
