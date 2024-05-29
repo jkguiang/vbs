@@ -94,9 +94,9 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
     return systs
 
 TAG = sys.argv[1]
-BASEDIR = f"/data/userdata/os.getenv('USER')/vbs_studies"
+BASEDIR = f"/data/userdata/{os.getenv('USER')}/vbs_studies"
 
-babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/inferences/*.root")
+babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/*.root")
 babies = [baby for baby in babies if "Lambda" not in baby]
 sig_babies = [baby for baby in babies if "VBSVVH" in baby]
 bkg_babies = [baby for baby in babies if "VBS" not in baby and "data.root" not in baby]
@@ -109,6 +109,7 @@ print("Data:")
 print("\n".join(data_babies))
 
 if not sig_babies or not bkg_babies or not data_babies:
+    print(f"No babies found! Looking for {BASEDIR}/vbsvvhjets/output_{TAG}/Run2/*.root")
     exit()
 
 vbsvvh = PandasAnalysis(
@@ -179,7 +180,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     vbsvvh.df.loc[vbsvvh.df.is_signal, "event_weight"] = vbsvvh.df[vbsvvh.df.is_signal].orig_event_weight.values*reweights.T[reweight_i]
 
     # -- PDF uncertainty -------------------------------------------------------------------
-    root_files = glob.glob("/ceph/cms/store/user/jguiang/VBSVVHSignalGeneration/v2/VBS*/merged.root")
+    root_files = glob.glob("/data/userdata/jguiang/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/VBS*central/merged.root")
     gen_sum = 0
     pdf_sum = np.zeros(101)
     for root_file in root_files:
@@ -198,7 +199,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         
     systs = []
     for R in ABCD_REGIONS:
-        sig_df = vbsvvh.sig_df()
+        sig_df = vbsvvh.sig_df().reset_index()
         count = np.sum(sig_df[sig_df[R]].event_weight*pdf_df[sig_df[R]].lhe_pdf_0)
         deltas = []
         for i in range(1, 101):
@@ -344,9 +345,9 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         if "YEAR" in jec_source:
             for year in ["2016postVFP", "2016preVFP", "2017", "2018"]:
                 jec_systs = get_jet_energy_systs(
-                    f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow_ABCD.cflow",
-                    f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_{year}_up/Run2/VBSVVH_cutflow_ABCD.cflow",
-                    f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_{year}_dn/Run2/VBSVVH_cutflow_ABCD.cflow",
+                    f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow.cflow",
+                    f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_{year}_up/Run2/VBSVVH_cutflow.cflow",
+                    f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_{year}_dn/Run2/VBSVVH_cutflow.cflow",
                     {
                         "regionA": "AllMerged_RegionA",
                         "regionB": "AllMerged_RegionB",
@@ -358,9 +359,9 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
                 SIG_SYSTS_LIMIT.add_row(jec_systs)
         else:
             jec_systs = get_jet_energy_systs(
-                f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow_ABCD.cflow",
-                f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_up/Run2/VBSVVH_cutflow_ABCD.cflow",
-                f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_dn/Run2/VBSVVH_cutflow_ABCD.cflow",
+                f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow.cflow",
+                f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_up/Run2/VBSVVH_cutflow.cflow",
+                f"../analysis/studies/vbsvvhjets/output_{TAG}_jec_{jec_i+1}_dn/Run2/VBSVVH_cutflow.cflow",
                 {
                     "regionA": "AllMerged_RegionA",
                     "regionB": "AllMerged_RegionB",
@@ -375,9 +376,9 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
     # -- Jet energy resolution uncertainty -------------------------------------------------
     jer_systs = get_jet_energy_systs(
-        f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow_ABCD.cflow",
-        f"../analysis/studies/vbsvvhjets/output_{TAG}_jer_up/Run2/VBSVVH_cutflow_ABCD.cflow",
-        f"../analysis/studies/vbsvvhjets/output_{TAG}_jer_dn/Run2/VBSVVH_cutflow_ABCD.cflow",
+        f"../analysis/studies/vbsvvhjets/output_{TAG}/Run2/VBSVVH_cutflow.cflow",
+        f"../analysis/studies/vbsvvhjets/output_{TAG}_jer_up/Run2/VBSVVH_cutflow.cflow",
+        f"../analysis/studies/vbsvvhjets/output_{TAG}_jer_dn/Run2/VBSVVH_cutflow.cflow",
         {
             "regionA": "AllMerged_RegionA",
             "regionB": "AllMerged_RegionB",
