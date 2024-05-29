@@ -511,7 +511,7 @@ public:
         for (unsigned int fatjet_i = 0; fatjet_i < nt.nFatJet(); ++fatjet_i)
         {
             LorentzVector fatjet_p4 = nt.FatJet_p4().at(fatjet_i);
-            // Apply HEM prescription
+            /* Old HEM prescription
             if (!nt.isData()
                 && nt.year() == 2018
                 && nt.event() % 1961 < 1286 
@@ -527,6 +527,7 @@ public:
                     fatjet_p4 *= 0.65;
                 }
             }
+            */
             // Apply jet energy corrections
             if (!nt.isData() && jes != nullptr)
             {
