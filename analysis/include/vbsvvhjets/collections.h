@@ -27,6 +27,7 @@ struct Analysis : Core::Analysis
     PileUpJetIDSFs* puid_sfs;
     VBSVVHXbbSFs* xbb_sfs;
     VBSVVHXWqqSFs* xwqq_sfs;
+    TString file_name;
     bool all_corrections;
 
     Analysis(Arbol& arbol_ref, Nano& nt_ref, HEPCLI& cli_ref, Cutflow& cutflow_ref) 
@@ -54,6 +55,7 @@ struct Analysis : Core::Analysis
         xbb_sfs = nullptr;
         xwqq_sfs = nullptr;
         all_corrections = false;
+        file_name = cli.input_tchain->GetCurrentFile()->GetName();
     };
 
     virtual void initBranches()
@@ -114,6 +116,7 @@ struct Analysis : Core::Analysis
         arbol.newBranch<double>("xwqq_tr_vqq_sf", 1.);
         arbol.newBranch<double>("xwqq_tr_vqq_sf_up", 1.);
         arbol.newBranch<double>("xwqq_tr_vqq_sf_dn", 1.);
+        arbol.newBranch<float>("abcdnet_score", -999);
     };
 
     virtual void initCorrections()
@@ -232,9 +235,49 @@ struct Analysis : Core::Analysis
                     && arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.3
                     && arbol.getLeaf<double>("tr_vqqfatjet_xwqq") > 0.3
                 );
+            },
+            [&]()
+            {
+                /* Because we do the ParticleNet "resampling" for QCD events, we would like to
+                 * normalize the QCD MC integral to [data - (nonQCD MC)], but we can't calculate 
+                 * this scale factor here, since this code runs file-by-file.
+                 *
+                 * This isn't super important, though, because we recompute this factor every time 
+                 * that we run any of the analysis steps after the looper (e.g. plotting). Thus, 
+                 * since this is only to make the cutflow match the numbers in the plots, we just 
+                 * copy the number computed in e.g. the plot-making script here. That means that 
+                 * this number can get outdated, so update it when necessary!
+                 */
+                return (file_name.Contains("QCD") ? 1.2289449051788426 : 1.0);
             }
         );
         cutflow.insert(allmerged_save_vars, allmerged_presel, Right);
+
+        Cut* allmerged_save_abcdnet = new LambdaCut(
+            "AllMerged_SaveABCDNetScore",
+            [&]()
+            {
+                // Save ABCDNet score
+                float score =  ABCDNet::run(
+                    arbol.getLeaf<double>("hbbfatjet_pt"),
+                    arbol.getLeaf<double>("hbbfatjet_eta"),
+                    arbol.getLeaf<double>("hbbfatjet_phi"),
+                    arbol.getLeaf<double>("hbbfatjet_mass"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_pt"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_eta"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_phi"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_mass"),
+                    arbol.getLeaf<double>("tr_vqqfatjet_pt"),
+                    arbol.getLeaf<double>("tr_vqqfatjet_eta"),
+                    arbol.getLeaf<double>("tr_vqqfatjet_phi"),
+                    arbol.getLeaf<double>("tr_vqqfatjet_mass"),
+                    arbol.getLeaf<double>("M_jj")
+                );
+                arbol.setLeaf<float>("abcdnet_score", score);
+                return true;
+            }
+        );
+        cutflow.insert(allmerged_presel, allmerged_save_abcdnet, Right);
         
         // Signal region ParticleNet cuts
         Cut* allmerged_xbb_cut = new LambdaCut(
@@ -242,7 +285,7 @@ struct Analysis : Core::Analysis
             [&]() { return arbol.getLeaf<double>("hbbfatjet_xbb") > 0.8; },
             [&]() { return arbol.getLeaf<double>("xbb_sf"); }
         );
-        cutflow.insert(allmerged_presel, allmerged_xbb_cut, Right);
+        cutflow.insert(allmerged_save_abcdnet, allmerged_xbb_cut, Right);
 
         Cut* allmerged_xwqq_cuts = new LambdaCut(
             "AllMerged_XWqqCuts", 
@@ -262,6 +305,18 @@ struct Analysis : Core::Analysis
             }
         );
         cutflow.insert(allmerged_xbb_cut, allmerged_xwqq_cuts, Right);
+
+        Cut* allmerged_A = new ABCDRegions("AllMerged_RegionA", *this, "A");
+        cutflow.insert(allmerged_xwqq_cuts, allmerged_A, Right);
+
+        Cut* allmerged_B = new ABCDRegions("AllMerged_RegionB", *this, "B");
+        cutflow.insert(allmerged_A, allmerged_B, Left);
+
+        Cut* allmerged_C = new ABCDRegions("AllMerged_RegionC", *this, "C");
+        cutflow.insert(allmerged_B, allmerged_C, Left);
+
+        Cut* allmerged_D = new ABCDRegions("AllMerged_RegionD", *this, "D");
+        cutflow.insert(allmerged_C, allmerged_D, Left);
         /* ------------------------------------------------------ */
 
         /* ------------------ 2 fatjet channel ------------------ */
@@ -313,7 +368,6 @@ struct Analysis : Core::Analysis
         Core::Analysis::init();
         if (all_corrections)
         {
-            TString file_name = cli.input_tchain->GetCurrentFile()->GetName();
             jes->init(file_name);
             pu_sfs->init(file_name);
             puid_sfs->init(file_name);

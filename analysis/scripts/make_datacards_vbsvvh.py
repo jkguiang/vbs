@@ -423,7 +423,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     #     datacard_systs["TotalBkg_AllHad"][f"CMS_vbsvvhjets_abcd_stat{R}"] = temp_systs
 
     # Blinded yields
-    ABCD_yields = [round(vbsvvh.bkg_count(selection=ABCD_REGIONS[0])), *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
+    ABCD_yields = [1, *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
     # Unblinded yields
     # ABCD_yields = [vbsvvh.data_count(selection=R) for R in ABCD_REGIONS]
 

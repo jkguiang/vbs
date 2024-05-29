@@ -6,3 +6,6 @@ abcdnet_v4:
 abcdnet_v5: 
     - using new HEM prescription
     - ParticleNet XWqq uncertainty doubled for pt > 800
+abcdnet_v6: 
+    - removed old HEM prescription still being applied to AK8s
+    - Added ABCDNet to C++ workflow

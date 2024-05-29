@@ -12,6 +12,7 @@
 #include "vbswh/cuts.h"
 #include "vbsvvhjets/enums.h"
 #include "corrections/all.h"
+#include "tools/ABCDNet.h"
 
 namespace VBSVVHJets
 {
@@ -440,7 +441,46 @@ public:
             arbol.setLeaf<double>("xwqq_tr_vqq_sf_up", 1.);
             arbol.setLeaf<double>("xwqq_tr_vqq_sf_dn", 1.);
         }
+
         return true;
+    };
+};
+
+class ABCDRegions : public Core::AnalysisCut
+{
+public:
+    std::string region;
+
+    ABCDRegions(std::string name, Core::Analysis& analysis, std::string region) : Core::AnalysisCut(name, analysis) 
+    {
+        this->region = region;
+    };
+
+    bool evaluate()
+    {
+        bool pass_abcdnet = arbol.getLeaf<float>("abcdnet_score") > ABCDNet::WP_SR;
+        bool pass_detajj = arbol.getLeaf<double>("abs_deta_jj") > 5.;
+        if (region == "A")
+        {
+            return pass_detajj && pass_abcdnet;
+        }
+        else if (region == "B")
+        {
+            return !pass_detajj && pass_abcdnet;
+        }
+        else if (region == "C")
+        {
+            return pass_detajj && !pass_abcdnet;
+        }
+        else if (region == "D")
+        {
+            return !pass_detajj && !pass_abcdnet;
+        }
+        else
+        {
+            throw std::runtime_error("Error - need region A, B, C, or D");
+            return false;
+        }
     };
 };
 
