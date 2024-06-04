@@ -113,7 +113,7 @@ for JEC in $JECS; do
     done
 done
 
-echo "Copying files from $BASEDIR/vbsvvhjets to $PWD/studies/vbsvvhjets/"
+echo "Copying $BASEDIR/vbsvvhjets/output_${TAG}* to $PWD/studies/vbsvvhjets"
 cp -R $BASEDIR/vbsvvhjets/output_${TAG}* studies/vbsvvhjets/
 
 echo "Done"
