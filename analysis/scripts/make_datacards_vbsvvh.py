@@ -94,13 +94,22 @@ def get_jet_energy_systs(nominal_cflow, up_cflow, dn_cflow, signal_regions, name
     return systs
 
 TAG = sys.argv[1]
-BASEDIR = f"/data/userdata/{os.getenv('USER')}/vbs_studies"
+PRIVATE = len(sys.argv) > 2 and sys.argv[2] == "private"
+BABYDIR = f"/data/userdata/{os.getenv('USER')}/vbs_studies/vbsvvhjets/output_{TAG}"
 
-babies = glob.glob(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/*.root")
-babies = [baby for baby in babies if "Lambda" not in baby]
-sig_babies = [baby for baby in babies if "VBSVVH" in baby]
-bkg_babies = [baby for baby in babies if "VBS" not in baby and "data.root" not in baby]
-data_babies = [baby for baby in babies if "data.root" in baby]
+babies = glob.glob(f"{BABYDIR}/Run2/*.root")
+sig_babies = []
+bkg_babies = []
+data_babies = []
+for baby_path in babies:
+    baby_name = baby_path.split("/")[-1]
+    if (PRIVATE and "Private_C2W_C2Z" in baby_name) or (not PRIVATE and "VBSVVH" in baby_name):
+        sig_babies.append(baby_path)
+    elif "VBS" not in baby_name and "Private" not in baby_name:
+        if "data" in baby_name:
+            data_babies.append(baby_path)
+        else:
+            bkg_babies.append(baby_path)
 print("Signal:")
 print("\n".join(sig_babies))
 print("Background:")
@@ -109,7 +118,7 @@ print("Data:")
 print("\n".join(data_babies))
 
 if not sig_babies or not bkg_babies or not data_babies:
-    print(f"No babies found! Looking for {BASEDIR}/vbsvvhjets/output_{TAG}/Run2/*.root")
+    print(f"Missing some (or all) babies! Looking for {BABYDIR}/Run2/*.root")
     exit()
 
 vbsvvh = PandasAnalysis(
@@ -158,19 +167,29 @@ vbsvvh.df["regionD"] = vbsvvh.df.eval(
 
 ABCD_REGIONS = ["regionA", "regionB", "regionC", "regionD"]
 
-with uproot.open(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/VBSVVH.root") as f:
+if PRIVATE:
+    signal_baby = f"{BABYDIR}/Run2/Private_C2W_C2Z.root"
+    central_rwgt_i = 84
+    rwgt_map = "data/Private_C2W_C2Z_reweights.txt"
+    output_dir = "../combine/vbsvvh/datacards/Private_C2W_C2Z"
+else:
+    signal_baby = f"{BABYDIR}/Run2/VBSVVH.root"
+    central_rwgt_i = 28
+    rwgt_map = "data/VBSVVH_reweights.txt"
+    output_dir = "../combine/vbsvvh/datacards/VBSVVH"
+
+os.makedirs(output_dir, exist_ok=True)
+
+with uproot.open(signal_baby) as f:
     reweights = np.stack(f["rwgt_tree"].arrays(library="np")["reweights"])
     # Insert trivial weight
-    reweights = np.insert(reweights, 28, 1, axis=1)
+    reweights = np.insert(reweights, central_rwgt_i, 1, axis=1)
     # Interpret reweights matrix shape
     n_events, n_reweights = reweights.shape
 
 # grep -i "^launch" /path/to/PROCESS_reweight_card.dat | awk -F'=' '{print $2}' > data/PROCESS_reweights.txt
-with open("data/VBSVVH_reweights.txt", "r") as f_in:
+with open(rwgt_map, "r") as f_in:
     reweight_names = f_in.read().splitlines()
-
-output_dir = "../combine/vbsvvh/datacards/VBSVVH"
-os.makedirs(output_dir, exist_ok=True)
 
 for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_dir}"):
 
@@ -180,11 +199,14 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     vbsvvh.df.loc[vbsvvh.df.is_signal, "event_weight"] = vbsvvh.df[vbsvvh.df.is_signal].orig_event_weight.values*reweights.T[reweight_i]
 
     # -- PDF uncertainty -------------------------------------------------------------------
-    root_files = glob.glob("/data/userdata/jguiang/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/VBS*central/merged.root")
+    if PRIVATE:
+        skim_files = glob.glob("/data/userdata/jguiang/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/Private_C2W_C2Z_*/merged.root")
+    else:
+        skim_files = glob.glob("/data/userdata/jguiang/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/VBS*central/merged.root")
     gen_sum = 0
     pdf_sum = np.zeros(101)
-    for root_file in root_files:
-        with uproot.open(root_file) as f:
+    for skim_file in skim_files:
+        with uproot.open(skim_file) as f:
             gen_sums = f["Runs"]["genEventSumw"].array(library="np")
             pdf_sums = f["Runs"]["LHEPdfSumw"].array(library="np")
             missed = np.array([len(s) != 101 for s in pdf_sums])
@@ -194,7 +216,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
             
     pdf_ratio = pdf_sum/gen_sum
 
-    with uproot.open(f"{BASEDIR}/vbsvvhjets/output_{TAG}/Run2/VBSVVH.root") as f:
+    with uproot.open(signal_baby) as f:
         pdf_df = f.get("pdf_tree").arrays(library="pd")
         
     systs = []
