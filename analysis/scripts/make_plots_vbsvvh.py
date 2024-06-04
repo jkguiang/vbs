@@ -274,10 +274,10 @@ def get_abcd(plotter, regions=None, names=None, plots_dir=None):
     tex.append("           & ")
     
     if plots_dir:
-        with open("{A_name}_{B_name}_{C_name}_{D_name}.txt", "w") as txt_file:
+        with open(f"{plots_dir}/{A_name}_{B_name}_{C_name}_{D_name}.txt", "w") as txt_file:
             for txt_line in txt:
                 txt_file.write(txt_line+"\n")
-        with open("{A_name}_{B_name}_{C_name}_{D_name}.tex", "w") as tex_file:
+        with open(f"{plots_dir}/{A_name}_{B_name}_{C_name}_{D_name}.tex", "w") as tex_file:
             for tex_line in tex:
                 tex_file.write(tex_line+"\n")
 
@@ -457,7 +457,7 @@ if __name__ == "__main__":
     args = cli.parse_args()
 
     baby_dir = f"/data/userdata/{os.getenv('USER')}/vbs_studies/vbsvvhjets/output_{args.tag}"
-    plot_dir = f"/home/users/{os.getenv('USER')}/public_html/vbsvvhjets_plots/{args.tag}"
+    base_dir = f"/home/users/{os.getenv('USER')}/public_html/vbsvvhjets_plots/{args.tag}"
 
     # Collect babies
     babies = sorted(glob.glob(f"{baby_dir}/Run2/*.root"))
@@ -540,8 +540,8 @@ if __name__ == "__main__":
     # Make plots
     plot_all = not (args.opt or args.val or args.extra)
     # if plot_all or args.opt:
-    #     opt_plots(plotter, f"{plot_dir}/opt")
+    #     opt_plots(plotter, f"{base_dir}/opt")
     # if plot_all or args.val:
-    #     val_plots(plotter, f"{plot_dir}/val")
+    #     val_plots(plotter, f"{base_dir}/val")
     if plot_all or args.extra:
-        extra_plots(plotter, f"{plot_dir}/extra")
+        extra_plots(plotter, f"{base_dir}/extra")
