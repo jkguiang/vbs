@@ -122,7 +122,7 @@ def val_plots(plotter, plots_dir):
     ]
     plotter.plot_many_data_vs_mc(
         col_bins_label_tuples, selection="objsel", 
-        legend_loc="upper right", legend_ncol=2, autoblind=True
+        legend_loc="upper right", legend_ncol=2, autoblind=True, logy=True, hist_ylim=[1e-2, 1e10]
     )
 
     plotter.plot_data_vs_mc(
