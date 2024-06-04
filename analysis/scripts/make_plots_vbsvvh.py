@@ -9,6 +9,7 @@ warnings.simplefilter(action="ignore", category=pd.errors.PerformanceWarning)
 import numpy as np
 # Plotting
 import matplotlib.pyplot as plt
+import matplotlib.patches as patches
 from matplotlib import gridspec
 import yahist
 import mplhep as hep
@@ -18,6 +19,268 @@ import itertools
 import pickle
 # Custom
 from utils.plotter import PandasPlotter
+
+def plot_abcd_cartoon(x_arm, y_arm, presel_cuts=None, y_lim=[0, 1], y_label=""):
+    
+    fig, axes = plt.subplots()
+
+    axes.set_ylim(y_lim)
+
+    # Move the left and bottom spines to x = 0 and y = 0, respectively.
+    axes.spines[["left", "bottom"]].set_position(("data", 0))
+    # Hide the top and right spines.
+    axes.spines[["top", "right"]].set_visible(False)
+    axes.spines[["left", "bottom"]].set_linewidth(8)
+
+    axes.plot(1, 0, ">k", markersize=30, clip_on=False)
+    axes.plot(*y_lim, "^k", markersize=30, clip_on=False)
+
+    x_wp = float(x_arm.split(" > ")[-1])
+    y_wp = float(y_arm.split(" > ")[-1])
+    
+    axes.axhline(y_wp, color="k", linewidth=8)
+    axes.axvline(x_wp, color="k", linewidth=8)
+
+    axes.set_xlabel("ABCDNet", weight="bold", size=48)
+    axes.set_ylabel(y_label, weight="bold", size=48)
+
+    centered = {"horizontalalignment": "center", "verticalalignment": "center", "size": 48, "weight": "bold"}
+
+    axes.text((1 + x_wp)/2, (y_lim[-1] + y_wp)/2, "A", **centered)
+    axes.text((1 + x_wp)/2, (y_wp + 0)/2, "B", **centered)
+    axes.text((0 + x_wp)/2, (y_lim[-1] + y_wp)/2, "C", **centered)
+    axes.text((x_wp + 0)/2, (y_wp + 0)/2, "D", **centered)
+
+    axes.set_xticks([x_wp])
+    axes.set_yticks([y_wp])
+    
+    # Remove all margins
+    axes.margins(0)
+    # Remove CMS-style ticks on top and right sides of plot
+    axes.tick_params(top=False, right=False, labelsize=48, pad=12)
+    axes.tick_params(top=False, right=False, which="minor")
+    
+    axes.patch.set_alpha(0)
+    
+    # Add title with preselection
+    if not presel_cuts is None:
+        title = " and ".join(presel_cuts)
+        # Hard-coded replacements
+        title = title.replace("ld_vqqfatjet_xwqq", r"XWqq(ld $V\rightarrow qq$)")
+        title = title.replace("tr_vqqfatjet_xwqq", r"XWqq(tr $V\rightarrow qq$)")
+        title = title.replace("hbbfatjet_xbb", r"Xbb($H\rightarrow bb$)")
+        # Hard-coded length limit (make newline)
+        if len(title) > 100:
+            title = title.split(" and ")
+            title[-1] = "\n" + title[-1]
+            title = " and ".join(title)
+        
+        axes.set_title(title, size=28, pad=28)
+    
+
+def plot_abcd(x_arm, y_arm, x_mid=None, y_mid=None, y_lim=[0, 1], y_label="", presel_cuts=None, plots_dir=None):
+    
+    plot_x_mid = (not x_mid is None)
+    plot_xy_mid = (plot_x_mid and not y_mid is None)
+    
+    fig, axes = plt.subplots()
+
+    axes.set_ylim(y_lim)
+
+    # Move the left and bottom spines to x = 0 and y = 0, respectively.
+    axes.spines[["left", "bottom"]].set_position(("data", 0))
+    # Hide the top and right spines.
+    axes.spines[["top", "right"]].set_visible(False)
+    axes.spines[["left", "bottom"]].set_linewidth(4)
+
+    axes.plot(1, 0, ">k", markersize=15, clip_on=False)
+    axes.plot(*y_lim, "^k", markersize=15, clip_on=False)
+
+    x_wp = float(x_arm.split(" > ")[-1])
+    y_wp = float(y_arm.split(" > ")[-1])
+    if plot_x_mid:
+        x_md = float(x_mid.split(" > ")[-1])
+    if plot_xy_mid:
+        y_md = float(y_mid.split(" > ")[-1])
+    
+    axes.axhline(y_wp, color="k", linewidth=4)
+    axes.axvline(x_wp, color="k", linewidth=4)
+    if plot_x_mid:
+        axes.axvline(x_md, color="grey", linewidth=4)
+    if plot_xy_mid:
+        axes.axhline(y_md, color="grey", linewidth=4)
+
+    axes.set_xlabel("ABCDNet score")
+    axes.set_ylabel(y_label)
+
+    text_kwargs = {"horizontalalignment": "center", "verticalalignment": "center", "size": 48}
+
+    if plot_xy_mid:
+        axes.text((1 + x_wp)/2, (y_lim[-1] + y_wp)/2, "A", **text_kwargs)
+        axes.text((x_wp + x_md)/2, (y_lim[-1] + y_wp)/2, "C$_1$", **text_kwargs)
+        axes.text((x_md + 0)/2, (y_lim[-1] + y_wp)/2, "C$_2$", **text_kwargs)
+
+        axes.text((1 + x_wp)/2, (y_wp + y_md)/2, "B$_1$", **text_kwargs)
+        axes.text((x_wp + x_md)/2, (y_wp + y_md)/2, "D$_1$", **text_kwargs)
+        axes.text((x_md + 0)/2, (y_wp + y_md)/2, "D$_3$", **text_kwargs)
+
+        axes.text((1 + x_wp)/2, (y_md + 0)/2, "B$_2$", **text_kwargs)
+        axes.text((x_wp + x_md)/2, (y_md + 0)/2, "D$_2$", **text_kwargs)
+        axes.text((x_md + 0)/2, (y_md + 0)/2, "D$_4$", **text_kwargs)
+    elif plot_x_mid:
+        axes.text((1 + x_wp)/2, (y_lim[-1] + y_wp)/2, "A", **text_kwargs)
+        axes.text((x_wp + x_md)/2, (y_lim[-1] + y_wp)/2, "C$_1$", **text_kwargs)
+        axes.text((x_md + 0)/2, (y_lim[-1] + y_wp)/2, "C$_2$", **text_kwargs)
+
+        axes.text((1 + x_wp)/2, (y_wp + 0)/2, "B", **text_kwargs)
+        axes.text((x_wp + x_md)/2, (y_wp + 0)/2, "D$_1$", **text_kwargs)
+        axes.text((x_md + 0)/2, (y_wp + 0)/2, "D$_2$", **text_kwargs)
+    else:
+        axes.text((1 + x_wp)/2, (y_lim[-1] + y_wp)/2, "A", **text_kwargs)
+        axes.text((1 + x_wp)/2, (y_wp + 0)/2, "B", **text_kwargs)
+        axes.text((0 + x_wp)/2, (y_lim[-1] + y_wp)/2, "C", **text_kwargs)
+        axes.text((x_wp + 0)/2, (y_wp + 0)/2, "D", **text_kwargs)
+
+    if plot_xy_mid:
+        axes.set_xticks([x_md, x_wp])
+        axes.set_yticks([y_md, y_wp])
+    elif plot_x_mid:
+        axes.set_xticks([x_md, x_wp])
+        axes.set_yticks([y_wp])
+    else:
+        axes.set_xticks([x_wp])
+        axes.set_yticks([y_wp])
+    
+    # Remove all margins
+    axes.margins(0)
+    # Remove CMS-style ticks on top and right sides of plot
+    axes.tick_params(top=False, right=False, labelsize=24, width=4)
+    axes.tick_params(top=False, bottom=False, right=False, left=False, which="minor")
+    
+    # Create a Rectangle patch for each region
+    A_rect = patches.Rectangle(
+        (x_wp, y_wp), (1 - x_wp), (y_lim[-1] - y_wp), 
+        linewidth=0, facecolor="#61D836", alpha=0.25
+    )
+    B_rect = patches.Rectangle(
+        (x_wp, 0), (1 - x_wp), (y_wp), 
+        linewidth=0, facecolor="#56C1FF", alpha=0.25
+    )
+    C_rect = patches.Rectangle(
+        (0, y_wp), (x_wp), (y_lim[-1] - y_wp), 
+        linewidth=0, facecolor="#B51700", alpha=0.25
+    )
+    D_rect = patches.Rectangle(
+        (0, 0), (x_wp), (y_wp), 
+        linewidth=0, facecolor="#FFD932", alpha=0.25
+    )
+
+    # Add the patches to the Axes
+    axes.add_patch(A_rect)
+    axes.add_patch(B_rect)
+    axes.add_patch(C_rect)
+    axes.add_patch(D_rect)
+    
+    # Add title with preselection
+    if not presel_cuts is None:
+        title = " and ".join(presel_cuts)
+        # Hard-coded replacements
+        title = title.replace("ld_vqqfatjet_xwqq", r"XWqq(ld $V\rightarrow qq$)")
+        title = title.replace("tr_vqqfatjet_xwqq", r"XWqq(tr $V\rightarrow qq$)")
+        title = title.replace("hbbfatjet_xbb", r"Xbb($H\rightarrow bb$)")
+        # Hard-coded length limit (make newline)
+        if len(title) > 100:
+            title = title.split(" and ")
+            title[-1] = "\n" + title[-1]
+            title = " and ".join(title)
+        
+        axes.set_title(title, size=24, pad=24)
+    
+    axes.patch.set_alpha(0)
+    
+    if plots_dir:
+        x_arm_str = PandasPlotter.get_selection_str(x_arm)
+        y_arm_str = PandasPlotter.get_selection_str(y_arm)
+        if plot_xy_mid:
+            plot_file = f"{plots_dir}/AB1B2C1C2D1D2_{x_arm_str}_vs_{y_arm_str}.png"
+        elif plot_x_mid:
+            plot_file = f"{plots_dir}/ABC1C2D1D2_{x_arm_str}_vs_{y_arm_str}.png"
+        else:
+            plot_file = f"{plots_dir}/ABCD_{x_arm_str}_vs_{y_arm_str}.png"
+            
+        print(f"Wrote to {plot_file}")
+        plt.savefig(plot_file, bbox_inches="tight")
+        plt.savefig(plot_file.replace(".png", ".pdf"), bbox_inches="tight")
+
+def get_abcd(plotter, regions=None, names=None, plots_dir=None):
+    A, B, C, D = regions
+    A_name, B_name, C_name, D_name = names
+
+    mc_pred_A_count = 0
+    mc_pred_A_error = 0
+    data_pred_A_count = 0
+    data_pred_A_error = 0
+    show_data = False
+    tex = [
+        f"{'region':>10} & {'bkg':>10} & {'bkg err':>10} & {'sig':>10} & {'sig err':>10} & {'data':>10} & {'data err':>10} \\\\",
+        "\hline"
+    ]
+    txt = [f"{'bkg':>10},{'bkg err':>10},{'sig':>10},{'sig err':>10},{'data':>10},{'data err':>10}"]
+    regions = ["A", "B", "C", "D"]
+    for region_i, region in enumerate([A, B, C, D]):
+        # MC counts
+        sig_count = plotter.sig_count(selection=region)
+        sig_error = plotter.sig_error(selection=region)
+        bkg_count = plotter.bkg_count(selection=region)
+        bkg_error = plotter.bkg_error(selection=region)
+        csv_line = f"{bkg_count:>10.4f},{bkg_error:>10.4f},{sig_count:>10.4f},{sig_error:>10.4f}"
+        tex_line = f"{bkg_count:>10.1f} & {bkg_error:>10.1f} & {sig_count:>10.1f} & {sig_error:>10.1f}"
+        # Data counts
+        data_count = plotter.data_count(selection=region)
+        data_error = plotter.data_error(selection=region)
+        if sig_count < bkg_error and sig_count < bkg_count*0.1:
+            csv_line += f",{int(data_count):>10},{data_error:>10.4f}"
+            tex_line += f" & {int(data_count):>10} & {data_error:>10.1f}"
+            show_data = True
+        else:
+            csv_line += f",{' — ':>10},{' — ':>10}"
+            tex_line += f" &  —         &  —        "
+        txt.append(csv_line)
+        tex.append(f"{regions[region_i]:>10} & {tex_line} \\\\")
+        
+        # Do extrapolation
+        if region_i == 1:
+            mc_pred_A_count = bkg_count
+            data_pred_A_count = data_count
+        elif region_i == 2:
+            mc_pred_A_count *= bkg_count
+            data_pred_A_count *= data_count
+        elif region_i == 3 and bkg_count > 0:
+            mc_pred_A_count /= bkg_count
+            data_pred_A_count /= data_count
+        # Calculate error
+        if region_i > 0 and bkg_count > 0:
+            mc_pred_A_error += (bkg_error/bkg_count)**2
+            data_pred_A_error += 1/data_count
+    
+    mc_pred_A_error = np.sqrt(mc_pred_A_error)*mc_pred_A_count
+    data_pred_A_error = np.sqrt(data_pred_A_error)*data_pred_A_count
+    txt.append("")
+    txt.append(f"MC pred_A_count = {mc_pred_A_count:.2f}")
+    txt.append(f"MC pred_A_error = {mc_pred_A_error:.2f}")
+    txt.append(f"Data pred_A_count = {data_pred_A_count:.2f}")
+    txt.append(f"Data pred_A_error = {data_pred_A_error:.2f}")
+    txt.append("")
+    tex.append("           & ")
+    
+    if plots_dir:
+        with open("{A_name}_{B_name}_{C_name}_{D_name}.txt", "w") as txt_file:
+            for txt_line in txt:
+                txt_file.write(txt_line+"\n")
+        with open("{A_name}_{B_name}_{C_name}_{D_name}.tex", "w") as tex_file:
+            for tex_line in tex:
+                tex_file.write(tex_line+"\n")
+
 
 def opt_plots(plotter, plots_dir):
     print(f"Writing optimization plots to {plots_dir}")
@@ -133,8 +396,57 @@ def val_plots(plotter, plots_dir):
 
 def extra_plots(plotter, plots_dir):
     print(f"Writing extra plots to {plots_dir}")
-    # TODO: Add stuff here
-    return
+    os.makedirs(plots_dir, exist_ok=True)
+
+    # --- ABCD plots ---
+    # Save original weights
+    orig_event_weight = plotter.df.event_weight.values.copy()
+    # Apply ParticleNet scale factors
+    plotter.df.event_weight *= plotter.df.xbb_sf*plotter.df.xwqq_ld_vqq_sf*plotter.df.xwqq_tr_vqq_sf
+
+    cuts = "abcdnet_score > 0.89 and abs_deta_jj > 5.0 and ld_vqqfatjet_xwqq > 0.8 and tr_vqqfatjet_xwqq > 0.7 and hbbfatjet_xbb > 0.8".split(" and ")
+    x_arm = cuts[0]
+    y_arm = cuts[1]
+    presel = cuts[2:]
+
+    # How to sub-divide the control regions for closure tests
+    x_mid = "abcdnet_score > 0.4"
+    y_mid = "abs_deta_jj > 2.5"
+
+    A = " and ".join([x_arm, y_arm, *presel])
+    B = " and ".join([x_arm, f"(not {y_arm})", *presel])
+    C = " and ".join([f"(not {x_arm})", y_arm, *presel])
+    D = " and ".join([f"(not {x_arm})", f"(not {y_arm})", *presel])
+
+    B1 = " and ".join([x_arm, f"({y_mid}) and (not {y_arm})", *presel])
+    B2 = " and ".join([x_arm, f"(not {y_mid}) and (not {y_arm})", *presel])
+    C1 = " and ".join([f"({x_mid}) and (not {x_arm})", y_arm, *presel])
+    C2 = " and ".join([f"(not {x_mid}) and (not {x_arm})", y_arm, *presel])
+    D1 = " and ".join([f"({x_mid}) and (not {x_arm})", f"({y_mid}) and (not {y_arm})", *presel])
+    D2 = " and ".join([f"({x_mid}) and (not {x_arm})", f"(not {y_mid}) and (not {y_arm})", *presel])
+    D3 = " and ".join([f"(not {x_mid}) and (not {x_arm})", f"({y_mid}) and (not {y_arm})", *presel])
+    D4 = " and ".join([f"(not {x_mid}) and (not {x_arm})", f"(not {y_mid}) and (not {y_arm})", *presel])
+
+    plot_abcd(x_arm, y_arm, y_lim=[0, 10], y_label=r"$|\Delta\eta_{jj}|$", presel_cuts=presel, plots_dir=plots_dir)
+    plot_abcd(x_arm, y_arm, x_mid=x_mid, y_lim=[0, 10], y_label=r"$|\Delta\eta_{jj}|$", presel_cuts=presel, plots_dir=plots_dir)
+    plot_abcd(x_arm, y_arm, x_mid=x_mid, y_mid=y_mid, y_lim=[0, 10], y_label=r"$|\Delta\eta_{jj}|$", presel_cuts=presel, plots_dir=plots_dir)
+
+    # A = B*C/D
+    get_abcd(plotter, regions=[A, B, C, D], names=["A", "B", "C", "D"], plots_dir=plots_dir)
+    # B1 = B2*D1/D2
+    get_abcd(plotter, regions=[B1, B2, D1, D2], names=["B1", "B2", "D1", "D2"], plots_dir=plots_dir)
+    # D1 = D2*D3/D4
+    get_abcd(plotter, regions=[D1, D2, D3, D4], names=["D1", "D2", "D3", "D4"], plots_dir=plots_dir)
+    # C1 = D1*C2/D3
+    get_abcd(plotter, regions=[C1, D1, C2, D3], names=["C1", "D1", "C2", "D3"], plots_dir=plots_dir)
+    # A = B*C1/D1
+    get_abcd(plotter, regions=[A, B, C1, f"({D1}) or ({D2})"], names=["A", "B", "C1", "D12"], plots_dir=plots_dir)
+    # C1 = D1*C2/D2
+    get_abcd(plotter, regions=[C1, f"({D1}) or ({D2})", C2, f"({D3}) or ({D4})"], names=["C1", "D12", "C2", "D34"], plots_dir=plots_dir)
+
+    # Reset event weights
+    plotter.df.event_weight = orig_event_weight
+    # ------------------
 
 if __name__ == "__main__":
     cli = argparse.ArgumentParser(description="Run a given study in parallel")
@@ -167,8 +479,9 @@ if __name__ == "__main__":
     print("\n".join(bkg_babies))
     print("Data:")
     print("\n".join(data_babies))
-    if not babies:
-        raise Exception(f"No babies found in {baby_dir}/Run2")
+    if not sig_babies or not bkg_babies or not data_babies:
+        print(f"Missing some (or all) babies! Looking for {baby_dir}/Run2/*.root")
+        exit()
 
     # Initialize plotter (loads babies into pandas dfs + methods for plotting)
     plotter = PandasPlotter(
@@ -226,9 +539,9 @@ if __name__ == "__main__":
 
     # Make plots
     plot_all = not (args.opt or args.val or args.extra)
-    if plot_all or args.opt:
-        opt_plots(plotter, f"{plot_dir}/opt")
-    if plot_all or args.val:
-        val_plots(plotter, f"{plot_dir}/val")
+    # if plot_all or args.opt:
+    #     opt_plots(plotter, f"{plot_dir}/opt")
+    # if plot_all or args.val:
+    #     val_plots(plotter, f"{plot_dir}/val")
     if plot_all or args.extra:
         extra_plots(plotter, f"{plot_dir}/extra")
