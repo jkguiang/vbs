@@ -95,6 +95,12 @@ OTHER_SAMPLE_MAP = {
         "2017":        ["VBSWWH_SSWW_MJJ-100*", "VBSWWH_OSWW_MJJ-100*", "VBSWZH_MJJ-100*", "VBSZZH_MJJ-100*"],
         "2018":        ["VBSWWH_SSWW_MJJ-100*", "VBSWWH_OSWW_MJJ-100*", "VBSWZH_MJJ-100*", "VBSZZH_MJJ-100*"]
     },
+    "Private_C2W_C2V": {
+        "2016preVFP":  ["Private_C2W_C2Z*"],
+        "2016postVFP": ["Private_C2W_C2Z*"],
+        "2017":        ["Private_C2W_C2Z*"],
+        "2018":        ["Private_C2W_C2Z*"]
+    }
 }
 
 if __name__ == "__main__":
