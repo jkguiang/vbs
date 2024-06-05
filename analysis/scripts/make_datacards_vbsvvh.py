@@ -200,9 +200,9 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
     # -- PDF uncertainty -------------------------------------------------------------------
     if PRIVATE:
-        skim_files = glob.glob("/data/userdata/jguiang/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/Private_C2W_C2Z_*/merged.root")
+        skim_files = glob.glob("/data/userdata/{os.getenv('USER')}/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/Private_C2W_C2Z_*/merged.root")
     else:
-        skim_files = glob.glob("/data/userdata/jguiang/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/VBS*central/merged.root")
+        skim_files = glob.glob("/data/userdata/{os.getenv('USER')}/nanoaod/VBSVVHSkim/sig_0lep_2ak4_2ak8_ttH/VBS*central/merged.root")
     gen_sum = 0
     pdf_sum = np.zeros(101)
     for skim_file in skim_files:
