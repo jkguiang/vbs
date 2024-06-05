@@ -528,7 +528,7 @@ if __name__ == "__main__":
     # Add reweights to plotter df for certain C2V values
     for C2V in [1.3, 1.5, 2.0]:
         C2V_str = str(C2V).replace(".", "p").replace("-", "m")
-        plotter.df[f"reweights_{C2V_str}"] = 1
+        plotter.df[f"reweights_{C2V_str}"] = 1.
         print(f"Adding 'reweights_{C2V_str}' to plotter dataframe for signal")
         reweight_name = f"scan_CV_1p0_C2V_{C2V_str}_C3_1p0"
         if reweight_name in reweight_names:
