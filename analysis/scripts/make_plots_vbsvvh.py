@@ -539,9 +539,9 @@ if __name__ == "__main__":
 
     # Make plots
     plot_all = not (args.opt or args.val or args.extra)
-    # if plot_all or args.opt:
-    #     opt_plots(plotter, f"{base_dir}/opt")
-    # if plot_all or args.val:
-    #     val_plots(plotter, f"{base_dir}/val")
+    if plot_all or args.opt:
+        opt_plots(plotter, f"{base_dir}/opt")
+    if plot_all or args.val:
+        val_plots(plotter, f"{base_dir}/val")
     if plot_all or args.extra:
         extra_plots(plotter, f"{base_dir}/extra")
