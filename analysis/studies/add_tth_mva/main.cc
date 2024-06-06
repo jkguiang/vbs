@@ -73,28 +73,28 @@ int main(int argc, char** argv)
         "Base", 
         [&]() 
         { 
-            float mvatth_score = -999;
-            if (nt.year() == 2018)
-            {
-                mvatth_score = mvatth_2018.computeElecMVA(elec_i);
-            }
-            else if (nt.year() == 2017)
-            {
-                mvatth_score = mvatth_2017.computeElecMVA(elec_i);
-            }
-            else if (nt.year() == 2016)
-            {
-                if (gconf.isAPV)
-                {
-                    mvatth_score = mvatth_2016APV.computeElecMVA(elec_i);
-                }
-                else
-                {
-                    mvatth_score = mvatth_2016.computeElecMVA(elec_i);
-                }
-            }
             for (unsigned int elec_i = 0; elec_i < nt.nElectron(); ++elec_i)
             {
+                float mvatth_score = -999;
+                if (nt.year() == 2018)
+                {
+                    mvatth_score = mvatth_2018.computeElecMVA(elec_i);
+                }
+                else if (nt.year() == 2017)
+                {
+                    mvatth_score = mvatth_2017.computeElecMVA(elec_i);
+                }
+                else if (nt.year() == 2016)
+                {
+                    if (gconf.isAPV)
+                    {
+                        mvatth_score = mvatth_2016APV.computeElecMVA(elec_i);
+                    }
+                    else
+                    {
+                        mvatth_score = mvatth_2016.computeElecMVA(elec_i);
+                    }
+                }
                 arbusto.appendToVecLeaf<float>("Electron_mvaTTHUL", mvatth_score);
             }
             for (unsigned int muon_i = 0; muon_i < nt.nMuon(); ++muon_i)

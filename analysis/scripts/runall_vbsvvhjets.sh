@@ -20,35 +20,35 @@ mkdir -p $BASEDIR
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=${TAG}_nofix --var=nofix
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_nofix
 
-# Run JER variations
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=${TAG}_jer_up --var=jer_up --no_make
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --skimtag=$SKIMTAG --data --tag=${TAG}_jer_dn --var=jer_dn --no_make
+# Run JER variations... but only for signal (since we don't need them for bkg)!
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jer_up --var=jer_up --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jer_dn --var=jer_dn --no_make --skims sig_$SKIMTAG
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jer_up
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jer_dn
 
 # Run all 22 JEC variations (11 sources x 2 for up/down)... but only for signal (since we don't need them for bkg)!
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_1_up --var=jec_1_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_1_dn --var=jec_1_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_2_up --var=jec_2_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_2_dn --var=jec_2_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_3_up --var=jec_3_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_3_dn --var=jec_3_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_4_up --var=jec_4_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_4_dn --var=jec_4_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_5_up --var=jec_5_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_5_dn --var=jec_5_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_6_up --var=jec_6_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_6_dn --var=jec_6_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_7_up --var=jec_7_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_7_dn --var=jec_7_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_8_up --var=jec_8_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_8_dn --var=jec_8_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_9_up --var=jec_9_up   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_9_dn --var=jec_9_dn   --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_10_up --var=jec_10_up --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_10_dn --var=jec_10_dn --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_11_up --var=jec_11_up --no_make --skims sig_$SKIMTAG
-./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --data --tag=${TAG}_jec_11_dn --var=jec_11_dn --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_1_up --var=jec_1_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_1_dn --var=jec_1_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_2_up --var=jec_2_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_2_dn --var=jec_2_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_3_up --var=jec_3_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_3_dn --var=jec_3_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_4_up --var=jec_4_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_4_dn --var=jec_4_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_5_up --var=jec_5_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_5_dn --var=jec_5_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_6_up --var=jec_6_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_6_dn --var=jec_6_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_7_up --var=jec_7_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_7_dn --var=jec_7_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_8_up --var=jec_8_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_8_dn --var=jec_8_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_9_up --var=jec_9_up   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_9_dn --var=jec_9_dn   --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_10_up --var=jec_10_up --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_10_dn --var=jec_10_dn --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_11_up --var=jec_11_up --no_make --skims sig_$SKIMTAG
+./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_11_dn --var=jec_11_dn --no_make --skims sig_$SKIMTAG
 
 # Copy nominal background to variations (wasteful, I know, but allows for the merges below to be done with the same script)
 for VARDIR in $BASEDIR/vbsvvhjets/output_${TAG}_jec*; do
