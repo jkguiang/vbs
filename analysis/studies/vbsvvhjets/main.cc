@@ -206,6 +206,9 @@ int main(int argc, char** argv)
     );
     cutflow.insert("AllMerged_Preselection", save_pdfweights, Right);
 
+    Cut* save_pdfweights_semimerged = ((LambdaCut*) save_pdfweights)->clone("SemiMerged_SavePDFWeights");
+    cutflow.insert("SemiMerged_Preselection", save_pdfweights_semimerged, Right);
+
     Cut* save_reweights = new LambdaCut(
         "AllMerged_SaveReweights",
         [&]()
@@ -225,6 +228,9 @@ int main(int argc, char** argv)
         }
     );
     cutflow.insert("AllMerged_Preselection", save_reweights, Right);
+
+    Cut* save_reweights_semimerged = ((LambdaCut*) save_reweights)->clone("SemiMerged_SaveReweights");
+    cutflow.insert("SemiMerged_Preselection", save_reweights_semimerged, Right);
 
     // Run looper
     tqdm bar;
@@ -250,15 +256,17 @@ int main(int argc, char** argv)
 
                 // Run cutflow
                 std::vector<std::string> cuts_to_check = {
+                    "SemiMerged_SaveVariables",
+                    "SemiMerged_SavePDFWeights",
                     "AllMerged_SaveVariables",
                     "AllMerged_SavePDFWeights"
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
-                if (checkpoints.at(0)) 
+                if (checkpoints.at(0) or checkpoints.at(2)) 
                 { 
                     arbol.fill(); 
                 }
-                if (checkpoints.at(1)) 
+                if (checkpoints.at(1) or checkpoints.at(3)) 
                 { 
                     pdf_arbol.fill(); 
                     rwgt_arbol.fill(); 

@@ -286,20 +286,14 @@ public:
 
     bool evaluate()
     {
-        int ld_vbsjet_idx = globals.getVal<int>("ld_vbsjet_idx");
-        int tr_vbsjet_idx = globals.getVal<int>("tr_vbsjet_idx");
-
         LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
         Integers good_jet_idxs = globals.getVal<Integers>("good_jet_idxs");
         if (good_jet_idxs.size() < 4) { return false; }
 
         double min_dR = 99999;
-        std::pair<unsigned int, unsigned int> vqqjet_idxs;
+        std::pair<unsigned int, unsigned int> vqqjet_gidxs;
         for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
         {
-            int jet_idx = good_jet_idxs.at(jet_i);
-            // Skip VBS jet candidates
-            if (jet_idx == ld_vbsjet_idx || jet_idx == tr_vbsjet_idx) { continue; }
             // Iterate over all pairs
             for (unsigned int jet_j = jet_i + 1; jet_j < good_jet_p4s.size(); ++jet_j)
             {
@@ -309,31 +303,33 @@ public:
                 if (dR < min_dR)
                 {
                     min_dR = dR;
-                    vqqjet_idxs = std::make_pair(jet_i, jet_j);
+                    vqqjet_gidxs = std::make_pair(jet_i, jet_j);
                 }
             }
         }
 
         // Sort the two VBS jets into leading/trailing
-        int ld_vqqjet_idx;
-        int tr_vqqjet_idx;
-        if (good_jet_p4s.at(vqqjet_idxs.first).pt() > good_jet_p4s.at(vqqjet_idxs.second).pt())
+        int ld_vqqjet_gidx;
+        int tr_vqqjet_gidx;
+        if (good_jet_p4s.at(vqqjet_gidxs.first).pt() > good_jet_p4s.at(vqqjet_gidxs.second).pt())
         {
-            ld_vqqjet_idx = vqqjet_idxs.first;
-            tr_vqqjet_idx = vqqjet_idxs.second;
+            ld_vqqjet_gidx = vqqjet_gidxs.first;
+            tr_vqqjet_gidx = vqqjet_gidxs.second;
         }
         else
         {
-            ld_vqqjet_idx = vqqjet_idxs.second;
-            tr_vqqjet_idx = vqqjet_idxs.first;
+            ld_vqqjet_gidx = vqqjet_gidxs.second;
+            tr_vqqjet_gidx = vqqjet_gidxs.first;
         }
-        LorentzVector ld_vqqjet_p4 = good_jet_p4s.at(ld_vqqjet_idx);
-        LorentzVector tr_vqqjet_p4 = good_jet_p4s.at(tr_vqqjet_idx);
-        int ld_vqqjet_nanoidx = good_jet_idxs.at(ld_vqqjet_idx);
-        int tr_vqqjet_nanoidx = good_jet_idxs.at(tr_vqqjet_idx);
+        LorentzVector ld_vqqjet_p4 = good_jet_p4s.at(ld_vqqjet_gidx);
+        LorentzVector tr_vqqjet_p4 = good_jet_p4s.at(tr_vqqjet_gidx);
+        int ld_vqqjet_nanoidx = good_jet_idxs.at(ld_vqqjet_gidx);
+        int tr_vqqjet_nanoidx = good_jet_idxs.at(tr_vqqjet_gidx);
 
         globals.setVal<LorentzVector>("ld_vqqjet_p4", ld_vqqjet_p4);
         globals.setVal<LorentzVector>("tr_vqqjet_p4", tr_vqqjet_p4);
+        globals.setVal<unsigned int>("ld_vqqjet_gidx", ld_vqqjet_gidx);
+        globals.setVal<unsigned int>("tr_vqqjet_gidx", tr_vqqjet_gidx);
         arbol.setLeaf<double>("ld_vqqjet_qgl", nt.Jet_qgl().at(ld_vqqjet_nanoidx));
         arbol.setLeaf<double>("ld_vqqjet_pt", ld_vqqjet_p4.pt());
         arbol.setLeaf<double>("ld_vqqjet_eta", ld_vqqjet_p4.eta());
@@ -347,6 +343,45 @@ public:
         arbol.setLeaf<double>("vqqjets_Mjj", (ld_vqqjet_p4 + tr_vqqjet_p4).M());
         arbol.setLeaf<double>("vqqjets_dR", min_dR);
         return true;
+    };
+};
+
+class SelectVBSJets : public Core::SelectVBSJets
+{
+public:
+    Channel channel;
+
+    SelectVBSJets(std::string name, Core::Analysis& analysis, Channel channel) : Core::SelectVBSJets(name, analysis) 
+    {
+        this->channel = channel;
+    };
+
+    virtual std::vector<unsigned int> getVBSCandidates()
+    {
+        LorentzVectors good_jet_p4s = globals.getVal<LorentzVectors>("good_jet_p4s");
+        std::vector<unsigned int> vbsjet_cand_idxs;
+        for (unsigned int jet_i = 0; jet_i < good_jet_p4s.size(); ++jet_i)
+        {
+            LorentzVector jet_p4 = good_jet_p4s.at(jet_i);
+
+            if (channel == SemiMerged)
+            {
+                const unsigned int& ld_vqqjet_gidx = globals.getVal<unsigned int>("ld_vqqjet_gidx");
+                const unsigned int& tr_vqqjet_gidx = globals.getVal<unsigned int>("tr_vqqjet_gidx");
+                // If semi merged the Vqq jets are already selected
+                // therefore skip them when selecting VBS jets
+                if (jet_i == ld_vqqjet_gidx || jet_i == tr_vqqjet_gidx)
+                {
+                    continue;
+                }
+            }
+
+            if (jet_p4.pt() >= 30. && fabs(jet_p4.eta()) < 4.7) 
+            {
+                vbsjet_cand_idxs.push_back(jet_i); 
+            }
+        }
+        return vbsjet_cand_idxs;
     };
 };
 
@@ -449,32 +484,45 @@ public:
 class ABCDRegions : public Core::AnalysisCut
 {
 public:
+    Channel channel;
     std::string region;
 
-    ABCDRegions(std::string name, Core::Analysis& analysis, std::string region) : Core::AnalysisCut(name, analysis) 
+    ABCDRegions(std::string name, Core::Analysis& analysis, std::string region, Channel channel) : Core::AnalysisCut(name, analysis) 
     {
         this->region = region;
+        this->channel = channel;
     };
 
     bool evaluate()
     {
-        bool pass_abcdnet = arbol.getLeaf<float>("abcdnet_score") > ABCDNet::WP_SR;
-        bool pass_detajj = arbol.getLeaf<double>("abs_deta_jj") > 5.;
+        bool pass_abcdnet = false;
+        bool pass_vbs = false;
+        if (channel == AllMerged)
+        {
+            pass_abcdnet = arbol.getLeaf<float>("abcdnet_score") > ABCDNetAllMerged::WP_SR;
+            pass_vbs = arbol.getLeaf<double>("abs_deta_jj") > 5.;
+        }
+        else if (channel == SemiMerged)
+        {
+            pass_abcdnet = arbol.getLeaf<float>("abcdnet_score") > ABCDNetSemiMerged::WP_SR;
+            pass_vbs = arbol.getLeaf<double>("abs_deta_jj") > 6. and arbol.getLeaf<double>("M_jj") > 1400.;
+        }
+
         if (region == "A")
         {
-            return pass_detajj && pass_abcdnet;
+            return pass_vbs && pass_abcdnet;
         }
         else if (region == "B")
         {
-            return !pass_detajj && pass_abcdnet;
+            return !pass_vbs && pass_abcdnet;
         }
         else if (region == "C")
         {
-            return pass_detajj && !pass_abcdnet;
+            return pass_vbs && !pass_abcdnet;
         }
         else if (region == "D")
         {
-            return !pass_detajj && !pass_abcdnet;
+            return !pass_vbs && !pass_abcdnet;
         }
         else
         {
