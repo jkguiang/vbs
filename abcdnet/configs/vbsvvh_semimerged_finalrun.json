@@ -1,0 +1,79 @@
+{
+    "base_dir": "/home/eslam.zenhom/data/vbsvvh",
+    "model": {
+        "name": "LeakyNeuralNetwork",
+        "n_hidden_layers": 3,
+        "hidden_size": 64
+    },
+   "infer": {
+        "extra_files": [
+            "/blue/p.chang/eslam.zenhom/data/vbsvvh/vbsvvh_semimerged_data/Run2/data.root"
+        ]
+    },
+    "ingress": {
+        "input_dir": "/blue/p.chang/eslam.zenhom/data/vbsvvh/vbsvvh_semimerged_data/Run2",
+        "bkg_files": [
+            "QCD.root",
+            "ttbar.root",
+            "wjets.root",
+            "zjets.root",
+            "VV_VH.root",
+            "rare_EWK.root",
+            "rare_top.root"
+        ],
+        "sig_files": [
+            "OSVBSWWH.root",
+            "SSVBSWWH.root",
+            "VBSWZH.root",
+            "VBSZZH.root"
+        ],
+        "ttree_name": "tree", 
+        "selection": "(ld_vqqfatjet_xvqq > 0.6) & (hbbfatjet_xbb > 0.8) & (ld_vqqfatjet_xwqq > 0.6) ",
+        "features": [
+            "hbbfatjet_pt", 
+            "hbbfatjet_eta", 
+            "hbbfatjet_phi", 
+            "hbbfatjet_msoftdrop", 
+            "ld_vqqfatjet_pt", 
+            "ld_vqqfatjet_eta", 
+            "ld_vqqfatjet_phi", 
+            "ld_vqqfatjet_msoftdrop", 
+            "ld_vqqjet_pt", 
+            "ld_vqqjet_eta", 
+            "ld_vqqjet_phi", 
+            "ld_vqqjet_mass", 
+            "tr_vqqjet_pt", 
+            "tr_vqqjet_eta", 
+            "tr_vqqjet_phi", 
+            "tr_vqqjet_mass", 
+            "ST", 
+            "vqqjets_Mjj", 
+            "HT", 
+            "n_jets",
+            "ld_vqqfatjet_xwqq"
+        ],
+        "transforms": {},
+        "weights": [
+            "xsec_sf",
+            "pu_sf",
+            "prefire_sf",
+            "puid_sf"
+        ],
+        "disco_target": "abs_deta_jj"
+    },
+    "train": {
+        "train_frac": 0.8,
+        "n_batches_train": 10,
+        "n_batches_test": 5,
+        "learning_rate": 0.001,
+        "seed": 1234,
+        "scheduler_name": "ConstantLR",
+        "scheduler_kwargs": {
+            "factor": 1.0
+        },
+        "disco_lambda": 150,
+        "disco_power": 1,
+        "n_epochs": 300
+    }
+}
+

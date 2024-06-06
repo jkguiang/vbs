@@ -44,6 +44,9 @@ struct Analysis : Core::Analysis
         // Hbb jet globals
         cutflow.globals.newVar<LorentzVector>("hbbfatjet_p4");
         cutflow.globals.newVar<unsigned int>("hbbfatjet_gidx", 999); // idx in 'good' fatjets global vector
+        // Vqq jet globals
+        cutflow.globals.newVar<unsigned int>("ld_vqqjet_gidx", 999);
+        cutflow.globals.newVar<unsigned int>("tr_vqqjet_gidx", 999);
 
         // Scale factors
         jes = nullptr;
@@ -218,7 +221,7 @@ struct Analysis : Core::Analysis
         cutflow.insert(allmerged_select_vvh, allmerged_select_jets, Right);
 
         // VBS jet selection
-        Cut* allmerged_select_vbsjets = new Core::SelectVBSJets("AllMerged_SelectVBSJets", *this);
+        Cut* allmerged_select_vbsjets = new SelectVBSJets("AllMerged_SelectVBSJets", *this, AllMerged);
         cutflow.insert(allmerged_select_jets, allmerged_select_vbsjets, Right);
 
         // Save analysis variables
@@ -258,7 +261,7 @@ struct Analysis : Core::Analysis
             [&]()
             {
                 // Save ABCDNet score
-                float score =  ABCDNet::run(
+                float score =  ABCDNetAllMerged::run(
                     arbol.getLeaf<double>("hbbfatjet_pt"),
                     arbol.getLeaf<double>("hbbfatjet_eta"),
                     arbol.getLeaf<double>("hbbfatjet_phi"),
@@ -306,16 +309,16 @@ struct Analysis : Core::Analysis
         );
         cutflow.insert(allmerged_xbb_cut, allmerged_xwqq_cuts, Right);
 
-        Cut* allmerged_A = new ABCDRegions("AllMerged_RegionA", *this, "A");
+        Cut* allmerged_A = new ABCDRegions("AllMerged_RegionA", *this, "A", AllMerged);
         cutflow.insert(allmerged_xwqq_cuts, allmerged_A, Right);
 
-        Cut* allmerged_B = new ABCDRegions("AllMerged_RegionB", *this, "B");
+        Cut* allmerged_B = new ABCDRegions("AllMerged_RegionB", *this, "B", AllMerged);
         cutflow.insert(allmerged_A, allmerged_B, Left);
 
-        Cut* allmerged_C = new ABCDRegions("AllMerged_RegionC", *this, "C");
+        Cut* allmerged_C = new ABCDRegions("AllMerged_RegionC", *this, "C", AllMerged);
         cutflow.insert(allmerged_B, allmerged_C, Left);
 
-        Cut* allmerged_D = new ABCDRegions("AllMerged_RegionD", *this, "D");
+        Cut* allmerged_D = new ABCDRegions("AllMerged_RegionD", *this, "D", AllMerged);
         cutflow.insert(allmerged_C, allmerged_D, Left);
         /* ------------------------------------------------------ */
 
@@ -339,27 +342,77 @@ struct Analysis : Core::Analysis
         );
         cutflow.insert(semimerged_select_jets, semimerged_geq4_jets, Right);
 
-        // VBS jet selection
-        Cut* semimerged_select_vbsjets = new Core::SelectVBSJets("SemiMerged_SelectVBSJets", *this);
-        cutflow.insert(semimerged_geq4_jets, semimerged_select_vbsjets, Right);
-
         // V --> qq jet candidate selection
         Cut* semimerged_select_vjets = new SelectVJets("SemiMerged_SelectVJets", *this);
-        cutflow.insert(semimerged_select_vbsjets, semimerged_select_vjets, Right);
+        cutflow.insert(semimerged_geq4_jets, semimerged_select_vjets, Right);
+
+        // VBS jet selection
+        Cut* semimerged_select_vbsjets = new SelectVBSJets("SemiMerged_SelectVBSJets", *this, SemiMerged);
+        cutflow.insert(semimerged_select_vjets, semimerged_select_vbsjets, Right);
 
         // Save analysis variables
         Cut* semimerged_save_vars = new SaveVariables("SemiMerged_SaveVariables", *this, SemiMerged, xbb_sfs, xwqq_sfs);
-        cutflow.insert(semimerged_select_vjets, semimerged_save_vars, Right);
+        cutflow.insert(semimerged_select_vbsjets, semimerged_save_vars, Right);
 
-        // Basic VBS jet requirements
-        Cut* semimerged_Mjjgt500 = new LambdaCut(
-            "SemiMerged_MjjGt500", [&]() { return arbol.getLeaf<double>("M_jj") > 500; }
+        // Preselection
+        Cut* semimerged_presel = new LambdaCut(
+            "SemiMerged_Preselection", 
+            [&]() 
+            { 
+                return (
+                    arbol.getLeaf<double>("hbbfatjet_xbb") > 0.8
+                    && arbol.getLeaf<double>("ld_vqqfatjet_xwqq") > 0.6
+                    && arbol.getLeaf<double>("ld_vqqfatjet_xvqq") > 0.6
+                );
+            }
         );
-        cutflow.insert(semimerged_save_vars, semimerged_Mjjgt500, Right);
-        Cut* semimerged_detajjgt3 = new LambdaCut(
-            "SemiMerged_detajjGt3", [&]() { return fabs(arbol.getLeaf<double>("deta_jj")) > 3; }
+        cutflow.insert(semimerged_save_vars, semimerged_presel, Right);
+
+        Cut* semimerged_save_abcdnet = new LambdaCut(
+            "SemiMerged_SaveABCDNetScore",
+            [&]()
+            {
+                // Save ABCDNet score
+                float score =  ABCDNetSemiMerged::run(
+                    arbol.getLeaf<double>("hbbfatjet_pt"),
+                    arbol.getLeaf<double>("hbbfatjet_eta"),
+                    arbol.getLeaf<double>("hbbfatjet_phi"),
+                    arbol.getLeaf<double>("hbbfatjet_msoftdrop"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_pt"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_eta"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_phi"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_msoftdrop"),
+                    arbol.getLeaf<double>("ld_vqqjet_pt"),
+                    arbol.getLeaf<double>("ld_vqqjet_eta"),
+                    arbol.getLeaf<double>("ld_vqqjet_phi"),
+                    arbol.getLeaf<double>("ld_vqqjet_mass"),
+                    arbol.getLeaf<double>("tr_vqqjet_pt"),
+                    arbol.getLeaf<double>("tr_vqqjet_eta"),
+                    arbol.getLeaf<double>("tr_vqqjet_phi"),
+                    arbol.getLeaf<double>("tr_vqqjet_mass"),
+                    arbol.getLeaf<double>("ST"),
+                    arbol.getLeaf<double>("vqqjets_Mjj"),
+                    arbol.getLeaf<double>("HT"),
+                    arbol.getLeaf<int>("n_jets"),
+                    arbol.getLeaf<double>("ld_vqqfatjet_xwqq")
+                );
+                arbol.setLeaf<float>("abcdnet_score", score);
+                return true;
+            }
         );
-        cutflow.insert(semimerged_Mjjgt500, semimerged_detajjgt3, Right);
+        cutflow.insert(semimerged_presel, semimerged_save_abcdnet, Right);
+        
+        Cut* semimerged_A = new ABCDRegions("SemiMerged_RegionA", *this, "A", SemiMerged);
+        cutflow.insert(semimerged_save_abcdnet, semimerged_A, Right);
+
+        Cut* semimerged_B = new ABCDRegions("SemiMerged_RegionB", *this, "B", SemiMerged);
+        cutflow.insert(semimerged_A, semimerged_B, Left);
+
+        Cut* semimerged_C = new ABCDRegions("SemiMerged_RegionC", *this, "C", SemiMerged);
+        cutflow.insert(semimerged_B, semimerged_C, Left);
+
+        Cut* semimerged_D = new ABCDRegions("SemiMerged_RegionD", *this, "D", SemiMerged);
+        cutflow.insert(semimerged_C, semimerged_D, Left);
         /* ------------------------------------------------------ */
     };
 
