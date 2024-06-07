@@ -97,13 +97,27 @@ TAG = sys.argv[1]
 PRIVATE = len(sys.argv) > 2 and sys.argv[2] == "private"
 BABYDIR = f"/data/userdata/{os.getenv('USER')}/vbs_studies/vbsvvhjets/output_{TAG}"
 
+if PRIVATE:
+    signal_baby = f"{BABYDIR}/Run2/Private_C2W_C2Z.root"
+    central_rwgt_i = 84
+    rwgt_map = "data/Private_C2W_C2Z_reweights.txt"
+    signal_name = "Private_C2W_C2Z"
+else:
+    signal_baby = f"{BABYDIR}/Run2/VBSVVH.root"
+    central_rwgt_i = 28
+    rwgt_map = "data/VBSVVH_reweights.txt"
+    signal_name = "VBSVVH"
+
+output_dir = f"../combine/vbsvvh/datacards/{signal_name}_{TAG}"
+os.makedirs(output_dir, exist_ok=True)
+
 babies = glob.glob(f"{BABYDIR}/Run2/*.root")
 sig_babies = []
 bkg_babies = []
 data_babies = []
 for baby_path in babies:
     baby_name = baby_path.split("/")[-1]
-    if (PRIVATE and "Private_C2W_C2Z" in baby_name) or (not PRIVATE and "VBSVVH" in baby_name):
+    if signal_name in baby_name:
         sig_babies.append(baby_path)
     elif "VBS" not in baby_name and "Private" not in baby_name:
         if "data" in baby_name:
@@ -136,7 +150,7 @@ vbsvvh = PandasAnalysis(
     ]
 )
 vbsvvh.df["unity"] = 1 # IMPORTANT
-vbsvvh.df["objsel"] = True
+vbsvvh.df["objsel"] = vbsvvh.df.eval("is_allmerged")
 vbsvvh.df["presel"] = vbsvvh.df.eval(
     "objsel and hbbfatjet_xbb > 0.5 and ld_vqqfatjet_xwqq > 0.3 and tr_vqqfatjet_xwqq > 0.3"
 )
@@ -167,22 +181,10 @@ vbsvvh.df["regionD"] = vbsvvh.df.eval(
 
 ABCD_REGIONS = ["regionA", "regionB", "regionC", "regionD"]
 
-if PRIVATE:
-    signal_baby = f"{BABYDIR}/Run2/Private_C2W_C2Z.root"
-    central_rwgt_i = 84
-    rwgt_map = "data/Private_C2W_C2Z_reweights.txt"
-    output_dir = "../combine/vbsvvh/datacards/Private_C2W_C2Z"
-else:
-    signal_baby = f"{BABYDIR}/Run2/VBSVVH.root"
-    central_rwgt_i = 28
-    rwgt_map = "data/VBSVVH_reweights.txt"
-    output_dir = "../combine/vbsvvh/datacards/VBSVVH"
-
-os.makedirs(output_dir, exist_ok=True)
-
 with uproot.open(signal_baby) as f:
-    reweights = np.stack(f["rwgt_tree"].arrays(library="np")["reweights"])
-    # Insert trivial weight
+    rwgt_tree = f["rwgt_tree"].arrays(library="np")
+    reweights = np.stack(rwgt_tree["reweights"][rwgt_tree["is_allmerged"]])
+    # Insert trivial reweight for central value (C2V = 2)
     reweights = np.insert(reweights, central_rwgt_i, 1, axis=1)
     # Interpret reweights matrix shape
     n_events, n_reweights = reweights.shape
@@ -218,6 +220,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
     with uproot.open(signal_baby) as f:
         pdf_df = f.get("pdf_tree").arrays(library="pd")
+        pdf_df = pdf_df[pdf_df.is_allmerged].reset_index()
         
     systs = []
     for R in ABCD_REGIONS:
@@ -244,12 +247,12 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
     muR_systs = Systematic("CMS_LHE_weights_scale_muR_vbsvvh", ABCD_REGIONS)
     muR_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "unity", *lhe_muR_weights)
+        get_systs(signal_name, ABCD_REGIONS, "unity", *lhe_muR_weights)
     )
 
     muF_systs = Systematic("CMS_LHE_weights_scale_muF_vbsvvh", ABCD_REGIONS)
     muF_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "unity", *lhe_muF_weights)
+        get_systs(signal_name, ABCD_REGIONS, "unity", *lhe_muF_weights)
     )
 
     # SIG_SYSTS_LIMIT.add_row(muR_systs)                   # muR variations have not effect
@@ -263,12 +266,12 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
 
     isr_sf_systs = Systematic("CMS_PSWeight_ISR_vbsvvh", ABCD_REGIONS)
     isr_sf_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "unity", *isr_weights)
+        get_systs(signal_name, ABCD_REGIONS, "unity", *isr_weights)
     )
 
     fsr_sf_systs = Systematic("CMS_PSWeight_FSR_vbsvvh", ABCD_REGIONS)
     fsr_sf_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "unity", *fsr_weights)
+        get_systs(signal_name, ABCD_REGIONS, "unity", *fsr_weights)
     )
 
     SIG_SYSTS_LIMIT.add_row(isr_sf_systs)
@@ -279,7 +282,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     # -- Pileup reweighting ----------------------------------------------------------------
     pu_sf_systs = Systematic("CMS_vbsvvh_puWeight", ABCD_REGIONS)
     pu_sf_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "pu_sf", "pu_sf_dn", "pu_sf_up")
+        get_systs(signal_name, ABCD_REGIONS, "pu_sf", "pu_sf_dn", "pu_sf_up")
     )
     SIG_SYSTS_LIMIT.add_row(pu_sf_systs)
     # --------------------------------------------------------------------------------------
@@ -288,7 +291,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     # -- Pileup jet id ---------------------------------------------------------------------
     puid_sf_systs = Systematic("CMS_vbsvvh_puJetId", ABCD_REGIONS)
     puid_sf_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "puid_sf", "puid_sf_dn", "puid_sf_up")
+        get_systs(signal_name, ABCD_REGIONS, "puid_sf", "puid_sf_dn", "puid_sf_up")
     )
     SIG_SYSTS_LIMIT.add_row(puid_sf_systs)
     # --------------------------------------------------------------------------------------
@@ -297,7 +300,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
     # -- L1 prefiring weight ---------------------------------------------------------------
     prefire_sf_systs = Systematic("CMS_PrefireWeight_13TeV", ABCD_REGIONS)
     prefire_sf_systs.add_systs(
-        get_systs("VBSVVH", ABCD_REGIONS, "prefire_sf", "prefire_sf_up", "prefire_sf_dn")
+        get_systs(signal_name, ABCD_REGIONS, "prefire_sf", "prefire_sf_up", "prefire_sf_dn")
     )
     SIG_SYSTS_LIMIT.add_row(prefire_sf_systs)
     # --------------------------------------------------------------------------------------
@@ -325,7 +328,7 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         cms_year_str = get_year_str(year).replace("20", "")
         xbb_sf_systs = Systematic(f"CMS_vbsvvhjets_bTagWeightXbb_13TeV_{cms_year_str}", ABCD_REGIONS)
         xbb_sf_systs.add_systs(
-            get_systs("VBSVVH", ABCD_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up", year=year)
+            get_systs(signal_name, ABCD_REGIONS, "xbb_sf", "xbb_sf_dn", "xbb_sf_up", year=year)
         )
         SIG_SYSTS_LIMIT.add_row(xbb_sf_systs)
     # --------------------------------------------------------------------------------------
@@ -337,13 +340,13 @@ for reweight_i in tqdm(range(n_reweights), desc=f"Writing datacards to {output_d
         # Leading V->qq jet
         xwqq_sf_systs = Systematic(f"CMS_vbsvvhjets_qTagWeightXWqq_ldVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
         xwqq_sf_systs.add_systs(
-            get_systs("VBSVVH", ABCD_REGIONS, "xwqq_ld_vqq_sf", "xwqq_ld_vqq_sf_up", "xwqq_ld_vqq_sf_dn", year=year)
+            get_systs(signal_name, ABCD_REGIONS, "xwqq_ld_vqq_sf", "xwqq_ld_vqq_sf_up", "xwqq_ld_vqq_sf_dn", year=year)
         )
         SIG_SYSTS_LIMIT.add_row(xwqq_sf_systs)
         # Trailing V->qq jet
         xwqq_sf_systs = Systematic(f"CMS_vbsvvhjets_qTagWeightXWqq_trVqq_13TeV_{cms_year_str}", ABCD_REGIONS)
         xwqq_sf_systs.add_systs(
-            get_systs("VBSVVH", ABCD_REGIONS, "xwqq_tr_vqq_sf", "xwqq_tr_vqq_sf_up", "xwqq_tr_vqq_sf_dn", year=year)
+            get_systs(signal_name, ABCD_REGIONS, "xwqq_tr_vqq_sf", "xwqq_tr_vqq_sf_up", "xwqq_tr_vqq_sf_dn", year=year)
         )
         SIG_SYSTS_LIMIT.add_row(xwqq_sf_systs)
     # --------------------------------------------------------------------------------------

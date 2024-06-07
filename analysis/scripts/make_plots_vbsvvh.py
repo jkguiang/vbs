@@ -506,7 +506,7 @@ if __name__ == "__main__":
     )
 
     # Define preselection
-    plotter.df["objsel"] = True
+    plotter.df["objsel"] = plotter.df.eval("is_allmerged")
     plotter.df["presel"] = plotter.df.eval(
         "objsel and hbbfatjet_xbb > 0.5 and ld_vqqfatjet_xwqq > 0.3 and tr_vqqfatjet_xwqq > 0.3"
     )
@@ -519,7 +519,8 @@ if __name__ == "__main__":
 
     # Get reweights
     with uproot.open(f"{baby_dir}/Run2/VBSVVH.root") as f:
-        reweights = np.stack(f["rwgt_tree"].arrays(library="np")["reweights"])
+        rwgt_tree = f["rwgt_tree"].arrays(library="np")
+        reweights = np.stack(rwgt_tree["reweights"][rwgt_tree["is_allmerged"]])
         reweights = np.insert(reweights, 28, 1, axis=1) # insert reweight = 1 for central value (C2V = 2)
         n_events, n_reweights = reweights.shape
     # Get reweight names

@@ -26,22 +26,20 @@ int main(int argc, char** argv)
     Arbol arbol = Arbol(cli);
 
     // Initialize Arbol for PDF variations
-    Arbol pdf_arbol = Arbol(
-        cli.output_dir+"/"+cli.output_name+"_pdf.root",
-        "pdf_"+cli.output_ttree
-    );
+    Arbol pdf_arbol = Arbol(arbol.tfile, "pdf_"+cli.output_ttree);
     for (int i = 0; i < 101; ++i)
     {
         pdf_arbol.newBranch<double>("lhe_pdf_"+std::to_string(i), -999);
     }
     pdf_arbol.newBranch<double>("event_weight", -999);
+    pdf_arbol.newBranch<bool>("is_allmerged", false);
+    pdf_arbol.newBranch<bool>("is_semimerged", false);
 
     // Initialize Arbol for reweights
-    Arbol rwgt_arbol = Arbol(
-        cli.output_dir+"/"+cli.output_name+"_rwgt.root",
-        "rwgt_"+cli.output_ttree
-    );
+    Arbol rwgt_arbol = Arbol(arbol.tfile, "rwgt_"+cli.output_ttree);
     rwgt_arbol.newBranch<Doubles>("reweights", {});
+    rwgt_arbol.newBranch<bool>("is_allmerged", false);
+    rwgt_arbol.newBranch<bool>("is_semimerged", false);
 
     // Initialize Cutflow
     Cutflow cutflow = Cutflow(cli.output_name + "_Cutflow");
@@ -201,6 +199,8 @@ int main(int argc, char** argv)
                     pdf_arbol.setLeaf<double>(branch_name, 1.);
                 }
             }
+            pdf_arbol.setLeaf<bool>("is_allmerged", arbol.getLeaf<bool>("is_allmerged"));
+            pdf_arbol.setLeaf<bool>("is_semimerged", arbol.getLeaf<bool>("is_semimerged"));
             return true;
         }
     );
@@ -223,6 +223,8 @@ int main(int argc, char** argv)
                     reweights.push_back(reweight);
                 }
                 rwgt_arbol.setLeaf<Doubles>("reweights", reweights);
+                rwgt_arbol.setLeaf<bool>("is_allmerged", arbol.getLeaf<bool>("is_allmerged"));
+                rwgt_arbol.setLeaf<bool>("is_semimerged", arbol.getLeaf<bool>("is_semimerged"));
             }
             return true;
         }
@@ -262,11 +264,11 @@ int main(int argc, char** argv)
                     "AllMerged_SavePDFWeights"
                 };
                 std::vector<bool> checkpoints = cutflow.run(cuts_to_check);
-                if (checkpoints.at(0) or checkpoints.at(2)) 
+                if (checkpoints.at(0) || checkpoints.at(2)) 
                 { 
                     arbol.fill(); 
                 }
-                if (checkpoints.at(1) or checkpoints.at(3)) 
+                if (checkpoints.at(1) || checkpoints.at(3)) 
                 { 
                     pdf_arbol.fill(); 
                     rwgt_arbol.fill(); 
@@ -284,8 +286,8 @@ int main(int argc, char** argv)
         cutflow.print();
         cutflow.write(cli.output_dir);
     }
-    arbol.write();
-    pdf_arbol.write();
+    arbol.write(false);
+    pdf_arbol.write(false);
     rwgt_arbol.write();
     return 0;
 }
