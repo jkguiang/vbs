@@ -1,4 +1,8 @@
 VBSVVH
+abcdnet_v1:
+    - first version of analysis with ABCDNet implemented
+abcdnet_v2:
+    - some bug fix or something... I forget
 abcdnet_v3: 
     - fixed issue where OS & SS VBS WWH xsecs were switched
 abcdnet_v4: 
@@ -8,4 +12,6 @@ abcdnet_v5:
     - ParticleNet XWqq uncertainty doubled for pt > 800
 abcdnet_v6: 
     - removed old HEM prescription still being applied to AK8s
-    - Added ABCDNet to C++ workflow
+    - added ABCDNet to C++ workflow
+abcdnet_v7: 
+    - added semi-merged channel

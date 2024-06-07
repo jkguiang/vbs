@@ -23,6 +23,13 @@ mkdir -p $BASEDIR
 # Run JER variations... but only for signal (since we don't need them for bkg)!
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jer_up --var=jer_up --no_make --skims sig_$SKIMTAG
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jer_dn --var=jer_dn --no_make --skims sig_$SKIMTAG
+
+# Copy nominal background to JER variations (wasteful, I know, but allows for the merges below to be done with the same script)
+for VARDIR in $BASEDIR/vbsvvhjets/output_${TAG}_jer*; do
+    cp -R -n $BASEDIR/vbsvvhjets/output_${TAG}/* $VARDIR/
+done
+
+# Merge the ROOT files for each JER variation
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jer_up
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jer_dn
 
@@ -50,12 +57,12 @@ mkdir -p $BASEDIR
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_11_up --var=jec_11_up --no_make --skims sig_$SKIMTAG
 ./bin/run vbsvvhjets --n_workers=$N_WORKERS --basedir=$BASEDIR --skimdir=$SKIMDIR --tag=${TAG}_jec_11_dn --var=jec_11_dn --no_make --skims sig_$SKIMTAG
 
-# Copy nominal background to variations (wasteful, I know, but allows for the merges below to be done with the same script)
+# Copy nominal background to JEC variations (wasteful, I know, but allows for the merges below to be done with the same script)
 for VARDIR in $BASEDIR/vbsvvhjets/output_${TAG}_jec*; do
     cp -R -n $BASEDIR/vbsvvhjets/output_${TAG}/* $VARDIR/
 done
 
-# Merge the ROOT files for each of the variations
+# Merge the ROOT files for each of the JEC variations
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jec_1_up
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jec_1_dn
 ./bin/merge_vbsvvhjets vbsvvhjets --basedir=$BASEDIR --tag=${TAG}_jec_2_up
@@ -112,8 +119,5 @@ for JEC in $JECS; do
         done
     done
 done
-
-echo "Copying $BASEDIR/vbsvvhjets/output_${TAG}* to $PWD/studies/vbsvvhjets"
-cp -R $BASEDIR/vbsvvhjets/output_${TAG}* studies/vbsvvhjets/
 
 echo "Done"
