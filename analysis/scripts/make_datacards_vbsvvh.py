@@ -479,7 +479,10 @@ if __name__ == "__main__":
         #     datacard_systs["TotalBkg_AllHad"][f"CMS_vbsvvhjets_abcd_stat{R}"] = temp_systs
 
         # Blinded yields
-        ABCD_yields = [1, *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
+        B = vbsvvh.data_count(selection="regionB")
+        C = vbsvvh.data_count(selection="regionC")
+        D = vbsvvh.data_count(selection="regionD")
+        ABCD_yields = [round(B*C/D), *[vbsvvh.data_count(selection=R) for R in ABCD_REGIONS[1:]]]
         # Unblinded yields
         # ABCD_yields = [vbsvvh.data_count(selection=R) for R in ABCD_REGIONS]
 
