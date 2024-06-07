@@ -1,10 +1,18 @@
-# Code written by Lara Zygala
 import os
-
+import sys
 import numpy as np
 import ROOT
 
 import ch_plotting
+
+result_dir = sys.argv[1]
+if "allmerged" in result_dir:
+    channel = "allmerged"
+elif "semimerged" in result_dir:
+    channel = "semimerged"
+else:
+    print("ERROR: cannot find 'allmerged' or 'semimerged' in the results directory provided")
+    exit()
 
 ROOT.gROOT.SetBatch(ROOT.kTRUE)
 
@@ -19,8 +27,9 @@ graphs = ch_plotting.StandardLimitsFromJSONFile('limits_C2V.json', draw)
 
 # Create an empty TH1 from the first TGraph to serve as the pad axis and frame
 axis = ch_plotting.CreateAxisHist(list(graphs.values())[0])
-axis.GetXaxis().SetTitle('#kappa_{2V} Value')
-axis.GetYaxis().SetTitle('95% CL limit on #sigma(VVH)/#sigma(SM)')
+axis.GetXaxis().SetTitle('#Kappa_{2V} Value')
+#axis.GetYaxis().SetTitle('95% CL limit on #sigma(VVH)/#sigma(SM)')
+axis.GetYaxis().SetTitle('95% CL limit on #sigma(pp #rightarrow VVH) fb')
 pads[0].cd()
 axis.Draw('axis')
  
@@ -57,9 +66,12 @@ line_lo.Draw('same')
 line_hi.Draw('same')
 
 pt = ROOT.TPaveText(legend.GetX1NDC(),legend.GetY1NDC()-0.08,legend.GetX2NDC(),legend.GetY1NDC(), "NDC")
-pt.AddText("#kappa_{2V} = "+"({:.2f}, {:.2f})".format(lim_lo, lim_hi))
+pt.AddText("#Kappa_{2V} = "+"({:.2f}, {:.2f})".format(lim_lo, lim_hi))
 pt.Draw("same")
 
-os.makedirs(f"/home/users/{os.getenv('USER')}/public_html/vbsvvhjets_plots/limits", exist_ok=True)
-canv.SaveAs(f"/home/users/{os.getenv('USER')}/public_html/vbsvvhjets_plots/limits/C2V_Limit.png")
-canv.SaveAs(f"/home/users/{os.getenv('USER')}/public_html/vbsvvhjets_plots/limits/C2V_Limit.pdf")
+tag = result_dir.split("_"+channel+"_")[-1]
+output_dir = "/home/users/{0}/public_html/vbsvvhjets_plots/{1}/limits".format(os.getenv("USER"), tag)
+os.makedirs(output_dir, exist_ok=True)
+
+canv.SaveAs(output_dir+"/"+channel+"_C2V_Limit.png")
+canv.SaveAs(output_dir+"/"+channel+"_C2V_Limit.pdf")

@@ -1,12 +1,18 @@
-mkdir -p workspaces
-mkdir -p results
-total=$(ls datacards/VBSVVH/*.dat | wc -l)
+DATACARDS=$1
+SUBDIR=$(basename $DATACARDS)
+if [[ "$DATACARDS" == "" ]]; then
+    echo "ERROR: no datacard directory provided"
+    exit 1
+fi
+mkdir -p workspaces/$SUBDIR
+mkdir -p results/$SUBDIR
+total=$(ls $DATACARDS/*.dat | wc -l)
 counter=1
-for datacard in datacards/VBSVVH/*.dat; do
+for datacard in $DATACARDS/*.dat; do
     name=$(basename ${datacard%%.dat})
-    workspace=workspaces/${name}_workspace.root
-    result=results/${name}_result.root
-    log=results/${name}_logs.txt
+    workspace=workspaces/$SUBDIR/${name}_workspace.root
+    result=results/$SUBDIR/${name}_result.root
+    log=results/$SUBDIR/${name}_logs.txt
     # Make workspace
     text2workspace.py $datacard -o $workspace
     echo "[$counter/$total] Running limit on $datacard"
@@ -16,4 +22,3 @@ for datacard in datacards/VBSVVH/*.dat; do
     mv higgsCombine.${name}.AsymptoticLimits.mH125.root $result
     counter=$(($counter + 1))
 done
-

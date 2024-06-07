@@ -310,12 +310,15 @@ def Get(file, obj):
     f_in.Close()
     return res
 
-
+def ConvertKeyName(label):
+    fixed = label.replace('p','.')
+    fixed = fixed.replace('m','-')
+    return fixed
 def LimitTGraphFromJSON(js, label):
     xvals = []
     yvals = []
     for key in js:
-        xvals.append(float(key))
+        xvals.append(float(ConvertKeyName(key)))
         yvals.append(js[key][label])
     graph = R.TGraph(len(xvals), array('d', xvals), array('d', yvals))
     graph.Sort()
@@ -333,7 +336,7 @@ def LimitBandTGraphFromJSON(js, central, lo, hi):
     yvals_lo = []
     yvals_hi = []
     for key in js:
-        xvals.append(float(key))
+        xvals.append(float(ConvertKeyName(key)))
         yvals.append(js[key][central])
         yvals_lo.append(js[key][central] - js[key][lo])
         yvals_hi.append(js[key][hi] - js[key][central])
