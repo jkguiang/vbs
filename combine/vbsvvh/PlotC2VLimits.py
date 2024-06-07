@@ -70,7 +70,7 @@ pt.AddText("#Kappa_{2V} = "+"({:.2f}, {:.2f})".format(lim_lo, lim_hi))
 pt.Draw("same")
 
 tag = result_dir.split("_"+channel+"_")[-1]
-output_dir = "/home/users/{0}/public_html/vbsvvhjets_plots/{1}/limits".format(os.getenv("USER"), tag)
+output_dir = "/home/users/{0}/public_html/vbsvvhjets_plots/{1}/limits_{2}".format(os.getenv("USER"), tag, channel)
 os.makedirs(output_dir, exist_ok=True)
 
 canv.SaveAs(output_dir+"/"+channel+"_C2V_Limit.png")
